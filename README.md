@@ -4,19 +4,20 @@
 **Currently Under Development Version: v0.2.0**
 **Future Version: v1.2.0** (not to be worked on)
 
-GitOps-driven infrastructure for ProficientNow using Kubespray, ArgoCD, and Kubernetes.
+GitOps-driven infrastructure for ProficientNow using a revolutionary 2-phase deployment architecture with Kubespray and ArgoCD.
 
 ## Overview
 
-This repository contains the infrastructure-as-code for deploying and managing ProficientNow's Kubernetes platform with enhanced ArgoCD hooks integration for comprehensive validation and monitoring.
+This repository contains the infrastructure-as-code for deploying and managing ProficientNow's Kubernetes platform using a revolutionary 2-phase deployment architecture that eliminates complexity while providing enterprise-grade reliability.
 
 ## Key Features
 
-- ✅ **Hybrid Deployment**: Ansible bootstrap + ArgoCD GitOps workflows
-- ✅ **ArgoCD-Native Validation**: PreSync/PostSync hooks for infrastructure validation
+- ✅ **2-Phase Architecture**: Docker-based Kubespray + Template-driven ArgoCD applications
+- ✅ **Zero Local Dependencies**: Docker-only deployment with complete infrastructure
+- ✅ **Application Factory**: Template-driven application deployment via Helm charts
 - ✅ **Production Ready**: SSL/TLS, monitoring, storage, secrets management
-- ✅ **Zero-Surprise Deployment**: Comprehensive validation at every phase
-- ✅ **Self-Healing**: Automated failure detection and recovery
+- ✅ **Modular Deployment**: Base, monitoring, and ML stacks deployable independently
+- ✅ **Self-Healing**: GitOps automated drift detection and recovery
 
 ## Getting Started
 
@@ -24,29 +25,29 @@ See the **[v0.2.0 documentation](./v0.2.0/README.md)** for comprehensive deploym
 
 ## Project Structure
 
-- `v0.2.0/`: Current development version with ArgoCD hooks integration
-  - `bootstrap/`: Tools and scripts for initial cluster setup
-  - `applications/`: ArgoCD application definitions with validation hooks
-  - `utils/hooks/`: ArgoCD PreSync/PostSync validation hooks
-  - `docs/`: Comprehensive documentation
+- `v0.2.0/`: Current development version with 2-phase deployment
+  - `cluster/`: Docker-based Kubespray deployment system
+  - `platform/`: Template-driven ArgoCD application factory
+  - `openspec/`: Architecture specifications and change management
 - `v1.2.0/`: Future architecture (not active)
 
 ## Quick Start
 
 ```bash
-# Navigate to current development version
-cd v0.2.0
+# Phase 1: Deploy complete Kubernetes cluster
+cd v0.2.0/cluster
+./kubespray.sh deploy
 
-# Run complete bootstrap with validation hooks
-cd bootstrap/scripts
-./bootstrap.sh
+# Phase 2: Deploy platform applications via templates
+cd v0.2.0/platform/bootstrap
+./bootstrap-template-driven.sh deploy --stack all
 
-# Monitor hook execution
-kubectl get jobs -n argocd -l argocd.argoproj.io/hook
+# Monitor application deployment
+kubectl get applications -n argocd
 ```
 
 ## Documentation
 
-- **[v0.2.0 Bootstrap System](./v0.2.0/README.md)**: Complete deployment guide with ArgoCD hooks
-- **[ArgoCD Hooks Integration](./v0.2.0/#-argocd-hooks-integration)**: Native validation and health checking
-- **[Architecture Deep Dive](./v0.2.0/#-architecture-deep-dive)**: System components and workflows
+- **[v0.2.0 Deployment Guide](./v0.2.0/README.md)**: Complete 2-phase deployment architecture
+- **[Application Factory Pattern](./v0.2.0/#-phase-2-template-driven-platform-applications)**: Template-driven application deployment
+- **[Architecture Benefits](./v0.2.0/#-architecture-benefits)**: Revolutionary simplification and benefits

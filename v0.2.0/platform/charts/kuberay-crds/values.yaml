@@ -1,0 +1,16 @@
+---
+# Global configuration
+global:
+  repoURL: "https://github.com/your-org/pn-infra.git"
+  targetRevision: "v1.2.0-p0-infra"
+
+# KubeRay CRDs configuration
+# This chart only installs the Custom Resource Definitions
+# No additional configuration needed as this is just CRDs
+
+# Installation configuration
+installCRDs: true
+
+# CRD configuration
+crds:
+  keep: true

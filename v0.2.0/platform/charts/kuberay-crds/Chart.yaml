@@ -1,0 +1,19 @@
+apiVersion: v2
+name: kuberay-crds
+description: KubeRay Custom Resource Definitions for Ray ML workloads
+type: application
+version: 0.1.0
+appVersion: "v1.3.0"
+
+keywords:
+  - machine-learning
+  - ray
+  - kuberay
+  - crds
+  - ml-infrastructure
+
+annotations:
+  category: Machine Learning
+  platform.pn-infra.io/component: kuberay-crds
+  platform.pn-infra.io/framework: openspec
+  platform.pn-infra.io/sync-wave: "6"

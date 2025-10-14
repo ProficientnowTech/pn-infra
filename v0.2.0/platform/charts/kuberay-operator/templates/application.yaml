@@ -1,0 +1,55 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ include "kuberay-operator.fullname" . }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: '7'
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: kuberay-operator
+    managed-by: argocd
+    component: ml-infrastructure
+    {{- include "kuberay-operator.labels" . | nindent 4 }}
+spec:
+  project: platform
+  sources:
+    - repoURL: https://ray-project.github.io/kuberay-helm/
+      chart: kuberay-operator
+      targetRevision: 1.3.0
+      helm:
+        releaseName: kuberay-operator
+        valueFiles:
+          - $values/platform/charts/kuberay-operator/values.yaml
+    - repoURL: {{ .Values.global.repoURL | default "https://github.com/your-org/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "v1.2.0-p0-infra" }}
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kuberay-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+      - PrunePropagationPolicy=foreground
+      - Replace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+      jqPathExpressions:
+        - .webhooks[]?.clientConfig.caBundle

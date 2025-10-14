@@ -40,86 +40,95 @@ graph TB
 
 ## 🏗️ Phase 1: Complete Kubernetes Cluster
 
+### Migration from 4-Phase to 3-Phase
+
+The enhanced architecture consolidates phases for better efficiency:
+
+| Previous 4-Phase | Enhanced 3-Phase | Benefits |
+|------------------|------------------|----------|
+| Phase 1: Naked Cluster | **Phase 1: Kubernetes + Infrastructure** | ✅ Single deployment with addons |
+| Phase 2: Infrastructure | ↗ *Merged into Phase 1* | ✅ Leverages Kubespray addon system |
+| Phase 3: ArgoCD | **Phase 2: ArgoCD Bootstrap + Config** | ✅ Combines deployment with configuration |
+| Phase 4: GitOps Apps | **Phase 3: Platform Infrastructure** | ✅ App-of-apps pattern with platform focus |
+
 ### Kubespray-based Infrastructure Deployment
 
 Phase 1 uses our **Docker-based Kubespray system** to deploy a complete, production-ready Kubernetes cluster with all infrastructure components:
 
+#### Phase 1: Foundation Layer (Kubespray-Managed)
 ```mermaid
 graph LR
-    subgraph "Infrastructure Components (Kubespray Deployed)"
+    subgraph "Essential Infrastructure"
         A[Calico CNI] --> B[Pod Networking]
-        C[MetalLB] --> D[LoadBalancer IPs]
-        E[Ingress-NGINX] --> F[HTTP/HTTPS Routing]
-        G[cert-manager] --> H[TLS Automation]
-        I[local-volume-provisioner] --> J[Basic Storage]
-        K[metrics-server] --> L[Resource Monitoring]
-        M[ArgoCD] --> N[GitOps Platform]
-        O[Kube-VIP] --> P[Control Plane HA]
-        Q[Helm] --> R[Package Management]
+        C[NGINX Ingress] --> D[HTTP/HTTPS Routing]
+        E[cert-manager] --> F[TLS Automation]
+        G[MetalLB] --> H[LoadBalancer Services]
+        I[Local Path Storage] --> J[Basic Volumes]
     end
     
-    subgraph "Ready for Applications"
-        B --> S[Complete Infrastructure]
-        D --> S
-        F --> S
-        H --> S
-        J --> S
-        L --> S
-        N --> S
-        P --> S
-        R --> S
+    subgraph "Foundation Benefits"
+        B --> K[Enables Communication]
+        D --> L[Enables External Access]
+        F --> M[Enables SSL for ArgoCD]
+        H --> N[Enables Service Exposure]
+        J --> O[Enables Persistence]
     end
+    
+    K --> P[GitOps Prerequisites Met]
+    L --> P
+    M --> P
+    N --> P
+    O --> P
 ```
 
-### Components Deployed in Phase 1
-
-| Component | Purpose | Configuration |
-|-----------|---------|---------------|
-| **Calico CNI** | Pod networking and network policies | Full cluster networking |
-| **MetalLB** | LoadBalancer service IPs | IP pool: `192.168.106.111-192.168.101.118` |
-| **Ingress-NGINX** | HTTP/HTTPS traffic routing | NodePort 30443 for HTTPS |
-| **cert-manager** | Automated TLS certificate management | Let's Encrypt ready |
-| **local-volume-provisioner** | Basic persistent storage | Local storage class |
-| **metrics-server** | Resource usage monitoring | Cluster metrics collection |
-| **ArgoCD** | GitOps deployment platform | Admin password configured |
-| **Kube-VIP** | Control plane high availability | Virtual IP for masters |
-| **Helm** | Kubernetes package manager | Ready for chart deployments |
-
-## 🚀 Phase 2: Template-Driven Platform Applications
-
-### Application Factory Pattern
-
-Phase 2 uses our **template-driven deployment system** to deploy platform applications through ArgoCD:
-
+#### Phase 2: GitOps Foundation (Ansible-Managed)
 ```mermaid
 graph TB
-    subgraph "Template System"
-        A[target-chart] --> B[Application Factory]
-        C[values-production.yaml] --> D[13 Platform Apps List]
-        E[Bootstrap Script] --> F[Deployment Orchestrator]
+    subgraph "ArgoCD Deployment"
+        A[ArgoCD Server] --> B[Production Configuration]
+        C[ArgoCD UI] --> D[SSL/TLS Enabled]
+        E[Bootstrap Project] --> F[Infrastructure Management]
     end
     
-    subgraph "Generated Applications"
-        B --> G[Infrastructure Foundation]
-        B --> H[Storage Platform]
-        B --> I[Security Platform]
-        B --> J[Monitoring Platform]
-        B --> K[ML Infrastructure]
+    subgraph "Infrastructure Configuration"
+        G[MetalLB IP Pools] --> H[LoadBalancer Configuration]
+        I[ClusterIssuers] --> J[Certificate Management]
+        K[Network Policies] --> L[Security Configuration]
+        M[Storage Classes] --> N[Persistent Volume Setup]
     end
     
-    subgraph "Platform Applications"
-        G --> L[metallb-config]
-        G --> M[ingress-nginx-config]
-        G --> N[cert-manager-config]
-        H --> O[rook-ceph]
-        H --> P[rook-ceph-cluster]
-        I --> Q[vault]
-        J --> R[prometheus]
-        J --> S[grafana]
-        K --> T[kuberay-crds]
-        K --> U[kuberay-operator]
-        K --> V[gpu-operator]
+    B --> O[GitOps Ready]
+    D --> O
+    F --> O
+    H --> O
+    J --> O
+    L --> O
+    N --> O
+```
+
+#### Phase 3: Platform Services (GitOps-Managed)
+```mermaid
+graph TB
+    subgraph "Storage Platform"
+        A[Rook-Ceph Operator] --> B[Distributed Storage]
+        C[Storage Classes] --> D[Block, Filesystem, Object]
     end
+    
+    subgraph "Security Platform"
+        E[HashiCorp Vault] --> F[Secrets Management]
+        G[Vault HA] --> H[High Availability]
+    end
+    
+    subgraph "Monitoring Platform"
+        I[Prometheus] --> J[Metrics Collection]
+        K[Grafana] --> L[Visualization]
+        M[AlertManager] --> N[Alert Routing]
+    end
+    
+    A --> C
+    B --> J
+    F --> J
+    J --> L
 ```
 
 ### Platform Applications (13 Components)

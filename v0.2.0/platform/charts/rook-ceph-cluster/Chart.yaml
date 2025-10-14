@@ -1,0 +1,19 @@
+apiVersion: v2
+name: rook-ceph-cluster
+description: Rook-Ceph cluster configuration for distributed storage
+type: application
+version: 0.1.0
+appVersion: "v1.18.3"
+
+keywords:
+  - storage
+  - ceph
+  - rook
+  - cluster
+  - distributed-storage
+
+annotations:
+  category: Storage
+  platform.pn-infra.io/component: rook-ceph-cluster
+  platform.pn-infra.io/framework: openspec
+  platform.pn-infra.io/sync-wave: "2"

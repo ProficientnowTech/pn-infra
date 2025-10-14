@@ -1,0 +1,23 @@
+---
+# MetalLB Configuration Values
+# Load balancer IP pools and L2 advertisements
+
+metallb:
+  namespace: "metallb-system"
+  
+  ipAddressPool:
+    enabled: true
+    name: "production-pool"
+    addresses:
+      - "10.0.0.100-10.0.0.150"  # Configure according to your network
+    autoAssign: true
+    avoidBuggyIPs: true
+    
+  l2Advertisement:
+    enabled: true
+    name: "production-l2-adv"
+    ipAddressPools:
+      - "production-pool"
+    nodeSelectors:
+      - matchLabels:
+          node-role.kubernetes.io/worker: ""

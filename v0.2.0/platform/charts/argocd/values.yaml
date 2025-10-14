@@ -1,0 +1,318 @@
+---
+# Global configuration
+global:
+  repoURL: "https://github.com/ProficientnowTech/pn-infra.git"
+  targetRevision: "v1.2.0-p0-infra"
+
+# ArgoCD version configuration
+argocd:
+  version: "7.7.8"  # Argo Helm chart version
+  appVersion: "v2.13.1"  # ArgoCD application version
+
+# ArgoCD Helm chart values
+# Based on official ArgoCD Helm chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+
+## Global ArgoCD configuration
+global:
+  # Image configuration
+  image:
+    repository: quay.io/argoproj/argocd
+    tag: v2.13.1
+    imagePullPolicy: IfNotPresent
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 999
+    runAsGroup: 999
+    fsGroup: 999
+
+  # Network policy
+  networkPolicy:
+    create: true
+    defaultDenyIngress: false
+
+## ArgoCD Server configuration
+server:
+  # Server configuration
+  name: server
+
+  # Replicas for HA
+  replicas: 2
+
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 80
+    portName: http
+
+  # Ingress configuration
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    hosts:
+      - host: argocd.platform.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: argocd-server-tls
+        hosts:
+          - argocd.platform.local
+
+  # Server configuration
+  config:
+    # Git repositories
+    repositories: |
+      - type: git
+        url: https://github.com/ProficientnowTech/pn-infra.git
+        name: pn-infra
+      - type: helm
+        url: https://argoproj.github.io/argo-helm
+        name: argo
+      - type: helm
+        url: https://charts.rook.io/release
+        name: rook-release
+      - type: helm
+        url: https://helm.releases.hashicorp.com
+        name: hashicorp
+      - type: helm
+        url: https://prometheus-community.github.io/helm-charts
+        name: prometheus-community
+      - type: helm
+        url: https://grafana.github.io/helm-charts
+        name: grafana
+      - type: helm
+        url: https://ray-project.github.io/kuberay-helm/
+        name: kuberay
+      - type: helm
+        url: https://helm.ngc.nvidia.com/nvidia
+        name: nvidia
+
+    # Application configuration
+    application.instanceLabelKey: argocd.argoproj.io/instance
+
+    # Server configuration
+    server.insecure: false
+    server.grpc.web: true
+
+    # Git configuration
+    timeout.reconciliation: 180s
+    timeout.hard.reconciliation: 0s
+
+    # Resource customizations
+    resource.customizations: |
+      argoproj.io/Application:
+        health.lua: |
+          hs = {}
+          hs.status = "Progressing"
+          hs.message = ""
+          if obj.status ~= nil then
+            if obj.status.health ~= nil then
+              hs.status = obj.status.health.status
+              if obj.status.health.message ~= nil then
+                hs.message = obj.status.health.message
+              end
+            end
+          end
+          return hs
+
+## ArgoCD Application Controller
+controller:
+  name: application-controller
+
+  # Replicas
+  replicas: 2
+
+  # Resources
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  # Metrics
+  metrics:
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+        prometheus.io/path: "/metrics"
+
+  # Environment variables
+  env:
+    - name: ARGOCD_CONTROLLER_REPLICAS
+      value: "2"
+
+## ArgoCD Repo Server
+repoServer:
+  name: repo-server
+
+  # Replicas
+  replicas: 2
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  # Metrics
+  metrics:
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8084"
+        prometheus.io/path: "/metrics"
+
+## ArgoCD ApplicationSet Controller
+applicationSet:
+  enabled: true
+  name: applicationset-controller
+
+  # Replicas
+  replicas: 2
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Metrics
+  metrics:
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+
+## Redis for ArgoCD
+redis:
+  enabled: true
+  name: redis
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Metrics
+  metrics:
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+        prometheus.io/path: "/metrics"
+
+## Redis HA (for production)
+redis-ha:
+  enabled: false  # Enable for production HA setup
+  haproxy:
+    enabled: true
+
+## Notifications controller
+notifications:
+  enabled: true
+  name: notifications-controller
+
+  # Resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+## RBAC configuration
+rbac:
+  create: true
+
+  # Policy configuration
+  policy.default: role:readonly
+  policy.csv: |
+    p, role:admin, applications, *, */*, allow
+    p, role:admin, clusters, *, *, allow
+    p, role:admin, repositories, *, *, allow
+    p, role:readonly, applications, get, */*, allow
+    p, role:readonly, applications, sync, */*, allow
+    g, argocd-admins, role:admin
+
+## Service Account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+
+## Monitoring configuration
+monitoring:
+  enabled: true
+
+# Self-management specific configuration
+selfManagement:
+  enabled: true
+
+  # Prevent ArgoCD from pruning itself during updates
+  preserveResourcesOnDeletion: true
+
+  # Allow self-updates
+  allowSelfUpdate: true
+
+  # Bootstrap project for self-management
+  bootstrapProject:
+    name: argocd-self-management
+    description: "ArgoCD self-management project"
+    sourceRepos:
+      - "https://github.com/ProficientnowTech/pn-infra.git"
+      - "https://argoproj.github.io/argo-helm"
+    destinations:
+      - namespace: argocd
+        server: https://kubernetes.default.svc
+    clusterResourceWhitelist:
+      - group: '*'
+        kind: '*'

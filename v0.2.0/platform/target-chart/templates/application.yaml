@@ -1,0 +1,66 @@
+{{/*
+Target-Chart Application Template (Application Factory Pattern)
+Generates ArgoCD Applications from values.applications list
+*/}}
+{{- range .Values.applications }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name }}
+  namespace: argocd
+  labels:
+    {{- include "target-chart.labels" $ | nindent 4 }}
+    {{- with $.Values.commonLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    platform.pn-infra.io/application: {{ .name | quote }}
+    platform.pn-infra.io/stack: {{ $.Values.stackName | default "platform" | quote }}
+  annotations:
+    {{- with $.Values.commonAnnotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if .annotations }}
+    {{- range $key, $value := .annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
+    platform.pn-infra.io/version: {{ $.Chart.Version | quote }}
+spec:
+  project: {{ $.Values.global.project | default "platform" }}
+  source:
+    repoURL: {{ $.Values.default.repoURL }}
+    targetRevision: {{ $.Values.default.targetRevision }}
+    path: platform/charts/{{ .name }}
+    {{- if .helm }}
+    helm:
+      {{- if .helm.valueFiles }}
+      valueFiles:
+      {{- range .helm.valueFiles }}
+      - {{ . }}
+      {{- end }}
+      {{- end }}
+      {{- if .helm.parameters }}
+      parameters:
+      {{- range .helm.parameters }}
+      - name: {{ .name }}
+        value: {{ .value | quote }}
+      {{- end }}
+      {{- end }}
+    {{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .namespace | default .name }}
+  syncPolicy:
+    {{- with $.Values.global.syncPolicy }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- if $.Values.global.retry }}
+    retry:
+      {{- toYaml $.Values.global.retry | nindent 6 }}
+    {{- end }}
+  {{- if .ignoreDifferences }}
+  ignoreDifferences:
+  {{- toYaml .ignoreDifferences | nindent 2 }}
+  {{- end }}
+{{- end }}

@@ -1,0 +1,32 @@
+---
+# NGINX Ingress Controller Configuration Values
+
+nginx:
+  namespace: "ingress-nginx"
+  
+  config:
+    enabled: true
+    ssl:
+      protocols: "TLSv1.2 TLSv1.3"
+      ciphers: "ECDHE-RSA-AES128-GCM-SHA256,ECDHE-RSA-AES256-GCM-SHA384,ECDHE-RSA-AES128-SHA,ECDHE-RSA-AES256-SHA,ECDHE-RSA-AES128-SHA256,ECDHE-RSA-AES256-SHA384"
+    proxy:
+      bodySize: "100m"
+      readTimeout: "300"
+      sendTimeout: "300"
+      connectTimeout: "300"
+    gzip:
+      enabled: true
+      types: "application/javascript,application/json,application/xml,text/css,text/javascript,text/plain,text/xml"
+    rateLimit:
+      connections: "20"
+      rateAfter: "1024k"
+      rate: "512k"
+      
+  customHeaders:
+    enabled: true
+    xFrameOptions: "DENY"
+    xContentTypeOptions: "nosniff"
+    xXSSProtection: "1; mode=block"
+    referrerPolicy: "strict-origin-when-cross-origin"
+    hsts: "max-age=31536000; includeSubDomains"
+    csp: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"

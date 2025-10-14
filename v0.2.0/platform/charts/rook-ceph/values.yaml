@@ -1,0 +1,77 @@
+---
+# Global configuration
+global:
+  repoURL: "https://github.com/your-org/pn-infra.git"
+  targetRevision: "v1.2.0-p0-infra"
+  # Default hooks configuration (can be overridden by parent)
+  hooks:
+    enabled: true
+    validation:
+      infrastructure: false
+      storage: true
+    healthChecks:
+      rookCeph: false
+      monitoring: false
+    notifications:
+      syncFailure: true
+
+# Comprehensive Rook-Ceph configuration
+# Based on official v1.18.3 with enhanced CSI, monitoring, and security
+
+# Image configuration
+image:
+  repository: rook/ceph
+  tag: v1.18.3
+  pullPolicy: IfNotPresent
+
+# Resource configuration for the operator
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Node selection and tolerations
+nodeSelector:
+  kubernetes.io/os: linux
+
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Equal
+    effect: NoSchedule
+
+# CSI configuration - CSI operator is now default in v1.18+
+csi:
+  enableRbdDriver: true
+  enableCephfsDriver: true
+  enableGrpcMetrics: true
+  # CSI images
+  csiRBDProvisionerImage: registry.k8s.io/sig-storage/csi-provisioner:v5.1.0
+  csiRBDAttacherImage: registry.k8s.io/sig-storage/csi-attacher:v4.7.0
+  csiCephFSProvisionerImage: registry.k8s.io/sig-storage/csi-provisioner:v5.1.0
+  csiCephFSAttacherImage: registry.k8s.io/sig-storage/csi-attacher:v4.7.0
+
+# Discovery daemon configuration
+enableDiscoveryDaemon: true
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+
+# Security context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 2016
+  runAsGroup: 2016
+  fsGroup: 2016
+
+# Feature toggles
+enableSelinuxRelabeling: false
+
+# Operator settings
+currentNamespaceOnly: false
+
+# Log level
+logLevel: INFO

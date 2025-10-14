@@ -1,0 +1,147 @@
+---
+# Global configuration
+global:
+  repoURL: "https://github.com/your-org/pn-infra.git"
+  targetRevision: "v1.2.0-p0-infra"
+
+# Kube-prometheus-stack configuration
+global:
+  rbac:
+    create: true
+    pspEnabled: false
+
+# Prometheus configuration
+prometheus:
+  enabled: true
+  prometheusSpec:
+    retention: 30d
+    retentionSize: 50GB
+    
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 500m
+      limits:
+        memory: 2Gi
+        cpu: 1000m
+    
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: rook-ceph-block
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 100Gi
+    
+    additionalScrapeConfigs:
+      - job_name: 'kubernetes-apiservers'
+        kubernetes_sd_configs:
+          - role: endpoints
+        scheme: https
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+            action: keep
+            regex: default;kubernetes;https
+
+    ruleSelector:
+      matchLabels:
+        prometheus: kube-prometheus
+        role: alert-rules
+
+    serviceMonitorSelector:
+      matchLabels:
+        team: platform
+
+# Alertmanager configuration
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: 200m
+    
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: rook-ceph-block
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+# Grafana configuration
+grafana:
+  enabled: true
+  defaultDashboardsEnabled: true
+  
+  persistence:
+    enabled: true
+    storageClassName: rook-ceph-block
+    size: 10Gi
+  
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+
+  grafana.ini:
+    server:
+      root_url: https://grafana.platform.local
+    auth:
+      disable_login_form: false
+    auth.anonymous:
+      enabled: true
+      org_role: Viewer
+    
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-kube-prometheus-prometheus:9090
+          access: proxy
+          isDefault: true
+
+# Node Exporter
+nodeExporter:
+  enabled: true
+
+# Kube State Metrics
+kubeStateMetrics:
+  enabled: true
+
+# Core DNS monitoring
+coreDns:
+  enabled: true
+
+# Kubelet monitoring
+kubelet:
+  enabled: true
+
+# Kube Controller Manager
+kubeControllerManager:
+  enabled: true
+
+# Kube Scheduler
+kubeScheduler:
+  enabled: true
+
+# Kube Proxy
+kubeProxy:
+  enabled: true
+
+# Etcd monitoring
+kubeEtcd:
+  enabled: true

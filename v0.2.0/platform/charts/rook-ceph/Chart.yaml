@@ -1,0 +1,19 @@
+apiVersion: v2
+name: rook-ceph
+description: Rook-Ceph storage operator for distributed storage platform
+type: application
+version: 0.1.0
+appVersion: "v1.18.3"
+
+keywords:
+  - storage
+  - ceph
+  - rook
+  - distributed-storage
+  - kubernetes
+
+annotations:
+  category: Storage
+  platform.pn-infra.io/component: rook-ceph
+  platform.pn-infra.io/framework: openspec
+  platform.pn-infra.io/sync-wave: "1"

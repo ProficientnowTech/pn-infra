@@ -1,0 +1,110 @@
+# Monitoring Stack PostSync Hook
+# Validates monitoring deployment and configures initial dashboards
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: monitoring-postsync-validation
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "3"  # Run after monitoring wave 2-3
+spec:
+  ttlSecondsAfterFinished: 600
+  template:
+    spec:
+      serviceAccountName: argocd-server
+      containers:
+      - name: monitoring-validator
+        image: bitnami/kubectl:latest
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo "📊 Validating monitoring stack deployment..."
+          
+          # Wait for Prometheus Operator to be ready
+          echo "Waiting for Prometheus Operator..."
+          kubectl wait --for=condition=Available deployment/prometheus-operator -n monitoring --timeout=300s
+          echo "✅ Prometheus Operator is ready"
+          
+          # Wait for Prometheus instance
+          echo "Waiting for Prometheus instance..."
+          kubectl wait --for=condition=Available prometheus/prometheus-operated -n monitoring --timeout=300s || true
+          
+          # Check Prometheus pods
+          PROMETHEUS_PODS=$(kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus --no-headers | grep -c Running || echo "0")
+          if [ $PROMETHEUS_PODS -gt 0 ]; then
+            echo "✅ Prometheus is running ($PROMETHEUS_PODS pods)"
+          else
+            echo "❌ Prometheus pods not running"
+            kubectl get pods -n monitoring -l app.kubernetes.io/name=prometheus
+            exit 1
+          fi
+          
+          # Wait for Grafana
+          echo "Waiting for Grafana..."
+          kubectl wait --for=condition=Available deployment/grafana -n monitoring --timeout=300s
+          echo "✅ Grafana is ready"
+          
+          # Check AlertManager
+          ALERTMANAGER_PODS=$(kubectl get pods -n monitoring -l app.kubernetes.io/name=alertmanager --no-headers | grep -c Running || echo "0")
+          if [ $ALERTMANAGER_PODS -gt 0 ]; then
+            echo "✅ AlertManager is running ($ALERTMANAGER_PODS pods)"
+          else
+            echo "⚠️ AlertManager pods not found or not running"
+          fi
+          
+          # Test Prometheus API
+          echo "Testing Prometheus API connectivity..."
+          kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090 &
+          PF_PID=$!
+          sleep 5
+          
+          if curl -f http://localhost:9090/api/v1/status/config --max-time 10 >/dev/null 2>&1; then
+            echo "✅ Prometheus API is responding"
+          else
+            echo "⚠️ Prometheus API not responding (may still be starting up)"
+          fi
+          
+          kill $PF_PID 2>/dev/null || true
+          
+          # Test Grafana API
+          echo "Testing Grafana API connectivity..."
+          kubectl port-forward -n monitoring svc/grafana 3000:80 &
+          PF_PID=$!
+          sleep 5
+          
+          if curl -f http://localhost:3000/api/health --max-time 10 >/dev/null 2>&1; then
+            echo "✅ Grafana API is responding"
+          else
+            echo "⚠️ Grafana API not responding (may still be starting up)"
+          fi
+          
+          kill $PF_PID 2>/dev/null || true
+          
+          # Validate ServiceMonitor resources
+          echo "Checking ServiceMonitor resources..."
+          SM_COUNT=$(kubectl get servicemonitors -n monitoring --no-headers | wc -l)
+          if [ $SM_COUNT -gt 0 ]; then
+            echo "✅ ServiceMonitors configured ($SM_COUNT found)"
+          else
+            echo "⚠️ No ServiceMonitors found"
+          fi
+          
+          # Display access information
+          echo ""
+          echo "🎉 Monitoring stack validation completed!"
+          echo ""
+          echo "📋 ACCESS INFORMATION:"
+          echo "• Prometheus: kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090"
+          echo "• Grafana: kubectl port-forward -n monitoring svc/grafana 3000:80"
+          echo "• AlertManager: kubectl port-forward -n monitoring svc/alertmanager-operated 9093:9093"
+          echo ""
+          echo "🔑 CREDENTIALS:"
+          echo "• Grafana admin password: admin123"
+          echo ""
+          
+      restartPolicy: Never
+  backoffLimit: 3

@@ -1,0 +1,20 @@
+apiVersion: v2
+name: argocd
+description: ArgoCD self-management via template-driven pattern
+type: application
+version: 0.1.0
+appVersion: "v2.13.1"
+
+keywords:
+  - argocd
+  - gitops
+  - self-management
+  - bootstrap
+  - template-driven
+
+annotations:
+  category: GitOps
+  platform.pn-infra.io/component: argocd
+  platform.pn-infra.io/framework: openspec
+  platform.pn-infra.io/sync-wave: "0"
+  platform.pn-infra.io/self-managed: "true"

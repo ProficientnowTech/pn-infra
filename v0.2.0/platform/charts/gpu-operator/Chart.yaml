@@ -1,0 +1,19 @@
+apiVersion: v2
+name: gpu-operator
+description: NVIDIA GPU Operator for GPU resource management
+type: application
+version: 0.1.0
+appVersion: "v24.9.0"
+
+keywords:
+  - gpu
+  - nvidia
+  - machine-learning
+  - ml-infrastructure
+  - operators
+
+annotations:
+  category: Machine Learning
+  platform.pn-infra.io/component: gpu-operator
+  platform.pn-infra.io/framework: openspec
+  platform.pn-infra.io/sync-wave: "8"

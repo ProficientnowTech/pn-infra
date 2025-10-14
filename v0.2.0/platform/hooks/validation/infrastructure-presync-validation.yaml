@@ -1,0 +1,100 @@
+# Infrastructure PreSync Validation Hook
+# Ensures critical dependencies are ready before deploying infrastructure apps
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: infrastructure-presync-validation
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: argocd-server
+      containers:
+      - name: infrastructure-validator
+        image: bitnami/kubectl:latest
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo "🔍 Starting infrastructure dependency validation..."
+          
+          # Check 1: Verify ArgoCD API accessibility
+          echo "Checking ArgoCD API accessibility..."
+          until curl -k https://argocd.pnats.cloud/api/version -f --max-time 10; do
+            echo "⏳ ArgoCD API not ready, waiting 15s..."
+            sleep 15
+          done
+          echo "✅ ArgoCD API is accessible"
+          
+          # Check 2: Validate critical namespaces exist
+          echo "Validating critical infrastructure namespaces..."
+          REQUIRED_NS="kube-system ingress-nginx cert-manager vault local-path-storage"
+          for ns in $REQUIRED_NS; do
+            if kubectl get namespace $ns >/dev/null 2>&1; then
+              echo "✅ Namespace $ns exists"
+            else
+              echo "❌ Critical namespace $ns missing! Infrastructure not ready."
+              exit 1
+            fi
+          done
+          
+          # Check 3: Validate Cilium CNI is operational
+          echo "Validating Cilium CNI status..."
+          CILIUM_READY=$(kubectl get daemonset cilium -n kube-system -o jsonpath='{.status.numberReady}' 2>/dev/null || echo "0")
+          CILIUM_DESIRED=$(kubectl get daemonset cilium -n kube-system -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo "0")
+          if [ "$CILIUM_READY" -eq "$CILIUM_DESIRED" ] && [ "$CILIUM_READY" -gt 0 ]; then
+            echo "✅ Cilium CNI is operational ($CILIUM_READY/$CILIUM_DESIRED pods ready)"
+          else
+            echo "❌ Cilium CNI not ready ($CILIUM_READY/$CILIUM_DESIRED pods ready)"
+            exit 1
+          fi
+          
+          # Check 4: Validate NGINX Ingress Controller
+          echo "Validating NGINX Ingress Controller..."
+          if kubectl get deployment ingress-nginx-controller -n ingress-nginx >/dev/null 2>&1; then
+            kubectl wait --for=condition=Available deployment/ingress-nginx-controller -n ingress-nginx --timeout=60s
+            echo "✅ NGINX Ingress Controller is ready"
+          else
+            echo "❌ NGINX Ingress Controller not found"
+            exit 1
+          fi
+          
+          # Check 5: Validate Cert-Manager
+          echo "Validating Cert-Manager..."
+          if kubectl get deployment cert-manager -n cert-manager >/dev/null 2>&1; then
+            kubectl wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=60s
+            kubectl wait --for=condition=Available deployment/cert-manager-webhook -n cert-manager --timeout=60s
+            echo "✅ Cert-Manager is ready"
+          else
+            echo "❌ Cert-Manager not found"
+            exit 1
+          fi
+          
+          # Check 6: Validate Local Path Provisioner
+          echo "Validating Local Path Provisioner..."
+          if kubectl get storageclass local-path >/dev/null 2>&1; then
+            echo "✅ Local Path storage class available"
+          else
+            echo "❌ Local Path storage class not found"
+            exit 1
+          fi
+          
+          # Check 7: Test basic connectivity to external resources
+          echo "Testing external connectivity..."
+          if curl -f --max-time 10 https://charts.rook.io > /dev/null 2>&1; then
+            echo "✅ External Helm repositories accessible"
+          else
+            echo "⚠️  Warning: External repositories may not be accessible"
+          fi
+          
+          echo "🎉 All infrastructure dependencies validated successfully!"
+          echo "Ready to deploy GitOps applications."
+          
+      restartPolicy: Never
+  backoffLimit: 3

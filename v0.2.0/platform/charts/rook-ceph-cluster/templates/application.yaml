@@ -1,0 +1,54 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ include "rook-ceph-cluster.fullname" . }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: '2'
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: rook-ceph-cluster
+    managed-by: argocd
+    component: storage
+    {{- include "rook-ceph-cluster.labels" . | nindent 4 }}
+spec:
+  project: platform
+  sources:
+    - repoURL: https://charts.rook.io/release
+      chart: rook-ceph-cluster
+      targetRevision: v1.18.3
+      helm:
+        releaseName: rook-ceph-cluster
+        parameters:
+          - name: operatorNamespace
+            value: rook-ceph
+        valueFiles:
+          - $values/platform/charts/rook-ceph-cluster/values.yaml
+    - repoURL: {{ .Values.global.repoURL | default "https://github.com/your-org/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "v1.2.0-p0-infra" }}
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rook-ceph
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+      - PrunePropagationPolicy=foreground
+      - Replace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+  ignoreDifferences:
+    - group: ceph.rook.io
+      kind: CephCluster
+      jsonPointers:
+        - /status

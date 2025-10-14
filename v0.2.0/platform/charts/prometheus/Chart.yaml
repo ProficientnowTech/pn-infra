@@ -1,0 +1,19 @@
+apiVersion: v2
+name: prometheus
+description: Prometheus monitoring and alerting toolkit
+type: application
+version: 0.1.0
+appVersion: "v2.55.1"
+
+keywords:
+  - monitoring
+  - prometheus
+  - metrics
+  - alerting
+  - observability
+
+annotations:
+  category: Monitoring
+  platform.pn-infra.io/component: prometheus
+  platform.pn-infra.io/framework: openspec
+  platform.pn-infra.io/sync-wave: "4"

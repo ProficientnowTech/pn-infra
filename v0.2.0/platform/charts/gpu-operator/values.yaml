@@ -1,0 +1,183 @@
+---
+# Global configuration
+global:
+  repoURL: "https://github.com/your-org/pn-infra.git"
+  targetRevision: "v1.2.0-p0-infra"
+
+# GPU Operator configuration
+operator:
+  repository: nvcr.io/nvidia
+  image: gpu-operator
+  version: v24.9.0
+  imagePullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Driver configuration
+driver:
+  enabled: true
+  repository: nvcr.io/nvidia
+  image: driver
+  version: "535.154.05"
+  imagePullPolicy: IfNotPresent
+  
+  # Use pre-compiled drivers
+  usePrecompiled: true
+  
+  # Driver installation
+  rdma:
+    enabled: false
+  
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# Container toolkit configuration
+toolkit:
+  enabled: true
+  repository: nvcr.io/nvidia/k8s
+  image: container-toolkit
+  version: v1.16.2-ubuntu20.04
+  imagePullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Device plugin configuration
+devicePlugin:
+  enabled: true
+  repository: nvcr.io/nvidia
+  image: k8s-device-plugin
+  version: v0.16.2-ubi8
+  imagePullPolicy: IfNotPresent
+  
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Device plugin configuration
+  config:
+    name: time-slicing-config
+    default: any
+
+# DCGM configuration
+dcgm:
+  enabled: true
+  repository: nvcr.io/nvidia/cloud-native
+  image: dcgm
+  version: 3.3.8-1-ubuntu22.04
+  imagePullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# DCGM Exporter configuration
+dcgmExporter:
+  enabled: true
+  repository: nvcr.io/nvidia/k8s
+  image: dcgm-exporter
+  version: 3.3.8-3.6.0-ubuntu22.04
+  imagePullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  
+  # Service monitor for Prometheus
+  serviceMonitor:
+    enabled: true
+    interval: 15s
+
+# Node Feature Discovery
+nfd:
+  enabled: true
+
+# GPU Feature Discovery
+gfd:
+  enabled: true
+  repository: nvcr.io/nvidia
+  image: gpu-feature-discovery
+  version: v0.16.2-ubi8
+  imagePullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Migmanager configuration  
+migManager:
+  enabled: true
+  repository: nvcr.io/nvidia/cloud-native
+  image: k8s-mig-manager
+  version: v0.8.0-ubuntu20.04
+  imagePullPolicy: IfNotPresent
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Node selector for GPU nodes
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+# Tolerations for GPU nodes
+tolerations:
+  - key: nvidia.com/gpu
+    operator: Exists
+    effect: NoSchedule
+
+# PSP configuration
+psp:
+  enabled: false
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+
+# Logging configuration
+logging:
+  timeEncoding: epoch
+
+# Update strategy
+updateStrategy: OnDelete
+
+# Cleanup policy
+cleanupCRD: false

@@ -1,13 +1,15 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
-
-# Vault configuration for high availability with integrated storage
-global:
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
   enabled: true
   tlsDisable: false
+
+# Labels configuration
+labels:
+  component: security
+  managed-by: argocd # Override default Helm with ArgoCD
 
 server:
   enabled: true
@@ -26,10 +28,10 @@ server:
 
   readinessProbe:
     enabled: true
-    path: "/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204"
+    path: '/v1/sys/health?standbyok=true&sealedcode=204&uninitcode=204'
   livenessProbe:
     enabled: true
-    path: "/v1/sys/health?standbyok=true"
+    path: '/v1/sys/health?standbyok=true'
     initialDelaySeconds: 60
 
   extraSecretEnvironmentVars:

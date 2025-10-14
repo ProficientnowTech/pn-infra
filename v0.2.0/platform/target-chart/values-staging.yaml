@@ -2,13 +2,14 @@
 # Core platform without ML infrastructure for staging
 
 default:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
 
-stackName: "staging"
+stackName: 'staging'
 
-# Hooks Configuration - Selective for staging
+# Global Configuration - Staging Environment
 global:
+  project: 'platform'
   hooks:
     enabled: true
     validation:
@@ -16,100 +17,92 @@ global:
       storage: true
     healthChecks:
       rookCeph: true
-      monitoring: false  # Reduced monitoring validation in staging
+      monitoring: false # Reduced monitoring validation in staging
     notifications:
       syncFailure: true
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - 'CreateNamespace=true'
+      - 'RespectIgnoreDifferences=true'
+  retry:
+    limit: 3
+    backoff:
+      duration: '5s'
+      factor: 2
+      maxDuration: '3m'
 
 applications:
   # Infrastructure Foundation (deployed before platform apps)
   - name: metallb
     namespace: metallb-system
     annotations:
-      argocd.argoproj.io/sync-wave: "-4"
-      
+      argocd.argoproj.io/sync-wave: '-4'
+
   - name: ingress-nginx
     namespace: ingress-nginx
     annotations:
-      argocd.argoproj.io/sync-wave: "-3"
-      
+      argocd.argoproj.io/sync-wave: '-3'
+
   - name: cert-manager
     namespace: cert-manager
     annotations:
-      argocd.argoproj.io/sync-wave: "-2"
+      argocd.argoproj.io/sync-wave: '-2'
 
   # Infrastructure Configuration (after apps are deployed)
   - name: metallb-config
     namespace: argocd
     annotations:
-      argocd.argoproj.io/sync-wave: "-1"
-      
+      argocd.argoproj.io/sync-wave: '-1'
+
   - name: ingress-nginx-config
     namespace: argocd
     annotations:
-      argocd.argoproj.io/sync-wave: "-1"
-      
+      argocd.argoproj.io/sync-wave: '-1'
+
   - name: cert-manager-config
     namespace: argocd
     annotations:
-      argocd.argoproj.io/sync-wave: "-1"
+      argocd.argoproj.io/sync-wave: '-1'
 
   # Storage Foundation
   - name: rook-ceph
     namespace: rook-ceph
     annotations:
-      argocd.argoproj.io/sync-wave: "1"
-    
+      argocd.argoproj.io/sync-wave: '1'
+
   - name: rook-ceph-cluster
     namespace: rook-ceph
     annotations:
-      argocd.argoproj.io/sync-wave: "2"
-    
+      argocd.argoproj.io/sync-wave: '2'
+
   # Security Platform
   - name: vault
     namespace: vault
     annotations:
-      argocd.argoproj.io/sync-wave: "3"
-    
+      argocd.argoproj.io/sync-wave: '3'
+
   # Monitoring Platform
   - name: prometheus
     namespace: monitoring
     annotations:
-      argocd.argoproj.io/sync-wave: "4"
-    
+      argocd.argoproj.io/sync-wave: '4'
+
   - name: grafana
     namespace: monitoring
     annotations:
-      argocd.argoproj.io/sync-wave: "5"
-    
+      argocd.argoproj.io/sync-wave: '5'
+
   # Note: No ML infrastructure in staging
   # - kuberay-crds, kuberay-operator, gpu-operator excluded
 
-# Staging-specific global settings
-global:
-  project: "platform"
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - "CreateNamespace=true"
-      - "RespectIgnoreDifferences=true"
-  retry:
-    limit: 3
-    backoff:
-      duration: "5s"
-      factor: 2
-      maxDuration: "3m"
-
 commonLabels:
-  app.kubernetes.io/managed-by: "target-chart"
-  app.kubernetes.io/part-of: "platform-infrastructure"
-  platform.pn-infra.io/environment: "staging"
-  platform.pn-infra.io/framework: "openspec"
-  platform.pn-infra.io/pattern: "template-driven"
+  app.kubernetes.io/managed-by: 'target-chart'
+  app.kubernetes.io/part-of: 'platform-infrastructure'
+  platform.pn-infra.io/stack: 'platform'
+  platform.pn-infra.io/environment: 'staging'
 
 commonAnnotations:
-  platform.pn-infra.io/generated-by: "target-chart"
-  platform.pn-infra.io/change-id: "template-driven-deployment"
-  platform.pn-infra.io/environment: "staging"
-  platform.pn-infra.io/deployment-policy: "automated"
+  platform.pn-infra.io/generated-by: 'target-chart'

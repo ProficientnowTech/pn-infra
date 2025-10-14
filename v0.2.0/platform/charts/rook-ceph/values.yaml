@@ -1,16 +1,22 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
-  # Default hooks configuration (can be overridden by parent)
-  hooks:
-    enabled: true
-    validation:
-      infrastructure: false
-      storage: true
-    healthChecks:
-      rookCeph: false
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: storage
+  managed-by: argocd  # Override default Helm with ArgoCD
+
+# Default hooks configuration (can be overridden by parent)
+hooks:
+  enabled: true
+  validation:
+    infrastructure: false
+    storage: true
+  healthChecks:
+    rookCeph: false
       monitoring: false
     notifications:
       syncFailure: true

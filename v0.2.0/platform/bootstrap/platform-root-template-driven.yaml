@@ -6,10 +6,9 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: '0'
-    platform.pn-infra.io/template-driven: "true"
-    platform.pn-infra.io/change-id: template-driven-deployment
+    platform.pn-infra.io/template-driven: 'true'
     platform.pn-infra.io/generated-by: template-driven
-    platform.pn-infra.io/hooks-enabled: "true"
+    platform.pn-infra.io/hooks-enabled: 'true'
   labels:
     app.kubernetes.io/name: platform-root-template-driven
     managed-by: argocd
@@ -18,15 +17,15 @@ metadata:
 spec:
   project: platform
   sources:
-    - repoURL: https://github.com/your-org/pn-infra.git
+    - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
       path: v0.2.0/platform/target-chart
-      targetRevision: v1.2.0-p0-infra
+      targetRevision: main
       helm:
         releaseName: platform-root
         valueFiles:
           - $values/v0.2.0/platform/target-chart/values-production.yaml
-    - repoURL: https://github.com/your-org/pn-infra.git
-      targetRevision: v1.2.0-p0-infra
+    - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
+      targetRevision: main
       ref: values
   destination:
     server: https://kubernetes.default.svc
@@ -72,4 +71,4 @@ spec:
     - name: 'Mode'
       value: 'Production - All 8 platform applications'
     - name: 'Documentation'
-      value: 'https://github.com/ProficientnowTech/pn-infra/blob/main/v0.2.0/platform/bootstrap/ARGOCD-SELF-MANAGEMENT.md'
+      value: 'https://github.com/pnow-devsupreme/pn-infra/blob/main/v0.2.0/platform/bootstrap/ARGOCD-SELF-MANAGEMENT.md'

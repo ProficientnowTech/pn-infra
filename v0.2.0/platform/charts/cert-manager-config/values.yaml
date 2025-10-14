@@ -5,14 +5,14 @@
 letsencrypt:
   production:
     enabled: true
-    email: "snoorullah@proficientnowtech.com"
+    email: 'snoorullah@pnow-devsupreme.com'
     cloudflare:
-      secretName: "cloudflare-api-token-secret"
-      secretKey: "api-token"
-      
+      secretName: 'cloudflare-api-token-secret'
+      secretKey: 'api-token'
+
   staging:
-    enabled: true  # Enable for testing
-    email: "snoorullah@proficientnowtech.com"
+    enabled: true # Enable for testing
+    email: 'snoorullah@pnow-devsupreme.com'
     cloudflare:
-      secretName: "cloudflare-api-token-secret"
-      secretKey: "api-token"
+      secretName: 'cloudflare-api-token-secret'
+      secretKey: 'api-token'

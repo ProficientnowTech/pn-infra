@@ -9,10 +9,8 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   labels:
-    app.kubernetes.io/name: rook-ceph-cluster
-    managed-by: argocd
-    component: storage
-    {{- include "rook-ceph-cluster.labels" . | nindent 4 }}
+{{ include "rook-ceph-cluster.labels" . | nindent 4 }}
+
 spec:
   project: platform
   sources:
@@ -26,8 +24,8 @@ spec:
             value: rook-ceph
         valueFiles:
           - $values/platform/charts/rook-ceph-cluster/values.yaml
-    - repoURL: {{ .Values.global.repoURL | default "https://github.com/your-org/pn-infra.git" }}
-      targetRevision: {{ .Values.global.targetRevision | default "v1.2.0-p0-infra" }}
+    - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values
   destination:
     server: https://kubernetes.default.svc

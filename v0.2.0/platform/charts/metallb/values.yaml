@@ -1,18 +1,23 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
-  server: "https://kubernetes.default.svc"
-  targetNamespace: "argocd"
-  project: "platform"
-  syncWave: "-4"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+  server: 'https://kubernetes.default.svc'
+  targetNamespace: 'argocd'
+  project: 'platform'
+  syncWave: '-4'
+
+# Labels configuration
+labels:
+  component: infrastructure
+  managed-by: argocd  # Override default Helm with ArgoCD
 
 # MetalLB configuration
 chart:
-  version: "0.14.8"  # Helm chart version
+  version: '0.14.8' # Helm chart version
 
-namespace: "metallb-system"
+namespace: 'metallb-system'
 
 # Sync policy configuration
 syncPolicy:
@@ -22,6 +27,6 @@ syncPolicy:
   retry:
     limit: 5
     backoff:
-      duration: "5s"
+      duration: '5s'
       factor: 2
-      maxDuration: "3m"
+      maxDuration: '3m'

@@ -1,14 +1,16 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
-
-# Kube-prometheus-stack configuration
-global:
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
   rbac:
     create: true
     pspEnabled: false
+
+# Labels configuration
+labels:
+  component: monitoring
+  managed-by: argocd # Override default Helm with ArgoCD
 
 # Prometheus configuration
 prometheus:
@@ -16,7 +18,7 @@ prometheus:
   prometheusSpec:
     retention: 30d
     retentionSize: 50GB
-    
+
     resources:
       requests:
         memory: 1Gi
@@ -24,16 +26,16 @@ prometheus:
       limits:
         memory: 2Gi
         cpu: 1000m
-    
+
     storageSpec:
       volumeClaimTemplate:
         spec:
           storageClassName: rook-ceph-block
-          accessModes: ["ReadWriteOnce"]
+          accessModes: ['ReadWriteOnce']
           resources:
             requests:
               storage: 100Gi
-    
+
     additionalScrapeConfigs:
       - job_name: 'kubernetes-apiservers'
         kubernetes_sd_configs:
@@ -43,7 +45,12 @@ prometheus:
           ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
         bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
         relabel_configs:
-          - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+          - source_labels:
+              [
+                __meta_kubernetes_namespace,
+                __meta_kubernetes_service_name,
+                __meta_kubernetes_endpoint_port_name,
+              ]
             action: keep
             regex: default;kubernetes;https
 
@@ -67,12 +74,12 @@ alertmanager:
       limits:
         memory: 256Mi
         cpu: 200m
-    
+
     storage:
       volumeClaimTemplate:
         spec:
           storageClassName: rook-ceph-block
-          accessModes: ["ReadWriteOnce"]
+          accessModes: ['ReadWriteOnce']
           resources:
             requests:
               storage: 10Gi
@@ -81,12 +88,12 @@ alertmanager:
 grafana:
   enabled: true
   defaultDashboardsEnabled: true
-  
+
   persistence:
     enabled: true
     storageClassName: rook-ceph-block
     size: 10Gi
-  
+
   resources:
     requests:
       memory: 128Mi
@@ -103,7 +110,7 @@ grafana:
     auth.anonymous:
       enabled: true
       org_role: Viewer
-    
+
   datasources:
     datasources.yaml:
       apiVersion: 1

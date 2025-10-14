@@ -6,13 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: '{{ .Values.global.syncWave | default "-2" }}'
   labels:
-    app.kubernetes.io/name: cert-manager
-    managed-by: argocd
-    component: infrastructure
-    helm.sh/chart: {{ include "cert-manager.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{ include "cert-manager.labels" . | nindent 4 }}
 spec:
   project: {{ .Values.global.project | default "platform" }}
   sources:

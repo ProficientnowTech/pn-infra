@@ -2,8 +2,8 @@
 # All 8 platform applications with production-grade configurations
 
 default:
-  repoURL: 'https://github.com/ProficientnowTech/pn-infra.git'
-  targetRevision: 'v1.2.0-p0-infra'
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
 
 stackName: 'production'
 
@@ -102,12 +102,8 @@ applications:
 commonLabels:
   app.kubernetes.io/managed-by: 'target-chart'
   app.kubernetes.io/part-of: 'platform-infrastructure'
+  platform.pn-infra.io/stack: 'platform'
   platform.pn-infra.io/environment: 'production'
-  platform.pn-infra.io/framework: 'openspec'
-  platform.pn-infra.io/pattern: 'template-driven'
 
 commonAnnotations:
   platform.pn-infra.io/generated-by: 'target-chart'
-  platform.pn-infra.io/change-id: 'template-driven-deployment'
-  platform.pn-infra.io/environment: 'production'
-  platform.pn-infra.io/deployment-policy: 'automated'

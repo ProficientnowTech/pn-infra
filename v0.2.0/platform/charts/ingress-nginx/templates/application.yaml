@@ -6,13 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: '{{ .Values.global.syncWave | default "-3" }}'
   labels:
-    app.kubernetes.io/name: ingress-nginx
-    managed-by: argocd
-    component: infrastructure
-    helm.sh/chart: {{ include "ingress-nginx.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{ include "ingress-nginx.labels" . | nindent 4 }}
 spec:
   project: {{ .Values.global.project | default "platform" }}
   sources:

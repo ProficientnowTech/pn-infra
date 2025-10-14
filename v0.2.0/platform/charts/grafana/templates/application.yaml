@@ -9,10 +9,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   labels:
-    app.kubernetes.io/name: grafana
-    managed-by: argocd
-    component: monitoring
-    {{- include "grafana.labels" . | nindent 4 }}
+{{ include "grafana.labels" . | nindent 4 }}
 spec:
   project: platform
   sources:
@@ -23,8 +20,8 @@ spec:
         releaseName: grafana
         valueFiles:
           - $values/platform/charts/grafana/values.yaml
-    - repoURL: {{ .Values.global.repoURL | default "https://github.com/your-org/pn-infra.git" }}
-      targetRevision: {{ .Values.global.targetRevision | default "v1.2.0-p0-infra" }}
+    - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values
   destination:
     server: https://kubernetes.default.svc

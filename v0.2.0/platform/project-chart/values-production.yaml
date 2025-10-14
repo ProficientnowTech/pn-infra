@@ -1,0 +1,82 @@
+# Production ArgoCD Projects Configuration
+# Defines all projects needed for platform deployment
+
+projects:
+  - name: platform-core
+    description: 'Core platform infrastructure and security'
+    sourceRepos:
+      - 'git@github.com:pnow-devsupreme/pn-infra.git'
+      - 'https://charts.rook.io/release'
+      - 'https://charts.bitnami.com/bitnami'
+    destinations:
+      - namespace: metallb-system
+      - namespace: metallb-config
+      - namespace: ingress-nginx
+      - namespace: ingress-nginx-config
+      - namespace: cert-manager
+      - namespace: cert-manager-config
+      - namespace: rook-ceph
+      - namespace: rook-ceph-cluster
+      - namespace: vault
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'ValidatingAdmissionWebhook'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'MutatingAdmissionWebhook'
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  - name: platform-monitoring
+    description: 'Monitoring and observability platform'
+    sourceRepos:
+      - 'git@github.com:pnow-devsupreme/pn-infra.git'
+      - 'https://prometheus-community.github.io/helm-charts'
+      - 'https://grafana.github.io/helm-charts'
+    destinations:
+      - namespace: monitoring
+      - namespace: prometheus
+      - namespace: grafana
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  - name: platform-ml
+    description: 'Machine learning and AI infrastructure'
+    sourceRepos:
+      - 'git@github.com:pnow-devsupreme/pn-infra.git'
+      - 'https://kuberay-helm.github.io/helm-charts'
+      - 'https://nvidia.github.io/gpu-operator'
+    destinations:
+      - namespace: kuberay-system
+      - namespace: kuberay-crds
+      - namespace: kuberay-operator
+      - namespace: gpu-operator
+      - namespace: nvidia-gpu-operator
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+    namespaceResources:
+      - group: '*'
+        kind: '*'

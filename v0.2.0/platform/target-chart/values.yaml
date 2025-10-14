@@ -3,11 +3,11 @@
 
 # Default repository configuration
 default:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
 
 # Stack name for generated applications (used in labels/annotations)
-stackName: "platform"
+stackName: 'platform'
 
 # Applications list - empty by default
 # Override with values-{environment}.yaml files
@@ -16,33 +16,31 @@ applications: []
 # Global configuration for all generated applications
 global:
   # ArgoCD project for all applications
-  project: "platform"
-  
+  project: 'platform'
+
   # Default sync policy
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - "CreateNamespace=true"
-      - "RespectIgnoreDifferences=true"
-  
+      - 'CreateNamespace=true'
+      - 'RespectIgnoreDifferences=true'
+
   # Default retry configuration
   retry:
     limit: 3
     backoff:
-      duration: "5s"
+      duration: '5s'
       factor: 2
-      maxDuration: "3m"
+      maxDuration: '3m'
 
 # Labels applied to all generated applications
 commonLabels:
-  app.kubernetes.io/managed-by: "target-chart"
-  app.kubernetes.io/part-of: "platform-infrastructure"
-  platform.pn-infra.io/framework: "openspec"
-  platform.pn-infra.io/pattern: "template-driven"
+  app.kubernetes.io/managed-by: 'target-chart'
+  app.kubernetes.io/part-of: 'platform-infrastructure'
+  platform.pn-infra.io/stack: 'platform'
 
 # Annotations applied to all generated applications
 commonAnnotations:
-  platform.pn-infra.io/generated-by: "target-chart"
-  platform.pn-infra.io/change-id: "template-driven-deployment"
+  platform.pn-infra.io/generated-by: 'target-chart'

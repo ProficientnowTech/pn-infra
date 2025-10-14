@@ -1,18 +1,23 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
-  server: "https://kubernetes.default.svc"
-  targetNamespace: "argocd"
-  project: "platform"
-  syncWave: "-2"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+  server: 'https://kubernetes.default.svc'
+  targetNamespace: 'argocd'
+  project: 'platform'
+  syncWave: '-2'
+
+# Labels configuration
+labels:
+  component: infrastructure
+  managed-by: argocd  # Override default Helm with ArgoCD
 
 # Cert-Manager configuration
 chart:
-  version: "v1.16.1"  # Helm chart version
+  version: 'v1.16.1' # Helm chart version
 
-namespace: "cert-manager"
+namespace: 'cert-manager'
 
 # Sync policy configuration
 syncPolicy:
@@ -22,6 +27,6 @@ syncPolicy:
   retry:
     limit: 5
     backoff:
-      duration: "5s"
+      duration: '5s'
       factor: 2
-      maxDuration: "3m"
+      maxDuration: '3m'

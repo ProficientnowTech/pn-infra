@@ -8,14 +8,14 @@ This checklist ensures all required configurations are set before running the 2-
 
 - [ ] **Git Repository URL** configured in inventory
   ```yaml
-  git_repository_url: "https://github.com/your-org/pn-infra.git"
-  git_repository_branch: "v1.2.0-p0-infra"  # or main
+  git_repository_url: "git@github.com:pnow-devsupreme/pn-infra.git"
+  git_repository_branch: "main"  # or main
   ```
 
 - [ ] **Git Repository Access** verified
   ```bash
-  git clone https://github.com/your-org/pn-infra.git
-  cd pn-infra && git checkout v1.2.0-p0-infra
+  git clone git@github.com:pnow-devsupreme/pn-infra.git
+  cd pn-infra && git checkout main
   ```
 
 - [ ] **Repository structure** matches expected paths:
@@ -153,13 +153,13 @@ This checklist ensures all required configurations are set before running the 2-
   ```bash
   # Base infrastructure only
   ./bootstrap-template-driven.sh deploy --stack base
-  
+
   # Add monitoring
   ./bootstrap-template-driven.sh deploy --stack monitoring
-  
+
   # Add ML infrastructure
   ./bootstrap-template-driven.sh deploy --stack ml
-  
+
   # Deploy everything
   ./bootstrap-template-driven.sh deploy --stack all
   ```
@@ -173,7 +173,7 @@ This checklist ensures all required configurations are set before running the 2-
   # Let's Encrypt issuers
   letsencrypt_prod_issuer: "letsencrypt-prod"
   letsencrypt_staging_issuer: "letsencrypt-staging"
-  
+
   # Enable SSL for services
   argocd_ssl_enabled: true
   grafana_ssl_enabled: true
@@ -185,7 +185,7 @@ This checklist ensures all required configurations are set before running the 2-
   ```yaml
   # Bootstrap project for infrastructure
   bootstrap_project_name: "bootstrap"
-  
+
   # Platform project for applications
   platform_project_name: "platform"
   ```
@@ -255,7 +255,7 @@ nslookup your-domain.com
   ```bash
   # Backup current kubeconfig
   cp ~/.kube/config ~/.kube/config.backup.$(date +%s)
-  
+
   # Backup important namespaces (if migrating)
   kubectl get all --all-namespaces -o yaml > cluster-backup.yaml
   ```
@@ -273,7 +273,7 @@ nslookup your-domain.com
   # Reset cluster completely
   cd v0.2.0/cluster
   ./kubespray.sh reset
-  
+
   # Redeploy cluster
   ./kubespray.sh deploy
   ```

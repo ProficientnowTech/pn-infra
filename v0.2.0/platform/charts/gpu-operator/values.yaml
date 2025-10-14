@@ -1,8 +1,13 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: ml-infrastructure
+  managed-by: argocd  # Override default Helm with ArgoCD
 
 # GPU Operator configuration
 operator:
@@ -10,7 +15,7 @@ operator:
   image: gpu-operator
   version: v24.9.0
   imagePullPolicy: IfNotPresent
-  
+
   resources:
     requests:
       cpu: 100m
@@ -24,16 +29,16 @@ driver:
   enabled: true
   repository: nvcr.io/nvidia
   image: driver
-  version: "535.154.05"
+  version: '535.154.05'
   imagePullPolicy: IfNotPresent
-  
+
   # Use pre-compiled drivers
   usePrecompiled: true
-  
+
   # Driver installation
   rdma:
     enabled: false
-  
+
   # Resource configuration
   resources:
     requests:
@@ -50,7 +55,7 @@ toolkit:
   image: container-toolkit
   version: v1.16.2-ubuntu20.04
   imagePullPolicy: IfNotPresent
-  
+
   resources:
     requests:
       cpu: 100m
@@ -66,7 +71,7 @@ devicePlugin:
   image: k8s-device-plugin
   version: v0.16.2-ubi8
   imagePullPolicy: IfNotPresent
-  
+
   # Resource configuration
   resources:
     requests:
@@ -75,7 +80,7 @@ devicePlugin:
     limits:
       cpu: 500m
       memory: 512Mi
-  
+
   # Device plugin configuration
   config:
     name: time-slicing-config
@@ -88,7 +93,7 @@ dcgm:
   image: dcgm
   version: 3.3.8-1-ubuntu22.04
   imagePullPolicy: IfNotPresent
-  
+
   resources:
     requests:
       cpu: 100m
@@ -104,7 +109,7 @@ dcgmExporter:
   image: dcgm-exporter
   version: 3.3.8-3.6.0-ubuntu22.04
   imagePullPolicy: IfNotPresent
-  
+
   resources:
     requests:
       cpu: 100m
@@ -112,7 +117,7 @@ dcgmExporter:
     limits:
       cpu: 500m
       memory: 512Mi
-  
+
   # Service monitor for Prometheus
   serviceMonitor:
     enabled: true
@@ -129,7 +134,7 @@ gfd:
   image: gpu-feature-discovery
   version: v0.16.2-ubi8
   imagePullPolicy: IfNotPresent
-  
+
   resources:
     requests:
       cpu: 100m
@@ -138,14 +143,14 @@ gfd:
       cpu: 500m
       memory: 512Mi
 
-# Migmanager configuration  
+# Migmanager configuration
 migManager:
   enabled: true
   repository: nvcr.io/nvidia/cloud-native
   image: k8s-mig-manager
   version: v0.8.0-ubuntu20.04
   imagePullPolicy: IfNotPresent
-  
+
   resources:
     requests:
       cpu: 100m
@@ -156,7 +161,7 @@ migManager:
 
 # Node selector for GPU nodes
 nodeSelector:
-  nvidia.com/gpu.present: "true"
+  nvidia.com/gpu.present: 'true'
 
 # Tolerations for GPU nodes
 tolerations:

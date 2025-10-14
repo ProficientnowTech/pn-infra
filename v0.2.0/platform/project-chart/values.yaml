@@ -1,0 +1,4 @@
+# Base values for ArgoCD projects
+# Override with environment-specific values files
+
+projects: []

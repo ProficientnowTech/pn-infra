@@ -1,8 +1,13 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: storage
+  managed-by: argocd  # Override default Helm with ArgoCD
 
 # Ceph cluster configuration based on the existing setup
 cluster:
@@ -12,7 +17,7 @@ cluster:
   skipUpgradeChecks: false
   continueUpgradeAfterChecksEvenIfNotHealthy: false
   waitTimeoutForHealthyOSDInMinutes: 10
-  
+
   mon:
     count: 3
     allowMultiplePerNode: false
@@ -48,10 +53,10 @@ cluster:
   storage:
     useAllNodes: true
     useAllDevices: true
-    deviceFilter: ""
+    deviceFilter: ''
     config:
-      osdsPerDevice: "1"
-      encryptedDevice: "false"
+      osdsPerDevice: '1'
+      encryptedDevice: 'false'
 
   placement:
     all:

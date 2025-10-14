@@ -1,24 +1,19 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/ProficientnowTech/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
 
-# ArgoCD version configuration
-argocd:
-  version: "7.7.8"  # Argo Helm chart version
-  appVersion: "v2.13.1"  # ArgoCD application version
+# Labels configuration
+labels:
+  component: gitops
+  managed-by: argocd # Override default Helm with ArgoCD
 
-# ArgoCD Helm chart values
-# Based on official ArgoCD Helm chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
-
-## Global ArgoCD configuration
-global:
-  # Image configuration
-  image:
-    repository: quay.io/argoproj/argocd
-    tag: v2.13.1
-    imagePullPolicy: IfNotPresent
+# Image configuration
+image:
+  repository: quay.io/argoproj/argocd
+  tag: v2.13.1
+  imagePullPolicy: IfNotPresent
 
   # Security context
   securityContext:
@@ -31,6 +26,14 @@ global:
   networkPolicy:
     create: true
     defaultDenyIngress: false
+
+# ArgoCD version configuration
+argocd:
+  version: '7.7.8' # Argo Helm chart version
+  appVersion: 'v2.13.1' # ArgoCD application version
+
+# ArgoCD Helm chart values
+# Based on official ArgoCD Helm chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
 
 ## ArgoCD Server configuration
 server:
@@ -59,7 +62,7 @@ server:
 
   # Service configuration
   service:
-    type: ClusterIP
+    type: LoadBalancer
     port: 80
     portName: http
 
@@ -69,8 +72,8 @@ server:
     ingressClassName: nginx
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-prod
-      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-      nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+      nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
+      nginx.ingress.kubernetes.io/backend-protocol: 'GRPC'
     hosts:
       - host: argocd.platform.local
         paths:
@@ -86,7 +89,7 @@ server:
     # Git repositories
     repositories: |
       - type: git
-        url: https://github.com/ProficientnowTech/pn-infra.git
+        url: git@github.com:pnow-devsupreme/pn-infra.git
         name: pn-infra
       - type: helm
         url: https://argoproj.github.io/argo-helm
@@ -159,14 +162,14 @@ controller:
     enabled: true
     service:
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8082"
-        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8082'
+        prometheus.io/path: '/metrics'
 
   # Environment variables
   env:
     - name: ARGOCD_CONTROLLER_REPLICAS
-      value: "2"
+      value: '2'
 
 ## ArgoCD Repo Server
 repoServer:
@@ -197,9 +200,9 @@ repoServer:
     enabled: true
     service:
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8084"
-        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8084'
+        prometheus.io/path: '/metrics'
 
 ## ArgoCD ApplicationSet Controller
 applicationSet:
@@ -223,9 +226,9 @@ applicationSet:
     enabled: true
     service:
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '8080'
+        prometheus.io/path: '/metrics'
 
 ## Redis for ArgoCD
 redis:
@@ -246,13 +249,13 @@ redis:
     enabled: true
     service:
       annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9121"
-        prometheus.io/path: "/metrics"
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9121'
+        prometheus.io/path: '/metrics'
 
 ## Redis HA (for production)
 redis-ha:
-  enabled: false  # Enable for production HA setup
+  enabled: false # Enable for production HA setup
   haproxy:
     enabled: true
 
@@ -306,10 +309,10 @@ selfManagement:
   # Bootstrap project for self-management
   bootstrapProject:
     name: argocd-self-management
-    description: "ArgoCD self-management project"
+    description: 'ArgoCD self-management project'
     sourceRepos:
-      - "https://github.com/ProficientnowTech/pn-infra.git"
-      - "https://argoproj.github.io/argo-helm"
+      - 'git@github.com:pnow-devsupreme/pn-infra.git'
+      - 'https://argoproj.github.io/argo-helm'
     destinations:
       - namespace: argocd
         server: https://kubernetes.default.svc

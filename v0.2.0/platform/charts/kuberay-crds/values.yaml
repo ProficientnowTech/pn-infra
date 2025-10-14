@@ -1,8 +1,13 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: ml-infrastructure
+  managed-by: argocd  # Override default Helm with ArgoCD
 
 # KubeRay CRDs configuration
 # This chart only installs the Custom Resource Definitions

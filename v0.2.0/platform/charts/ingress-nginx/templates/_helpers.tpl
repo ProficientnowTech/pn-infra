@@ -27,3 +27,26 @@ Create chart name and version as used by the chart label.
 {{- define "ingress-nginx.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "ingress-nginx.labels" -}}
+helm.sh/chart: {{ include "ingress-nginx.chart" . }}
+{{ include "ingress-nginx.selectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Values.labels.managed-by | default .Release.Service }}
+{{- if .Values.labels.component }}
+app.kubernetes.io/component: {{ .Values.labels.component }}
+{{- end }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "ingress-nginx.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "ingress-nginx.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

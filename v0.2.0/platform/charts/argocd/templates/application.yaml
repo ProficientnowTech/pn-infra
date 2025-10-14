@@ -10,11 +10,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   labels:
-    app.kubernetes.io/name: argocd
-    managed-by: argocd
-    component: gitops
-    self-managed: "true"
-    {{- include "argocd.labels" . | nindent 4 }}
+{{ include "argocd.labels" . | nindent 4 }}
 spec:
   project: default
   sources:
@@ -25,8 +21,8 @@ spec:
         releaseName: argocd
         valueFiles:
           - $values/platform/charts/argocd/values.yaml
-    - repoURL: {{ .Values.global.repoURL | default "https://github.com/your-org/pn-infra.git" }}
-      targetRevision: {{ .Values.global.targetRevision | default "v1.2.0-p0-infra" }}
+    - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values
   destination:
     server: https://kubernetes.default.svc
@@ -54,12 +50,12 @@ spec:
       jqPathExpressions:
         - .status
         - .operation
-    - group: ""
+    - group: ''
       kind: Secret
       name: argocd-initial-admin-secret
       jsonPointers:
         - /data
-    - group: ""
+    - group: ''
       kind: Secret
       name: argocd-secret
       jsonPointers:

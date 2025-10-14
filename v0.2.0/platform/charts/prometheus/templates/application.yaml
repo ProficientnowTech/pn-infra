@@ -9,10 +9,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   labels:
-    app.kubernetes.io/name: prometheus
-    managed-by: argocd
-    component: monitoring
-    {{- include "prometheus.labels" . | nindent 4 }}
+{{ include "prometheus.labels" . | nindent 4 }}
 spec:
   project: platform
   sources:
@@ -23,8 +20,8 @@ spec:
         releaseName: prometheus
         valueFiles:
           - $values/platform/charts/prometheus/values.yaml
-    - repoURL: {{ .Values.global.repoURL | default "https://github.com/your-org/pn-infra.git" }}
-      targetRevision: {{ .Values.global.targetRevision | default "v1.2.0-p0-infra" }}
+    - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values
   destination:
     server: https://kubernetes.default.svc

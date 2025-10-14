@@ -1,8 +1,13 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: ml-infrastructure
+  managed-by: argocd  # Override default Helm with ArgoCD
 
 # KubeRay Operator configuration
 image:
@@ -26,7 +31,7 @@ replicaCount: 1
 serviceAccount:
   create: true
   annotations: {}
-  name: ""
+  name: ''
 
 # RBAC configuration
 rbac:
@@ -58,17 +63,17 @@ affinity: {}
 operatorConfig:
   # Enable leader election
   enableLeaderElection: true
-  
+
   # Metrics configuration
-  metricsAddr: ":8080"
-  probeAddr: ":8081"
-  
+  metricsAddr: ':8080'
+  probeAddr: ':8081'
+
   # Webhook configuration
   webhookPort: 9443
-  
+
   # Log level
   logLevel: 2
-  
+
   # Enable batch scheduling
   enableBatchScheduler: false
 
@@ -86,12 +91,12 @@ monitoring:
 webhook:
   enabled: true
   port: 9443
-  
+
   # TLS configuration
   tls:
     enabled: true
     secretName: kuberay-operator-webhook-tls
-    
+
   # Certificate management
   certManager:
     enabled: true
@@ -101,14 +106,14 @@ webhook:
 resourceQuotas:
   enabled: true
   default:
-    cpu: "10"
-    memory: "20Gi"
-    gpu: "4"
+    cpu: '10'
+    memory: '20Gi'
+    gpu: '4'
 
 # Network policies
 networkPolicies:
   enabled: true
-  
+
 # Pod disruption budget
 podDisruptionBudget:
   enabled: true

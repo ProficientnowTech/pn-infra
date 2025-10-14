@@ -27,11 +27,11 @@ metadata:
     {{- end }}
     platform.pn-infra.io/version: {{ $.Chart.Version | quote }}
 spec:
-  project: {{ $.Values.global.project | default "platform" }}
+  project: {{ .project | default "platform-core" }}
   source:
     repoURL: {{ $.Values.default.repoURL }}
     targetRevision: {{ $.Values.default.targetRevision }}
-    path: platform/charts/{{ .name }}
+    path: v0.2.0/platform/charts/{{ .name }}
     {{- if .helm }}
     helm:
       {{- if .helm.valueFiles }}

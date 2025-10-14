@@ -7,10 +7,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: '1'
   labels:
-    app.kubernetes.io/name: rook-ceph
-    managed-by: argocd
-    component: storage
-    {{- include "rook-ceph.labels" . | nindent 4 }}
+{{ include "rook-ceph.labels" . | nindent 4 }}
 spec:
   project: platform
   sources:
@@ -21,8 +18,8 @@ spec:
         releaseName: rook-ceph
         valueFiles:
           - $values/platform/charts/rook-ceph/values.yaml
-    - repoURL: {{ .Values.global.repoURL | default "https://github.com/your-org/pn-infra.git" }}
-      targetRevision: {{ .Values.global.targetRevision | default "v1.2.0-p0-infra" }}
+    - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values
   destination:
     server: https://kubernetes.default.svc

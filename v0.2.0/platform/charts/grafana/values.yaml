@@ -1,15 +1,20 @@
 ---
 # Global configuration
 global:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: monitoring
+  managed-by: argocd  # Override default Helm with ArgoCD
 
 # Grafana configuration
 replicas: 1
 
 image:
   repository: grafana/grafana
-  tag: "11.4.0"
+  tag: '11.4.0'
   pullPolicy: IfNotPresent
 
 resources:
@@ -45,7 +50,7 @@ ingress:
   ingressClassName: nginx
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
   hosts:
     - host: grafana.platform.local
       paths:

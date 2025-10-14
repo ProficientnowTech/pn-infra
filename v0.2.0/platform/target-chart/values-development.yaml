@@ -2,63 +2,59 @@
 # Only essential services for development work
 
 default:
-  repoURL: "https://github.com/your-org/pn-infra.git"
-  targetRevision: "v1.2.0-p0-infra"
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
 
-stackName: "development"
+stackName: 'development'
 
 applications:
   # Storage Foundation (minimal)
   - name: rook-ceph
     namespace: rook-ceph
     annotations:
-      argocd.argoproj.io/sync-wave: "1"
-    
+      argocd.argoproj.io/sync-wave: '1'
+
   - name: rook-ceph-cluster
     namespace: rook-ceph
     annotations:
-      argocd.argoproj.io/sync-wave: "2"
-    
+      argocd.argoproj.io/sync-wave: '2'
+
   # Monitoring only (no security services in dev)
   - name: prometheus
     namespace: monitoring
     annotations:
-      argocd.argoproj.io/sync-wave: "3"
-    
+      argocd.argoproj.io/sync-wave: '3'
+
   - name: grafana
     namespace: monitoring
     annotations:
-      argocd.argoproj.io/sync-wave: "4"
-    
+      argocd.argoproj.io/sync-wave: '4'
+
   # Note: No vault, no ML infrastructure in development
   # Minimal stack for development work
 
 # Development-specific global settings
 global:
-  project: "platform"
+  project: 'platform'
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - "CreateNamespace=true"
-      - "RespectIgnoreDifferences=true"
+      - 'CreateNamespace=true'
+      - 'RespectIgnoreDifferences=true'
   retry:
-    limit: 2  # Fewer retries for development
+    limit: 2 # Fewer retries for development
     backoff:
-      duration: "3s"
+      duration: '3s'
       factor: 2
-      maxDuration: "1m"
+      maxDuration: '1m'
 
 commonLabels:
-  app.kubernetes.io/managed-by: "target-chart"
-  app.kubernetes.io/part-of: "platform-infrastructure"
-  platform.pn-infra.io/environment: "development"
-  platform.pn-infra.io/framework: "openspec"
-  platform.pn-infra.io/pattern: "template-driven"
+  app.kubernetes.io/managed-by: 'target-chart'
+  app.kubernetes.io/part-of: 'platform-infrastructure'
+  platform.pn-infra.io/stack: 'platform'
+  platform.pn-infra.io/environment: 'development'
 
 commonAnnotations:
-  platform.pn-infra.io/generated-by: "target-chart"
-  platform.pn-infra.io/change-id: "template-driven-deployment"
-  platform.pn-infra.io/environment: "development"
-  platform.pn-infra.io/deployment-policy: "manual"  # Manual for dev safety
+  platform.pn-infra.io/generated-by: 'target-chart'

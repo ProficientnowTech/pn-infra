@@ -1,0 +1,113 @@
+# Production Environment - Full Platform Stack
+# All 8 platform applications with production-grade configurations
+
+default:
+  repoURL: 'https://github.com/ProficientnowTech/pn-infra.git'
+  targetRevision: 'v1.2.0-p0-infra'
+
+stackName: 'production'
+
+# Hooks Configuration
+global:
+  hooks:
+    enabled: true
+    validation:
+      infrastructure: true
+      storage: true
+    healthChecks:
+      rookCeph: true
+      monitoring: true
+    notifications:
+      syncFailure: true
+
+applications:
+  # Infrastructure Foundation (deployed before platform apps)
+  - name: metallb
+    namespace: metallb-system
+    annotations:
+      argocd.argoproj.io/sync-wave: '-4'
+
+  - name: ingress-nginx
+    namespace: ingress-nginx
+    annotations:
+      argocd.argoproj.io/sync-wave: '-3'
+
+  - name: cert-manager
+    namespace: cert-manager
+    annotations:
+      argocd.argoproj.io/sync-wave: '-2'
+
+  # Infrastructure Configuration (after apps are deployed)
+  - name: metallb-config
+    namespace: argocd
+    annotations:
+      argocd.argoproj.io/sync-wave: '-1'
+
+  - name: ingress-nginx-config
+    namespace: argocd
+    annotations:
+      argocd.argoproj.io/sync-wave: '-1'
+
+  - name: cert-manager-config
+    namespace: argocd
+    annotations:
+      argocd.argoproj.io/sync-wave: '-1'
+
+  # Storage Foundation
+  - name: rook-ceph
+    namespace: rook-ceph
+    annotations:
+      argocd.argoproj.io/sync-wave: '1'
+
+  - name: rook-ceph-cluster
+    namespace: rook-ceph
+    annotations:
+      argocd.argoproj.io/sync-wave: '2'
+
+  # Security Platform
+  - name: vault
+    namespace: vault
+    annotations:
+      argocd.argoproj.io/sync-wave: '3'
+
+  # Monitoring Platform
+  - name: prometheus
+    namespace: monitoring
+    annotations:
+      argocd.argoproj.io/sync-wave: '4'
+
+  - name: grafana
+    namespace: monitoring
+    annotations:
+      argocd.argoproj.io/sync-wave: '5'
+
+  # ML Infrastructure Platform
+  - name: kuberay-crds
+    namespace: kuberay-system
+    annotations:
+      argocd.argoproj.io/sync-wave: '6'
+
+  - name: kuberay-operator
+    namespace: kuberay-system
+    annotations:
+      argocd.argoproj.io/sync-wave: '7'
+
+  - name: gpu-operator
+    namespace: gpu-operator-resources
+    annotations:
+      argocd.argoproj.io/sync-wave: '8'
+
+# Production-specific global settings
+
+commonLabels:
+  app.kubernetes.io/managed-by: 'target-chart'
+  app.kubernetes.io/part-of: 'platform-infrastructure'
+  platform.pn-infra.io/environment: 'production'
+  platform.pn-infra.io/framework: 'openspec'
+  platform.pn-infra.io/pattern: 'template-driven'
+
+commonAnnotations:
+  platform.pn-infra.io/generated-by: 'target-chart'
+  platform.pn-infra.io/change-id: 'template-driven-deployment'
+  platform.pn-infra.io/environment: 'production'
+  platform.pn-infra.io/deployment-policy: 'automated'

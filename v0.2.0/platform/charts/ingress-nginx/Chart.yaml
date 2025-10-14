@@ -1,0 +1,11 @@
+apiVersion: v2
+name: ingress-nginx
+description: NGINX Ingress Controller ArgoCD Application Chart
+type: application
+version: 0.1.0
+appVersion: "v1.11.3"
+
+annotations:
+  argocd.argoproj.io/sync-wave: "-3"
+  platform.pn-infra.io/component: infrastructure
+  platform.pn-infra.io/category: ingress

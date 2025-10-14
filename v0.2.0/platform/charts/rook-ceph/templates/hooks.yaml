@@ -1,0 +1,59 @@
+{{- if .Values.global.hooks.validation.storage }}
+---
+# Storage PreSync Validation Hook
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.global.name | default .Release.Name }}-storage-presync-validation
+  namespace: {{ .Values.global.targetNamespace | default "argocd" }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: argocd-server
+      containers:
+      - name: storage-validator
+        image: bitnami/kubectl:latest
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo "💾 Starting storage prerequisites validation..."
+          
+          # Check 1: Verify required namespaces
+          echo "Checking storage-related namespaces..."
+          REQUIRED_NS="rook-ceph local-path-storage"
+          for ns in $REQUIRED_NS; do
+            if kubectl get namespace $ns >/dev/null 2>&1; then
+              echo "✅ Namespace $ns exists"
+            else
+              echo "⚠️ Namespace $ns not found - will be created"
+            fi
+          done
+          
+          # Check 2: Validate node storage capacity
+          echo "Checking node storage capacity..."
+          NODES=$(kubectl get nodes --no-headers -o custom-columns=":metadata.name")
+          for node in $NODES; do
+            CAPACITY=$(kubectl describe node $node | grep "ephemeral-storage:" | tail -1 | awk '{print $2}')
+            echo "📊 Node $node storage capacity: $CAPACITY"
+          done
+          
+          # Check 3: Check for existing Ceph components
+          echo "Checking for existing Ceph installations..."
+          if kubectl get crd cephclusters.ceph.rook.io >/dev/null 2>&1; then
+            echo "⚠️ Rook-Ceph CRDs already exist - upgrade scenario"
+          else
+            echo "✅ Fresh Rook-Ceph installation"
+          fi
+          
+          echo "🎉 Storage prerequisites validation completed!"
+          
+      restartPolicy: Never
+  backoffLimit: 3
+{{- end }}

@@ -1,0 +1,67 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ include "argocd.fullname" . }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: argocd
+    managed-by: argocd
+    component: gitops
+    self-managed: "true"
+    {{- include "argocd.labels" . | nindent 4 }}
+spec:
+  project: default
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      chart: argo-cd
+      targetRevision: {{ .Values.argocd.version | default "7.7.8" }}
+      helm:
+        releaseName: argocd
+        valueFiles:
+          - $values/platform/charts/argocd/values.yaml
+    - repoURL: {{ .Values.global.repoURL | default "https://github.com/your-org/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "v1.2.0-p0-infra" }}
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+      - PrunePropagationPolicy=foreground
+      - Replace=false
+      - SkipDryRunOnMissingResource=true
+      - ApplyOutOfSyncOnly=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jqPathExpressions:
+        - .status
+        - .operation
+    - group: ""
+      kind: Secret
+      name: argocd-initial-admin-secret
+      jsonPointers:
+        - /data
+    - group: ""
+      kind: Secret
+      name: argocd-secret
+      jsonPointers:
+        - /data/admin.password
+        - /data/admin.passwordMtime

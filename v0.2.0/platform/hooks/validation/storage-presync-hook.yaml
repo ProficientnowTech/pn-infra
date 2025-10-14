@@ -1,0 +1,97 @@
+# Storage Applications PreSync Hook
+# Validates storage infrastructure dependencies before deploying Rook-Ceph
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: storage-presync-validation
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "0"  # Run before storage wave 1
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: argocd-server
+      containers:
+      - name: storage-validator
+        image: bitnami/kubectl:latest
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo "🗄️ Validating storage infrastructure prerequisites..."
+          
+          # Check 1: Verify nodes have available storage
+          echo "Checking node storage capacity..."
+          NODES_WITH_STORAGE=0
+          for node in $(kubectl get nodes --no-headers -o custom-columns=NAME:.metadata.name); do
+            STORAGE_AVAILABLE=$(kubectl describe node $node | grep -A5 "Allocated resources" | grep "ephemeral-storage" | awk '{print $4}' | grep -o '[0-9]*' || echo "0")
+            if [ "${STORAGE_AVAILABLE:-0}" -lt 80 ]; then  # Less than 80% used
+              NODES_WITH_STORAGE=$((NODES_WITH_STORAGE + 1))
+              echo "✅ Node $node has available storage"
+            else
+              echo "⚠️ Node $node storage usage high"
+            fi
+          done
+          
+          if [ $NODES_WITH_STORAGE -ge 3 ]; then
+            echo "✅ Sufficient nodes with available storage ($NODES_WITH_STORAGE nodes)"
+          else
+            echo "❌ Insufficient nodes with available storage (need 3+, found $NODES_WITH_STORAGE)"
+            exit 1
+          fi
+          
+          # Check 2: Validate required storage directories exist
+          echo "Validating local storage paths..."
+          if kubectl get storageclass local-path -o yaml | grep -q "/data/local-path-provisioner"; then
+            echo "✅ Local path provisioner configured with /data/local-path-provisioner"
+          else
+            echo "❌ Local path provisioner not properly configured"
+            exit 1
+          fi
+          
+          # Check 3: Test basic PVC provisioning
+          echo "Testing basic PVC provisioning capability..."
+          cat <<EOF | kubectl apply -f -
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: storage-test-pvc
+            namespace: default
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 1Gi
+            storageClassName: local-path
+          EOF
+          
+          # Wait for PVC to be bound
+          kubectl wait --for=condition=Bound pvc/storage-test-pvc -n default --timeout=60s
+          echo "✅ Basic PVC provisioning working"
+          
+          # Clean up test PVC
+          kubectl delete pvc storage-test-pvc -n default
+          
+          # Check 4: Verify no conflicting Ceph installations
+          echo "Checking for existing Ceph installations..."
+          if kubectl get namespace rook-ceph >/dev/null 2>&1; then
+            EXISTING_CEPH=$(kubectl get pods -n rook-ceph --no-headers 2>/dev/null | wc -l)
+            if [ $EXISTING_CEPH -gt 0 ]; then
+              echo "⚠️ Existing Ceph installation found with $EXISTING_CEPH pods"
+              echo "This may cause conflicts during deployment"
+            else
+              echo "✅ Rook-Ceph namespace exists but is clean"
+            fi
+          else
+            echo "✅ No existing Ceph installation found"
+          fi
+          
+          echo "🎉 Storage prerequisites validated successfully!"
+          
+      restartPolicy: Never
+  backoffLimit: 2

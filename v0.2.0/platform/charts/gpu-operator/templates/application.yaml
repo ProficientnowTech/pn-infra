@@ -1,0 +1,57 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ include "gpu-operator.fullname" . }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: '8'
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    app.kubernetes.io/name: gpu-operator
+    managed-by: argocd
+    component: ml-infrastructure
+    {{- include "gpu-operator.labels" . | nindent 4 }}
+spec:
+  project: platform
+  sources:
+    - repoURL: https://helm.ngc.nvidia.com/nvidia
+      chart: gpu-operator
+      targetRevision: v24.9.0
+      helm:
+        releaseName: gpu-operator
+        valueFiles:
+          - $values/platform/charts/gpu-operator/values.yaml
+    - repoURL: {{ .Values.global.repoURL | default "https://github.com/your-org/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "v1.2.0-p0-infra" }}
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gpu-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+      - PrunePropagationPolicy=foreground
+      - Replace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 10m
+  ignoreDifferences:
+    - group: apps
+      kind: DaemonSet
+      jsonPointers:
+        - /spec/template/spec/containers/0/image
+        - /spec/template/spec/initContainers/0/image
+    - group: ""
+      kind: ServiceAccount
+      jsonPointers:
+        - /imagePullSecrets

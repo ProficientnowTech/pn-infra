@@ -1,0 +1,56 @@
+{{- if .Values.nginx.config.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-configuration
+  namespace: {{ .Values.nginx.namespace }}
+  labels:
+    app.kubernetes.io/name: ingress-nginx-config
+    managed-by: argocd
+    helm.sh/chart: {{ include "ingress-nginx-config.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+  # Security headers
+  proxy-set-headers: {{ .Values.nginx.namespace }}/custom-headers
+  ssl-protocols: {{ .Values.nginx.config.ssl.protocols | quote }}
+  ssl-ciphers: {{ .Values.nginx.config.ssl.ciphers | quote }}
+  
+  # Performance tuning
+  proxy-body-size: {{ .Values.nginx.config.proxy.bodySize | quote }}
+  proxy-read-timeout: {{ .Values.nginx.config.proxy.readTimeout | quote }}
+  proxy-send-timeout: {{ .Values.nginx.config.proxy.sendTimeout | quote }}
+  proxy-connect-timeout: {{ .Values.nginx.config.proxy.connectTimeout | quote }}
+  
+  # GZIP compression
+  enable-gzip: {{ .Values.nginx.config.gzip.enabled | quote }}
+  gzip-types: {{ .Values.nginx.config.gzip.types | quote }}
+  
+  # Rate limiting
+  limit-connections: {{ .Values.nginx.config.rateLimit.connections | quote }}
+  limit-rate-after: {{ .Values.nginx.config.rateLimit.rateAfter | quote }}
+  limit-rate: {{ .Values.nginx.config.rateLimit.rate | quote }}
+{{- end }}
+
+{{- if .Values.nginx.customHeaders.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-headers
+  namespace: {{ .Values.nginx.namespace }}
+  labels:
+    app.kubernetes.io/name: ingress-nginx-config
+    managed-by: argocd
+    helm.sh/chart: {{ include "ingress-nginx-config.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+  X-Frame-Options: {{ .Values.nginx.customHeaders.xFrameOptions | quote }}
+  X-Content-Type-Options: {{ .Values.nginx.customHeaders.xContentTypeOptions | quote }}
+  X-XSS-Protection: {{ .Values.nginx.customHeaders.xXSSProtection | quote }}
+  Referrer-Policy: {{ .Values.nginx.customHeaders.referrerPolicy | quote }}
+  Strict-Transport-Security: {{ .Values.nginx.customHeaders.hsts | quote }}
+  Content-Security-Policy: {{ .Values.nginx.customHeaders.csp | quote }}
+{{- end }}

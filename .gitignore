@@ -8,6 +8,14 @@ Thumbs.db
 *.swp
 *.swo
 
+# Claude files and agentic files
+.claude
+AGENTS.md
+openspec
+CLAUDE.md
+archive
+*tar.gz
+
 # Ansible
 *.retry
 
@@ -49,3 +57,5 @@ kubeconfig
 *_rsa
 *.pub
 *.secret
+
+inventory

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: grafana
+description: Grafana dashboards and visualization platform
+type: application
+version: 0.1.0
+appVersion: "11.4.0"
+
+keywords:
+  - monitoring
+  - grafana
+  - visualization
+  - dashboards
+  - observability
+
+annotations:
+  category: Monitoring
+  platform.pn-infra.io/component: grafana
+  platform.pn-infra.io/framework: openspec
+  platform.pn-infra.io/sync-wave: "5"

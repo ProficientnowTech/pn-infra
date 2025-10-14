@@ -1,0 +1,27 @@
+---
+# Global configuration
+global:
+  repoURL: "https://github.com/your-org/pn-infra.git"
+  targetRevision: "v1.2.0-p0-infra"
+  server: "https://kubernetes.default.svc"
+  targetNamespace: "argocd"
+  project: "platform"
+  syncWave: "-2"
+
+# Cert-Manager configuration
+chart:
+  version: "v1.16.1"  # Helm chart version
+
+namespace: "cert-manager"
+
+# Sync policy configuration
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+  retry:
+    limit: 5
+    backoff:
+      duration: "5s"
+      factor: 2
+      maxDuration: "3m"

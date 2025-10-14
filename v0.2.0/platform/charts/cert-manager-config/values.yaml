@@ -1,0 +1,18 @@
+---
+# Cert-Manager Configuration Values
+# Let's Encrypt issuers for TLS certificate automation
+
+letsencrypt:
+  production:
+    enabled: true
+    email: "snoorullah@proficientnowtech.com"
+    cloudflare:
+      secretName: "cloudflare-api-token-secret"
+      secretKey: "api-token"
+      
+  staging:
+    enabled: true  # Enable for testing
+    email: "snoorullah@proficientnowtech.com"
+    cloudflare:
+      secretName: "cloudflare-api-token-secret"
+      secretKey: "api-token"

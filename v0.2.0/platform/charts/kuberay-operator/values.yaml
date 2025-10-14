@@ -1,0 +1,115 @@
+---
+# Global configuration
+global:
+  repoURL: "https://github.com/your-org/pn-infra.git"
+  targetRevision: "v1.2.0-p0-infra"
+
+# KubeRay Operator configuration
+image:
+  repository: quay.io/kuberay/operator
+  tag: v1.3.0
+  pullPolicy: IfNotPresent
+
+# Operator resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Replica count
+replicaCount: 1
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# RBAC configuration
+rbac:
+  create: true
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+
+# Security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+
+# Node selector and tolerations
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Operator configuration
+operatorConfig:
+  # Enable leader election
+  enableLeaderElection: true
+  
+  # Metrics configuration
+  metricsAddr: ":8080"
+  probeAddr: ":8081"
+  
+  # Webhook configuration
+  webhookPort: 9443
+  
+  # Log level
+  logLevel: 2
+  
+  # Enable batch scheduling
+  enableBatchScheduler: false
+
+# Monitoring configuration
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    namespace: monitoring
+    labels:
+      team: platform
+
+# Webhook configuration
+webhook:
+  enabled: true
+  port: 9443
+  
+  # TLS configuration
+  tls:
+    enabled: true
+    secretName: kuberay-operator-webhook-tls
+    
+  # Certificate management
+  certManager:
+    enabled: true
+    issuer: selfsigned-issuer
+
+# Resource quotas for Ray clusters
+resourceQuotas:
+  enabled: true
+  default:
+    cpu: "10"
+    memory: "20Gi"
+    gpu: "4"
+
+# Network policies
+networkPolicies:
+  enabled: true
+  
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

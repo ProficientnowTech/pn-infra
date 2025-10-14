@@ -1,0 +1,11 @@
+apiVersion: v2
+name: cert-manager
+description: Cert-Manager TLS Certificate Management ArgoCD Application Chart
+type: application
+version: 0.1.0
+appVersion: "v1.16.1"
+
+annotations:
+  argocd.argoproj.io/sync-wave: "-2"
+  platform.pn-infra.io/component: infrastructure
+  platform.pn-infra.io/category: certificates

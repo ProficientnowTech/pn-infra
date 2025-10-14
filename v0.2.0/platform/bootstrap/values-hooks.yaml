@@ -1,0 +1,49 @@
+---
+# Platform Hooks Configuration
+# Centralized hooks settings for all environments
+
+# Production Hooks Configuration
+production:
+  hooks:
+    enabled: true
+    validation:
+      infrastructure: true
+      storage: true
+    healthChecks:
+      rookCeph: true
+      monitoring: true
+    notifications:
+      syncFailure: true
+
+# Staging Hooks Configuration  
+staging:
+  hooks:
+    enabled: true
+    validation:
+      infrastructure: true
+      storage: true
+    healthChecks:
+      rookCeph: true
+      monitoring: false  # Reduced monitoring validation
+    notifications:
+      syncFailure: true
+
+# Development Hooks Configuration
+development:
+  hooks:
+    enabled: false  # Minimal hooks for faster development
+    validation:
+      infrastructure: false
+      storage: false
+    healthChecks:
+      rookCeph: false
+      monitoring: false
+    notifications:
+      syncFailure: true  # Keep failure notifications
+
+# Hook Sync Wave Reference
+# Wave -10: Infrastructure validation  
+# Wave -5:  Storage validation
+# Wave 2:   Rook-Ceph health check
+# Wave 5:   Monitoring validation
+# On Fail:  Sync failure notification

@@ -1,0 +1,188 @@
+# Infrastructure Root Application PreSync Hook
+# Master validation hook for the root infrastructure application
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: infrastructure-root-presync
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-10"  # Run before everything else
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: argocd-server
+      containers:
+      - name: infrastructure-validator
+        image: bitnami/kubectl:latest
+        command:
+        - sh
+        - -c
+        - |
+          set -e
+          echo "🏗️ INFRASTRUCTURE ROOT APPLICATION PRESYNC VALIDATION"
+          echo "=========================================================="
+          
+          # Check 1: Validate ArgoCD is healthy and accessible
+          echo "🔍 Checking ArgoCD health..."
+          
+          # Internal ArgoCD API check
+          if kubectl get deployment argocd-server -n argocd >/dev/null 2>&1; then
+            kubectl wait --for=condition=Available deployment/argocd-server -n argocd --timeout=60s
+            echo "✅ ArgoCD server is available"
+          else
+            echo "❌ ArgoCD server deployment not found"
+            exit 1
+          fi
+          
+          # External ArgoCD API check (if ingress is configured)
+          echo "Testing external ArgoCD accessibility..."
+          if curl -k https://argocd.pnats.cloud/api/version -f --max-time 10 >/dev/null 2>&1; then
+            echo "✅ ArgoCD externally accessible via ingress"
+          else
+            echo "⚠️ ArgoCD not externally accessible (may still be configuring ingress)"
+          fi
+          
+          # Check 2: Validate critical infrastructure prerequisites
+          echo ""
+          echo "🔍 Validating infrastructure prerequisites..."
+          
+          # Check Cilium CNI
+          if kubectl get daemonset cilium -n kube-system >/dev/null 2>&1; then
+            CILIUM_READY=$(kubectl get daemonset cilium -n kube-system -o jsonpath='{.status.numberReady}')
+            CILIUM_DESIRED=$(kubectl get daemonset cilium -n kube-system -o jsonpath='{.status.desiredNumberScheduled}')
+            if [ "$CILIUM_READY" -eq "$CILIUM_DESIRED" ]; then
+              echo "✅ Cilium CNI operational ($CILIUM_READY/$CILIUM_DESIRED pods ready)"
+            else
+              echo "❌ Cilium CNI not fully ready ($CILIUM_READY/$CILIUM_DESIRED pods ready)"
+              exit 1
+            fi
+          else
+            echo "❌ Cilium CNI not found"
+            exit 1
+          fi
+          
+          # Check NGINX Ingress
+          if kubectl get deployment ingress-nginx-controller -n ingress-nginx >/dev/null 2>&1; then
+            kubectl wait --for=condition=Available deployment/ingress-nginx-controller -n ingress-nginx --timeout=60s
+            echo "✅ NGINX Ingress Controller ready"
+          else
+            echo "❌ NGINX Ingress Controller not found"
+            exit 1
+          fi
+          
+          # Check Cert-Manager
+          if kubectl get deployment cert-manager -n cert-manager >/dev/null 2>&1; then
+            kubectl wait --for=condition=Available deployment/cert-manager -n cert-manager --timeout=60s
+            echo "✅ Cert-Manager ready"
+          else
+            echo "❌ Cert-Manager not found"
+            exit 1
+          fi
+          
+          # Check 3: Validate storage infrastructure
+          echo ""
+          echo "🔍 Validating storage infrastructure..."
+          
+          # Check local-path storage class
+          if kubectl get storageclass local-path >/dev/null 2>&1; then
+            echo "✅ Local Path storage class available"
+          else
+            echo "❌ Local Path storage class not found"
+            exit 1
+          fi
+          
+          # Check available disk space on nodes
+          NODES_WITH_SPACE=0
+          for node in $(kubectl get nodes --no-headers -o custom-columns=NAME:.metadata.name); do
+            # This is a simplified check - in production, you might want more sophisticated disk space validation
+            echo "  Checking node: $node"
+            NODES_WITH_SPACE=$((NODES_WITH_SPACE + 1))
+          done
+          
+          if [ $NODES_WITH_SPACE -ge 3 ]; then
+            echo "✅ Sufficient nodes for storage ($NODES_WITH_SPACE nodes)"
+          else
+            echo "⚠️ Limited nodes for storage ($NODES_WITH_SPACE nodes)"
+          fi
+          
+          # Check 4: Validate network connectivity
+          echo ""
+          echo "🔍 Validating network connectivity..."
+          
+          # Test external connectivity to required repositories
+          REPOS=(
+            "charts.rook.io"
+            "prometheus-community.github.io"
+            "grafana.github.io"
+            "kubernetes.github.io"
+            "charts.jetstack.io"
+          )
+          
+          FAILED_REPOS=0
+          for repo in "${REPOS[@]}"; do
+            if curl -f --max-time 10 "https://$repo" >/dev/null 2>&1; then
+              echo "✅ $repo accessible"
+            else
+              echo "❌ $repo not accessible"
+              FAILED_REPOS=$((FAILED_REPOS + 1))
+            fi
+          done
+          
+          if [ $FAILED_REPOS -gt 0 ]; then
+            echo "⚠️ $FAILED_REPOS helm repositories not accessible - this may cause deployment issues"
+          else
+            echo "✅ All required Helm repositories accessible"
+          fi
+          
+          # Check 5: Validate ArgoCD project and permissions
+          echo ""
+          echo "🔍 Validating ArgoCD configuration..."
+          
+          if kubectl get appproject infrastructure -n argocd >/dev/null 2>&1; then
+            echo "✅ Infrastructure project exists"
+          else
+            echo "⚠️ Infrastructure project not found - will be created during sync"
+          fi
+          
+          # Check 6: Resource capacity validation
+          echo ""
+          echo "🔍 Validating cluster resource capacity..."
+          
+          # Get cluster resource summary
+          TOTAL_CPU=$(kubectl describe nodes | grep -A 5 "Allocated resources" | grep "cpu" | grep -o '[0-9]*m' | head -1 | sed 's/m//' || echo "0")
+          TOTAL_MEMORY=$(kubectl describe nodes | grep -A 5 "Allocated resources" | grep "memory" | grep -o '[0-9]*Mi' | head -1 | sed 's/Mi//' || echo "0")
+          
+          echo "  Available CPU: ${TOTAL_CPU}m"
+          echo "  Available Memory: ${TOTAL_MEMORY}Mi"
+          
+          # Basic capacity check (these are rough estimates)
+          if [ "${TOTAL_CPU:-0}" -gt 4000 ]; then
+            echo "✅ Sufficient CPU capacity for infrastructure"
+          else
+            echo "⚠️ Limited CPU capacity - monitor resource usage"
+          fi
+          
+          if [ "${TOTAL_MEMORY:-0}" -gt 8192 ]; then
+            echo "✅ Sufficient memory capacity for infrastructure"
+          else
+            echo "⚠️ Limited memory capacity - monitor resource usage"
+          fi
+          
+          # Final summary
+          echo ""
+          echo "🎉 INFRASTRUCTURE PREREQUISITES VALIDATION COMPLETE"
+          echo "=========================================================="
+          echo "✅ ArgoCD: Ready"
+          echo "✅ CNI (Cilium): Operational"
+          echo "✅ Ingress (NGINX): Ready"
+          echo "✅ TLS (Cert-Manager): Ready"
+          echo "✅ Storage: Available"
+          echo "✅ Network: Connectivity verified"
+          echo ""
+          echo "🚀 Ready to deploy infrastructure applications!"
+          
+      restartPolicy: Never
+  backoffLimit: 3

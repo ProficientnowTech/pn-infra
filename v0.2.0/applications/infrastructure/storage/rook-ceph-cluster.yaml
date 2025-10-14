@@ -1,0 +1,170 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rook-ceph-cluster
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"  # Deploy after operator (wave 1)
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  source:
+    # Official Rook Helm repository for cluster chart
+    repoURL: https://charts.rook.io/release
+    chart: rook-ceph-cluster
+    targetRevision: v1.18.3
+    helm:
+      parameters:
+        - name: operatorNamespace
+          value: rook-ceph
+      values: |
+        # Rook Ceph Cluster Configuration - Based on official v1.18.3
+        
+        # Operator namespace where Rook operator is installed
+        operatorNamespace: rook-ceph
+        
+        # Ceph cluster configuration
+        cephClusterSpec:
+          cephVersion:
+            image: quay.io/ceph/ceph:v18.2.4
+            allowUnsupported: false
+          
+          # Data directory for Ceph
+          dataDirHostPath: /var/lib/rook
+          
+          # Monitor configuration
+          mon:
+            count: 3
+            allowMultiplePerNode: false
+          
+          # Manager configuration
+          mgr:
+            count: 2
+            allowMultiplePerNode: false
+            modules:
+              - name: pg_autoscaler
+                enabled: true
+          
+          # Dashboard configuration
+          dashboard:
+            enabled: true
+            ssl: false
+          
+          # Monitoring configuration
+          monitoring:
+            enabled: true
+          
+          # Storage configuration - basic setup
+          storage:
+            useAllNodes: true
+            useAllDevices: false
+            storageClassDeviceSets:
+              - name: set1
+                count: 3
+                portable: false
+                tuneDeviceClass: true
+                tuneFastDeviceClass: false
+                encrypted: false
+                placement:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: kubernetes.io/os
+                              operator: In
+                              values:
+                                - linux
+                  tolerations:
+                    - key: node-role.kubernetes.io/control-plane
+                      operator: Equal
+                      effect: NoSchedule
+                preparePlacement:
+                  nodeAffinity:
+                    requiredDuringSchedulingIgnoredDuringExecution:
+                      nodeSelectorTerms:
+                        - matchExpressions:
+                            - key: kubernetes.io/os
+                              operator: In
+                              values:
+                                - linux
+                  tolerations:
+                    - key: node-role.kubernetes.io/control-plane
+                      operator: Equal
+                      effect: NoSchedule
+                resources:
+                  requests:
+                    cpu: 500m
+                    memory: 1Gi
+                  limits:
+                    cpu: 1000m
+                    memory: 2Gi
+                volumeClaimTemplates:
+                  - metadata:
+                      name: data
+                    spec:
+                      accessModes: [ "ReadWriteOnce" ]
+                      resources:
+                        requests:
+                          storage: 50Gi
+                      storageClassName: local-path
+          
+          # Resource configuration
+          resources:
+            mgr:
+              requests:
+                cpu: 200m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+            mon:
+              requests:
+                cpu: 200m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+        
+        # Storage classes
+        cephBlockPools:
+          - name: ceph-blockpool
+            spec:
+              failureDomain: host
+              replicated:
+                size: 3
+            storageClass:
+              enabled: true
+              name: ceph-block
+              isDefault: false
+              reclaimPolicy: Delete
+              allowVolumeExpansion: true
+              parameters:
+                imageFormat: "2"
+                imageFeatures: layering
+                csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+                csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+                csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+                csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+                csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+                csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+                csi.storage.k8s.io/fstype: ext4
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rook-ceph
+    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # Namespace created by operator
+      - PrunePropagationPolicy=foreground
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

@@ -4,6 +4,7 @@ kind: Kustomization
 resources:
   - networking
   - storage
+  - monitoring
   - ml-infra
   # Uncomment as you implement more applications
   # - storage/minio.yaml

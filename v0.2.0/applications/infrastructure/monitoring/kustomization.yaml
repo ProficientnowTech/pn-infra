@@ -1,6 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-metadata:
-  name: platform-root-entrypoint
 resources:
-  - ../manifests
+  - prometheus-operator.yaml
+  - grafana.yaml

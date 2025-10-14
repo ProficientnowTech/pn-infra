@@ -1,0 +1,117 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: grafana
+    targetRevision: 8.5.2
+    helm:
+      values: |
+        # Grafana Configuration
+        
+        # Admin credentials
+        adminUser: admin
+        adminPassword: admin123
+        
+        # Resources
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        
+        # Persistence
+        persistence:
+          enabled: true
+          storageClassName: local-path
+          size: 10Gi
+          
+        # Service configuration
+        service:
+          type: ClusterIP
+          port: 80
+          
+        # Ingress configuration (disabled for now)
+        ingress:
+          enabled: false
+          
+        # Datasources
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+              - name: Prometheus
+                type: prometheus
+                url: http://prometheus-operated:9090
+                access: proxy
+                isDefault: true
+                
+        # Dashboard providers
+        dashboardProviders:
+          dashboardproviders.yaml:
+            apiVersion: 1
+            providers:
+              - name: 'default'
+                orgId: 1
+                folder: ''
+                type: file
+                disableDeletion: false
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards/default
+                  
+        # Default dashboards
+        dashboards:
+          default:
+            kubernetes-cluster-monitoring:
+              gnetId: 7249
+              revision: 1
+              datasource: Prometheus
+            kubernetes-node-exporter:
+              gnetId: 1860
+              revision: 37
+              datasource: Prometheus
+            kubernetes-pods:
+              gnetId: 6417
+              revision: 1
+              datasource: Prometheus
+        
+        # Security context
+        securityContext:
+          runAsUser: 472
+          runAsGroup: 472
+          fsGroup: 472
+          
+        # Plugins to install
+        plugins:
+          - grafana-piechart-panel
+          - grafana-worldmap-panel
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+    
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=false  # Created by prometheus-operator
+      - PrunePropagationPolicy=foreground
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m

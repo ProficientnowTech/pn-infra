@@ -53,6 +53,11 @@ applications:
     annotations:
       argocd.argoproj.io/sync-wave: '-1'
 
+  - name: argocd-self-managed
+    namespace: argocd
+    annotations:
+      argocd.argoproj.io/sync-wave: '0'
+
   # Storage Foundation
   - name: rook-ceph
     namespace: rook-ceph

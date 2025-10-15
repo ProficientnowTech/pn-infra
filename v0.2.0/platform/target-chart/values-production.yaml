@@ -69,38 +69,38 @@ applications:
     annotations:
       argocd.argoproj.io/sync-wave: '2'
 
-  # Security Platform
-  - name: vault
-    namespace: vault
-    annotations:
-      argocd.argoproj.io/sync-wave: '3'
+  # # Security Platform
+  # - name: vault
+  #   namespace: vault
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '3'
 
-  # Monitoring Platform
-  - name: prometheus
-    namespace: monitoring
-    annotations:
-      argocd.argoproj.io/sync-wave: '4'
+  # # Monitoring Platform
+  # - name: prometheus
+  #   namespace: monitoring
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '4'
 
-  - name: grafana
-    namespace: monitoring
-    annotations:
-      argocd.argoproj.io/sync-wave: '5'
+  # - name: grafana
+  #   namespace: monitoring
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '5'
 
   # ML Infrastructure Platform
-  - name: kuberay-crds
-    namespace: kuberay-system
-    annotations:
-      argocd.argoproj.io/sync-wave: '6'
+  # - name: kuberay-crds
+  #   namespace: kuberay-system
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '6'
 
-  - name: kuberay-operator
-    namespace: kuberay-system
-    annotations:
-      argocd.argoproj.io/sync-wave: '7'
+  # - name: kuberay-operator
+  #   namespace: kuberay-system
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '7'
 
-  - name: gpu-operator
-    namespace: gpu-operator-resources
-    annotations:
-      argocd.argoproj.io/sync-wave: '8'
+  # - name: gpu-operator
+  #   namespace: gpu-operator-resources
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '8'
 
 # Production-specific global settings
 

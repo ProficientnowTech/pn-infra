@@ -27,7 +27,7 @@ metadata:
     {{- end }}
     platform.pn-infra.io/version: {{ $.Chart.Version | quote }}
 spec:
-  project: {{ .project | default "platform-core" }}
+  project: default
   source:
     repoURL: {{ $.Values.default.repoURL }}
     targetRevision: {{ $.Values.default.targetRevision }}

@@ -1,9 +1,4 @@
-{{/*
-Target-Chart Application Template (Application Factory Pattern)
-Generates ArgoCD Applications from values.applications list
-*/}}
 {{- range .Values.applications }}
----
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

@@ -12,7 +12,7 @@ metadata:
 {{ include "rook-ceph-cluster.labels" . | nindent 4 }}
 
 spec:
-  project: platform
+  project: default
   sources:
     - repoURL: https://charts.rook.io/release
       chart: rook-ceph-cluster

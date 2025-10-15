@@ -8,7 +8,8 @@ metadata:
   labels:
 {{ include "cert-manager.labels" . | nindent 4 }}
 spec:
-  project: {{ .Values.global.project | default "platform" }}
+  # project: {{ .Values.global.project | default "platform-core" }}
+  project: default
   sources:
     - repoURL: https://charts.jetstack.io
       chart: cert-manager

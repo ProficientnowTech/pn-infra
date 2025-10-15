@@ -11,7 +11,7 @@ metadata:
   labels:
 {{ include "kuberay-crds.labels" . | nindent 4 }}
 spec:
-  project: platform
+  project: default
   sources:
     - repoURL: https://ray-project.github.io/kuberay-helm/
       chart: kuberay-crds

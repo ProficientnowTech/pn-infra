@@ -8,7 +8,8 @@ metadata:
   labels:
 {{ include "metallb.labels" . | nindent 4 }}
 spec:
-  project: {{ .Values.global.project | default "platform" }}
+  # project: {{ .Values.global.project | default "platform-core" }}
+  project: default
   sources:
     - repoURL: https://metallb.github.io/metallb
       chart: metallb

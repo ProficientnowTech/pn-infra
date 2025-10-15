@@ -11,7 +11,7 @@ metadata:
   labels:
 {{ include "vault.labels" . | nindent 4 }}
 spec:
-  project: platform
+  project: default
   sources:
     - repoURL: https://helm.releases.hashicorp.com
       chart: vault

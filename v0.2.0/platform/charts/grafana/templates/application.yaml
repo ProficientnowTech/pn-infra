@@ -11,7 +11,7 @@ metadata:
   labels:
 {{ include "grafana.labels" . | nindent 4 }}
 spec:
-  project: platform
+  project: default
   sources:
     - repoURL: https://grafana.github.io/helm-charts
       chart: grafana

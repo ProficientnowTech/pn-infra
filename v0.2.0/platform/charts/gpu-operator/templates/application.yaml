@@ -11,7 +11,7 @@ metadata:
   labels:
 {{ include "gpu-operator.labels" . | nindent 4 }}
 spec:
-  project: platform
+  project: default
   sources:
     - repoURL: https://helm.ngc.nvidia.com/nvidia
       chart: gpu-operator

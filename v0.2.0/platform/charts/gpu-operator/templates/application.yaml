@@ -6,8 +6,8 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: '8'
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  # finalizers:
+  #   - resources-finalizer.argocd.argoproj.io
   labels:
 {{ include "gpu-operator.labels" . | nindent 4 }}
 spec:

@@ -6,8 +6,8 @@ metadata:
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: '7'
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  # finalizers:
+  #   - resources-finalizer.argocd.argoproj.io
   labels:
 {{ include "kuberay-operator.labels" . | nindent 4 }}
 spec:

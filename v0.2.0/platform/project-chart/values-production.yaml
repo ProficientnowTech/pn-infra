@@ -14,8 +14,8 @@ projects:
       - 'https://helm.releases.hashicorp.com'
       - 'https://prometheus-community.github.io/helm-charts'
       - 'https://grafana.github.io/helm-charts'
-      - 'https://kuberay-helm.github.io/helm-charts'
-      - 'https://nvidia.github.io/gpu-operator'
+      - 'https://ray-project.github.io/kuberay-helm/'
+      - 'https://helm.ngc.nvidia.com/nvidia/'
     destinations:
       - namespace: metallb-system
         server: https://kubernetes.default.svc
@@ -36,18 +36,26 @@ projects:
       - namespace: gpu-operator-resources
         server: https://kubernetes.default.svc
     clusterResources:
-      - group: '*'
-        kind: '*'
-      # - group: 'apiextensions.k8s.io'
-      #   kind: 'CustomResourceDefinition'
-      # - group: 'rbac.authorization.k8s.io'
-      #   kind: 'ClusterRole'
-      # - group: 'rbac.authorization.k8s.io'
-      #   kind: 'ClusterRoleBinding'
-      # - group: 'admissionregistration.k8s.io'
-      #   kind: 'ValidatingAdmissionWebhook'
-      # - group: 'admissionregistration.k8s.io'
-      #   kind: 'MutatingAdmissionWebhook'
+      - group: ''
+        kind: 'Namespace'
+      - group: 'cert-manager.io'
+        kind: 'ClusterIssuer'
+      - group: ''
+        kind: 'ConfigMap'
+      - group: 'metallb.io'
+        kind: 'IPAddressPool'
+      - group: 'metallb.io'
+        kind: 'L2Advertisement'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'ValidatingAdmissionWebhook'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'MutatingAdmissionWebhook'
     namespaceResources:
       - group: '*'
         kind: '*'
@@ -62,12 +70,12 @@ projects:
       - namespace: monitoring
         server: https://kubernetes.default.svc
     clusterResources:
-      - group: '*'
-        kind: '*'
-      # - group: 'rbac.authorization.k8s.io'
-      #   kind: 'ClusterRole'
-      # - group: 'rbac.authorization.k8s.io'
-      #   kind: 'ClusterRoleBinding'
+      - group: ''
+        kind: 'Namespace'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
     namespaceResources:
       - group: '*'
         kind: '*'
@@ -76,8 +84,8 @@ projects:
     description: 'Machine learning and AI infrastructure'
     sourceRepos:
       - 'git@github.com:pnow-devsupreme/pn-infra.git'
-      - 'https://kuberay-helm.github.io/helm-charts'
-      - 'https://nvidia.github.io/gpu-operator'
+      - 'https://ray-project.github.io/kuberay-helm/'
+      - 'https://helm.ngc.nvidia.com/nvidia/'
     destinations:
       - namespace: kuberay-system
         server: https://kubernetes.default.svc
@@ -85,13 +93,13 @@ projects:
         server: https://kubernetes.default.svc
     clusterResources:
       - group: ''
-        kind: '*'
-      # - group: 'apiextensions.k8s.io'
-      #   kind: 'CustomResourceDefinition'
-      # - group: 'rbac.authorization.k8s.io'
-      #   kind: 'ClusterRole'
-      # - group: 'rbac.authorization.k8s.io'
-      #   kind: 'ClusterRoleBinding'
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
     namespaceResources:
       - group: '*'
         kind: '*'

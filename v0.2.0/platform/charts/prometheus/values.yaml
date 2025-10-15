@@ -6,6 +6,15 @@ global:
   rbac:
     create: true
     pspEnabled: false
+  hooks:
+    enabled: true
+    validation:
+      infrastructure: true
+      storage: false
+    healthChecks:
+      monitoring: true
+    notifications:
+      syncFailure: true
 
 # Labels configuration
 labels:

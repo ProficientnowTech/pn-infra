@@ -87,20 +87,20 @@ applications:
       argocd.argoproj.io/sync-wave: '5'
 
   # ML Infrastructure Platform
-  - name: kuberay-crds
-    namespace: kuberay-system
-    annotations:
-      argocd.argoproj.io/sync-wave: '6'
+  # - name: kuberay-crds
+  #   namespace: kuberay-system
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '6'
 
-  - name: kuberay-operator
-    namespace: kuberay-system
-    annotations:
-      argocd.argoproj.io/sync-wave: '7'
+  # - name: kuberay-operator
+  #   namespace: kuberay-system
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '7'
 
-  - name: gpu-operator
-    namespace: gpu-operator-resources
-    annotations:
-      argocd.argoproj.io/sync-wave: '8'
+  # - name: gpu-operator
+  #   namespace: gpu-operator-resources
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '8'
 
 # Production-specific global settings
 

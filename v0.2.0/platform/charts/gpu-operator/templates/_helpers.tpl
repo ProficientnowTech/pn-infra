@@ -37,7 +37,7 @@ helm.sh/chart: {{ include "gpu-operator.chart" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
-app.kubernetes.io/managed-by: {{ .Values.labels.managed-by | default .Release.Service }}
+app.kubernetes.io/managed-by: {{ index .Values.labels "managed-by" | default .Release.Service }}
 {{- if .Values.labels.component }}
 app.kubernetes.io/component: {{ .Values.labels.component }}
 {{- end }}

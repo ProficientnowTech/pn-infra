@@ -3,6 +3,17 @@
 global:
   repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
   targetRevision: 'main'
+  # Default hooks configuration (can be overridden by parent)
+  hooks:
+    enabled: true
+    validation:
+      infrastructure: false
+      storage: false
+    healthChecks:
+      rookCeph: true
+      monitoring: false
+    notifications:
+      syncFailure: true
 
 # Labels configuration
 labels:

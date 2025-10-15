@@ -8,16 +8,33 @@ projects:
       - 'git@github.com:pnow-devsupreme/pn-infra.git'
       - 'https://charts.rook.io/release'
       - 'https://charts.bitnami.com/bitnami'
+      - 'https://metallb.github.io/metallb'
+      - 'https://kubernetes.github.io/ingress-nginx'
+      - 'https://charts.jetstack.io'
+      - 'https://helm.releases.hashicorp.com'
+      - 'https://prometheus-community.github.io/helm-charts'
+      - 'https://grafana.github.io/helm-charts'
+      - 'https://kuberay-helm.github.io/helm-charts'
+      - 'https://nvidia.github.io/gpu-operator'
     destinations:
       - namespace: metallb-system
-      - namespace: metallb-config
+        server: https://kubernetes.default.svc
       - namespace: ingress-nginx
-      - namespace: ingress-nginx-config
+        server: https://kubernetes.default.svc
       - namespace: cert-manager
-      - namespace: cert-manager-config
+        server: https://kubernetes.default.svc
+      - namespace: argocd
+        server: https://kubernetes.default.svc
       - namespace: rook-ceph
-      - namespace: rook-ceph-cluster
+        server: https://kubernetes.default.svc
       - namespace: vault
+        server: https://kubernetes.default.svc
+      - namespace: monitoring
+        server: https://kubernetes.default.svc
+      - namespace: kuberay-system
+        server: https://kubernetes.default.svc
+      - namespace: gpu-operator-resources
+        server: https://kubernetes.default.svc
     clusterResources:
       - group: '*'
         kind: '*'
@@ -43,8 +60,7 @@ projects:
       - 'https://grafana.github.io/helm-charts'
     destinations:
       - namespace: monitoring
-      - namespace: prometheus
-      - namespace: grafana
+        server: https://kubernetes.default.svc
     clusterResources:
       - group: '*'
         kind: '*'
@@ -64,10 +80,9 @@ projects:
       - 'https://nvidia.github.io/gpu-operator'
     destinations:
       - namespace: kuberay-system
-      - namespace: kuberay-crds
-      - namespace: kuberay-operator
-      - namespace: gpu-operator
-      - namespace: nvidia-gpu-operator
+        server: https://kubernetes.default.svc
+      - namespace: gpu-operator-resources
+        server: https://kubernetes.default.svc
     clusterResources:
       - group: ''
         kind: '*'

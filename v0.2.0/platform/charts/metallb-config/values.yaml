@@ -3,21 +3,21 @@
 # Load balancer IP pools and L2 advertisements
 
 metallb:
-  namespace: "metallb-system"
-  
+  namespace: 'metallb-system'
+
   ipAddressPool:
     enabled: true
-    name: "production-pool"
+    name: 'production-pool'
     addresses:
-      - "10.0.0.100-10.0.0.150"  # Configure according to your network
+      - '192.168.101.121-192.168.101.128' # Needs to be portforwarded from public Ips to these
     autoAssign: true
     avoidBuggyIPs: true
-    
+
   l2Advertisement:
     enabled: true
-    name: "production-l2-adv"
+    name: 'production-l2-adv'
     ipAddressPools:
-      - "production-pool"
+      - 'production-pool'
     nodeSelectors:
       - matchLabels:
-          node-role.kubernetes.io/worker: ""
+          node-role.kubernetes.io/worker: ''

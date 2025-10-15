@@ -53,7 +53,7 @@ applications:
     annotations:
       argocd.argoproj.io/sync-wave: '-1'
 
-  - name: argocd-self-managed
+  - name: argocd-self
     namespace: argocd
     annotations:
       argocd.argoproj.io/sync-wave: '0'

@@ -37,7 +37,7 @@ helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
-app.kubernetes.io/managed-by: {{ .Values.labels.managed-by | default .Release.Service }}
+app.kubernetes.io/managed-by: {{ index .Values.labels "managed-by" | default .Release.Service }}
 {{- if .Values.labels.component }}
 app.kubernetes.io/component: {{ .Values.labels.component }}
 {{- end }}

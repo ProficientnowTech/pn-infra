@@ -58,16 +58,16 @@ applications:
     annotations:
       argocd.argoproj.io/sync-wave: '0'
 
-  # Storage Foundation
-  - name: rook-ceph
-    namespace: rook-ceph
-    annotations:
-      argocd.argoproj.io/sync-wave: '1'
+  # # Storage Foundation
+  # - name: rook-ceph
+  #   namespace: rook-ceph
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '1'
 
-  - name: rook-ceph-cluster
-    namespace: rook-ceph
-    annotations:
-      argocd.argoproj.io/sync-wave: '2'
+  # - name: rook-ceph-cluster
+  #   namespace: rook-ceph
+  #   annotations:
+  #     argocd.argoproj.io/sync-wave: '2'
 
   # # Security Platform
   # - name: vault

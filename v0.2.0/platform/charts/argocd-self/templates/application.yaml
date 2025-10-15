@@ -20,7 +20,7 @@ spec:
       helm:
         releaseName: argocd
         valueFiles:
-          - charts/argocd/values.yaml
+          - $values/v0.2.0/platform/charts/argocd/values.yaml
     - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
       targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values

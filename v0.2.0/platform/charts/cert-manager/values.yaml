@@ -1,7 +1,7 @@
 ---
 # Global configuration
 global:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
   targetRevision: 'main'
   server: 'https://kubernetes.default.svc'
   targetNamespace: 'argocd'
@@ -30,3 +30,18 @@ syncPolicy:
       duration: '5s'
       factor: 2
       maxDuration: '3m'
+
+# Let's Encrypt Issuers Configuration (merged from cert-manager-config)
+letsencrypt:
+  production:
+    enabled: true
+    email: snoorullah@proficientnowtech.com
+    cloudflare:
+      secretName: cloudflare-api-token
+      secretKey: api-token
+  staging:
+    enabled: true
+    email: snoorullah@proficientnowtech.com
+    cloudflare:
+      secretName: cloudflare-api-token
+      secretKey: api-token

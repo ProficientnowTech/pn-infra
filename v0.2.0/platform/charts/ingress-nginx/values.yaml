@@ -1,7 +1,7 @@
 ---
 # Global configuration
 global:
-  repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
   targetRevision: 'main'
   server: 'https://kubernetes.default.svc'
   targetNamespace: 'argocd'

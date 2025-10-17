@@ -2,14 +2,16 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ include "prometheus.fullname" . }}
+  name: {{ .Values.global.name | default .Release.Name }}
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: '4'
   # finalizers:
   #   - resources-finalizer.argocd.argoproj.io
   labels:
-{{ include "prometheus.labels" . | nindent 4 }}
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: platform
 spec:
   project: default
   sources:

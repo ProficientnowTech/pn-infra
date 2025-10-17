@@ -1,0 +1,69 @@
+---
+# Global configuration
+global:
+  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+  server: 'https://kubernetes.default.svc'
+  targetNamespace: 'argocd'
+  project: 'default'
+  syncWave: '-1'
+
+# Labels configuration
+labels:
+  component: dns-management
+  managed-by: argocd
+
+# External-DNS chart configuration
+chart:
+  version: '1.15.0'
+
+# Image configuration
+image:
+  tag: 'v0.15.0'
+
+namespace: 'external-dns'
+
+# Cloudflare configuration
+cloudflare:
+  domain: 'pnats.cloud'
+  secretName: 'cloudflare-api-token'
+  secretKey: 'api-token'
+
+# External-DNS behavior
+policy: 'sync' # sync = create and delete records automatically
+txtOwnerId: 'external-dns-pnats'
+interval: '1m'
+logLevel: 'info'
+logFormat: 'text'
+
+# Resource limits
+resources:
+  requests:
+    cpu: '50m'
+    memory: '64Mi'
+  limits:
+    cpu: '200m'
+    memory: '256Mi'
+
+# Deployment configuration
+replicas: 1
+
+# Monitoring
+metrics:
+  enabled: true
+
+# Service account
+serviceAccount:
+  annotations: {}
+
+# Sync policy configuration
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
+  retry:
+    limit: 5
+    backoff:
+      duration: '5s'
+      factor: 2
+      maxDuration: '3m'

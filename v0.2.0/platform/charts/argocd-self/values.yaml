@@ -31,6 +31,14 @@ image:
 argocd:
   version: '7.7.8' # Argo Helm chart version
   appVersion: 'v2.13.1' # ArgoCD application version
+  namespace: 'argocd'
+  
+  # Ingress configuration for external access
+  ingress:
+    enabled: true
+    hostname: 'argocd.pnats.cloud'
+    ingressClassName: 'nginx'
+    clusterIssuer: 'letsencrypt-prod'
 
 # ArgoCD Helm chart values
 # Based on official ArgoCD Helm chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
@@ -62,27 +70,13 @@ server:
 
   # Service configuration
   service:
-    type: LoadBalancer
+    type: ClusterIP
     port: 80
     portName: http
 
-  # Ingress configuration
+  # Ingress configuration - disabled here as we use custom ingress
   ingress:
-    enabled: true
-    ingressClassName: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-      nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
-      nginx.ingress.kubernetes.io/backend-protocol: 'GRPC'
-    hosts:
-      - host: argocd.platform.local
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-      - secretName: argocd-server-tls
-        hosts:
-          - argocd.platform.local
+    enabled: false
 
   # Server configuration
   config:
@@ -91,6 +85,8 @@ server:
       - type: git
         url: git@github.com:pnow-devsupreme/pn-infra.git
         name: pn-infra
+        password: |
+          $github-token:token
       - type: helm
         url: https://argoproj.github.io/argo-helm
         name: argo
@@ -117,7 +113,7 @@ server:
     application.instanceLabelKey: argocd.argoproj.io/instance
 
     # Server configuration
-    server.insecure: false
+    server.insecure: true
     server.grpc.web: true
 
     # Git configuration

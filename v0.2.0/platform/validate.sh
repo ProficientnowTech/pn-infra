@@ -58,7 +58,7 @@ check_platform_structure() {
     done
     
     # Check bootstrap script
-    if [[ ! -f "${SCRIPT_DIR}/bootstrap/install-platform.sh" ]] || [[ ! -x "${SCRIPT_DIR}/bootstrap/install-platform.sh" ]]; then
+    if [[ ! -f "${SCRIPT_DIR}/bootstrap/install-argo.sh" ]] || [[ ! -x "${SCRIPT_DIR}/bootstrap/install-argo.sh" ]]; then
         log_error "Bootstrap script not found or not executable"
     fi
 }

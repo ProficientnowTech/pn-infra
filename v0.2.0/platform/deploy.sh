@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OPERATION="${1:-deploy}"
 ENVIRONMENT="${2:-production}"
 SSH_PRIVATE_KEY_PATH="${3:-}"
-ARGO_TIMEOUT="${4:-300}"
+ARGO_TIMEOUT="${4:-300s}"
 
 # Colors
 RED='\033[0;31m'
@@ -38,8 +38,9 @@ log_error() {
 deploy_argocd() {
     log_info "Checking ArgoCD deployment..."
 
-    if kubectl get namespace argocd >/dev/null 2>&1; then
-        log_success "ArgoCD namespace exists"
+    # Check if ArgoCD is actually deployed by checking for CRDs and server deployment
+    if kubectl get crd applications.argoproj.io >/dev/null 2>&1 && kubectl get deployment argocd-server -n argocd >/dev/null 2>&1; then
+        log_success "ArgoCD already deployed"
     else
         log_info "Deploying ArgoCD..."
         if [[ -x "${SCRIPT_DIR}/bootstrap/install-argo.sh" ]]; then

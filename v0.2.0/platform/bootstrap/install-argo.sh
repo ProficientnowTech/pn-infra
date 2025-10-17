@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Configuration
 ENVIRONMENT="${1:-production}"
-ARGOCD_VERSION="${ARGOCD_VERSION:-7.7.8}"
+ARGOCD_VERSION="${ARGOCD_VERSION:-8.6.3}"
 ARGOCD_NAMESPACE="${ARGOCD_NAMESPACE:-argocd}"
 REPO_URL="${REPO_URL:-git@github.com:pnow-devsupreme/pn-infra.git}"
 
@@ -62,9 +62,8 @@ create_ssh_secret() {
     # Create the repository secret with SSH key
     kubectl create secret generic argocd-private-repo \
         --namespace ${ARGOCD_NAMESPACE} \
-        --from-literal=url=${REPO_URL} \
         --from-literal=type=git \
-        --from-literal=name=pn-infra \
+        --from-literal=url=${REPO_URL} \
         --from-file=sshPrivateKey=${expanded_ssh_key} \
         --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1
 

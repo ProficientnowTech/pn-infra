@@ -197,8 +197,10 @@ setup_ssh_private_key_secret() {
     # Create namespace if it doesn't exist
     kubectl create namespace "$namespace" >/dev/null 2>&1 || true
 
-    # Create the secret
+    # Create the repository secret with proper ArgoCD format
     if kubectl create secret generic "$secret_name" \
+        --from-literal=type=git \
+        --from-literal=url=git@github.com:pnow-devsupreme/pn-infra.git \
         --from-file=sshPrivateKey="$ssh_key_path" \
         -n "$namespace" >/dev/null 2>&1; then
         log_success "SSH private key secret created successfully"

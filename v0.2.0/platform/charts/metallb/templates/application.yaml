@@ -46,3 +46,8 @@ spec:
         duration: {{ .Values.syncPolicy.retry.backoff.duration | default "5s" }}
         factor: {{ .Values.syncPolicy.retry.backoff.factor | default 2 }}
         maxDuration: {{ .Values.syncPolicy.retry.backoff.maxDuration | default "3m" }}
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /spec/conversion/webhook/clientConfig/caBundle

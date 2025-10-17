@@ -8,9 +8,6 @@ metadata:
   labels:
     app.kubernetes.io/name: metallb-config
     managed-by: argocd
-    helm.sh/chart: {{ include "metallb-config.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   addresses:
   {{- range .Values.metallb.ipAddressPool.addresses }}
@@ -30,9 +27,6 @@ metadata:
   labels:
     app.kubernetes.io/name: metallb-config
     managed-by: argocd
-    helm.sh/chart: {{ include "metallb-config.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   ipAddressPools:
   {{- range .Values.metallb.l2Advertisement.ipAddressPools }}

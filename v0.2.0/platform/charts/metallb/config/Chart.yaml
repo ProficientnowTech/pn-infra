@@ -1,11 +1,5 @@
 apiVersion: v2
 name: metallb-config
-description: MetalLB Configuration Chart
+description: MetalLB Configuration
 type: application
 version: 0.1.0
-appVersion: "1.0.0"
-
-annotations:
-  argocd.argoproj.io/sync-wave: "-3"
-  platform.pn-infra.io/component: infrastructure
-  platform.pn-infra.io/category: load-balancer-config

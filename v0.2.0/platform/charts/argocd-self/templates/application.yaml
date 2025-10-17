@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ include "argocd.fullname" . }}
+  name: {{ .Values.global.name | default .Release.Name }}
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: '0'
@@ -10,7 +10,9 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   labels:
-{{ include "argocd.labels" . | nindent 4 }}
+    app.kubernetes.io/name: argocd-self
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: platform
 spec:
   project: default
   sources:

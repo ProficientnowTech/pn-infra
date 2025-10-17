@@ -6,7 +6,9 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: '{{ .Values.global.syncWave | default "-2" }}'
   labels:
-{{ include "cert-manager.labels" . | nindent 4 }}
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: platform
 spec:
   # project: {{ .Values.global.project | default "platform-core" }}
   project: default

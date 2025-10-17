@@ -8,7 +8,7 @@ ARGOCD_NAMESPACE="${ARGOCD_NAMESPACE:-argocd}"
 REPO_URL="${REPO_URL:-git@github.com:pnow-devsupreme/pn-infra.git}"
 
 # SSH Configuration - Use provided path or default
-SSH_PRIVATE_KEY_PATH="${SSH_PRIVATE_KEY_PATH:-$HOME/.ssh-manager/keys/pn-production/id_ed25519_pn-production-ansible-role_20250505-163646}"
+SSH_PRIVATE_KEY_PATH="${SSH_PRIVATE_KEY_PATH:-$HOME/.ssh/github_keys"
 SSH_KNOWN_HOSTS="${SSH_KNOWN_HOSTS:-github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=}"
 
 # Colors

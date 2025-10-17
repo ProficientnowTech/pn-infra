@@ -8,7 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OPERATION="${1:-deploy}"
 ENVIRONMENT="${2:-production}"
-SSH_PRIVATE_KEY_PATH="${3:-}"
+SSH_PRIVATE_KEY_PATH="${3:-$HOME/.ssh/github_keys}"
 ARGO_TIMEOUT="${4:-300s}"
 
 # Colors

@@ -1,0 +1,31 @@
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: public-traffic-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - "192.168.101.121-192.168.101.125"
+  autoAssign: true
+  avoidBuggyIPs: true
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: public-traffic-advertisement
+  namespace: metallb-system
+spec:
+  ipAddressPools:
+  - "public-traffic-pool"
+  nodeSelectors:
+  - matchLabels:
+      kubernetes.io/hostname: "k8s-worker-01"
+  - matchLabels:
+      kubernetes.io/hostname: "k8s-worker-02"
+  - matchLabels:
+      kubernetes.io/hostname: "k8s-worker-03"
+  - matchLabels:
+      kubernetes.io/hostname: "k8s-worker-04"
+  - matchLabels:
+      kubernetes.io/hostname: "k8s-worker-05"

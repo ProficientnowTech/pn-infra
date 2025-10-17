@@ -1,21 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: { { .Values.global.name | default .Release.Name } }
-  namespace: { { .Values.global.targetNamespace | default "argocd" } }
+  name: {{ .Values.global.name | default .Release.Name }}
+  namespace: {{ .Values.global.targetNamespace | default "argocd" }}
   annotations:
     argocd.argoproj.io/sync-wave: '{{ .Values.global.syncWave | default "-2" }}'
   labels:
-    - app.kubernetes.io/name: cert-manager
-    - app.kubernetes.io/instance: { { .Release.Name } }
-    - app.kubernetes.io/part-of: platform
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: platform
 spec:
   # project: {{ .Values.global.project | default "platform-core" }}
   project: default
   sources:
     - repoURL: https://charts.jetstack.io
       chart: cert-manager
-      targetRevision: { { .Values.chart.version | default "v1.16.1" } }
+      targetRevision: {{ .Values.chart.version | default "v1.16.1" }}
       helm:
         releaseName: cert-manager
         values: |
@@ -26,32 +26,24 @@ spec:
               namespace: {{ .Values.namespace | default "cert-manager" }}
           webhook:
             timeoutSeconds: 4
-    - repoURL:
-        {
-          {
-            .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git",
-          },
-        }
-      targetRevision: { { .Values.global.targetRevision | default "main" } }
+    - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
+      targetRevision: {{ .Values.global.targetRevision | default "main" }}
       path: v0.2.0/platform/charts/cert-manager/config
   destination:
-    server:
-      { { .Values.global.server | default "https://kubernetes.default.svc" } }
-    namespace: { { .Values.namespace | default "cert-manager" } }
+    server: {{ .Values.global.server | default "https://kubernetes.default.svc" }}
+    namespace: {{ .Values.namespace | default "cert-manager" }}
   syncPolicy:
     automated:
-      prune: { { .Values.syncPolicy.automated.prune | default true } }
-      selfHeal: { { .Values.syncPolicy.automated.selfHeal | default true } }
+      prune: {{ .Values.syncPolicy.automated.prune | default true }}
+      selfHeal: {{ .Values.syncPolicy.automated.selfHeal | default true }}
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
       - PrunePropagationPolicy=foreground
       - Replace=true
     retry:
-      limit: { { .Values.syncPolicy.retry.limit | default 5 } }
+      limit: {{ .Values.syncPolicy.retry.limit | default 5 }}
       backoff:
-        duration:
-          { { .Values.syncPolicy.retry.backoff.duration | default "5s" } }
-        factor: { { .Values.syncPolicy.retry.backoff.factor | default 2 } }
-        maxDuration:
-          { { .Values.syncPolicy.retry.backoff.maxDuration | default "3m" } }
+        duration: {{ .Values.syncPolicy.retry.backoff.duration | default "5s" }}
+        factor: {{ .Values.syncPolicy.retry.backoff.factor | default 2 }}
+        maxDuration: {{ .Values.syncPolicy.retry.backoff.maxDuration | default "3m" }}

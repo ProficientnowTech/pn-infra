@@ -1,9 +1,9 @@
 apiVersion: v2
-name: target-chart
-description: A Helm chart that generates ArgoCD applications for platform services (Application Factory pattern)
+name: platform-apps-chart
+description: A Helm chart for generating ArgoCD applications (Application Factory Pattern)
 type: application
 version: 0.1.0
-appVersion: "1.0.0"
+appVersion: '1.0.0'
 
 keywords:
   - argocd
@@ -16,5 +16,4 @@ keywords:
 annotations:
   category: Platform
   platform.pn-infra.io/component: target-chart
-  platform.pn-infra.io/framework: openspec
   platform.pn-infra.io/pattern: template-driven

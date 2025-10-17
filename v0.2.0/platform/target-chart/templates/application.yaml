@@ -3,60 +3,116 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ .name }}
-  namespace: argocd
-  labels:
-    {{- include "target-chart.labels" $ | nindent 4 }}
-    {{- with $.Values.commonLabels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    platform.pn-infra.io/application: {{ .name | quote }}
-    platform.pn-infra.io/stack: {{ $.Values.stackName | default "platform" | quote }}
+  name: pn-{{ .name }}
+  namespace: {{ $.Values.argocdNamespace | default "argocd" }}
+  {{- if .annotations }}
   annotations:
-    {{- with $.Values.commonAnnotations }}
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml .annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/part-of: platform
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
     {{- end }}
-    {{- if .annotations }}
-    {{- range $key, $value := .annotations }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
-    {{- end }}
-    platform.pn-infra.io/version: {{ $.Chart.Version | quote }}
 spec:
-  project: default
+  project: {{ .project | default "default" }}
+  {{- if .sources }}
+  sources:
+    {{- range .sources }}
+    - repoURL: {{ .repoURL }}
+      {{- if .chart }}
+      chart: {{ .chart }}
+      targetRevision: {{ .targetRevision }}
+      {{- if .helm }}
+      helm:
+        {{- if .helm.releaseName }}
+        releaseName: {{ .helm.releaseName }}
+        {{- end }}
+        {{- if .helm.valueFiles }}
+        valueFiles:
+          {{- range .helm.valueFiles }}
+          - {{ . }}
+          {{- end }}
+        {{- end }}
+        {{- if .helm.parameters }}
+        parameters:
+          {{- range .helm.parameters }}
+          - name: {{ .name }}
+            value: {{ .value | quote }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- else }}
+      targetRevision: {{ .targetRevision | default "main" }}
+      {{- if .path }}
+      path: {{ .path }}
+      {{- else if .ref }}
+      ref: {{ .ref }}
+      {{- else }}
+      path: platform-apps/charts/{{ .name }}
+      {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- else }}
   source:
-    repoURL: {{ $.Values.default.repoURL }}
-    targetRevision: {{ $.Values.default.targetRevision }}
-    path: v0.2.0/platform/charts/{{ .name }}
+    repoURL: {{ .repoURL | default $.Values.default.repoURL }}
+    targetRevision: {{ .targetRevision | default $.Values.default.targetRevision | default "main" }}
+    {{- if .chart }}
+    chart: {{ .chart }}
     {{- if .helm }}
     helm:
+      {{- if .helm.releaseName }}
+      releaseName: {{ .helm.releaseName }}
+      {{- end }}
       {{- if .helm.valueFiles }}
       valueFiles:
-      {{- range .helm.valueFiles }}
-      - {{ . }}
-      {{- end }}
+        {{- range .helm.valueFiles }}
+        - {{ . }}
+        {{- end }}
       {{- end }}
       {{- if .helm.parameters }}
       parameters:
-      {{- range .helm.parameters }}
-      - name: {{ .name }}
-        value: {{ .value | quote }}
-      {{- end }}
+        {{- range .helm.parameters }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
       {{- end }}
     {{- end }}
+    {{- else }}
+    path: {{ .path | default (printf "v0.2.0/platform/charts/%s" .name) }}
+    {{- end }}
+  {{- end }}
   destination:
-    server: https://kubernetes.default.svc
+    server: {{ .destinationServer | default "https://kubernetes.default.svc" }}
+    {{- if .destinationNamespaceOverwrite }}
+    namespace: {{ .destinationNamespaceOverwrite }}
+    {{- else }}
     namespace: {{ .namespace | default .name }}
-  syncPolicy:
-    {{- with $.Values.global.syncPolicy }}
-    {{- toYaml . | nindent 4 }}
     {{- end }}
+  syncPolicy:
+    {{- if .syncPolicy }}
+    {{- toYaml .syncPolicy | nindent 4 }}
+    {{- else }}
+    automated:
+      prune: {{ $.Values.global.automated.prune | default true }}
+      selfHeal: {{ $.Values.global.automated.selfHeal | default true }}
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+      {{- if .syncOptions }}
+      {{- range .syncOptions }}
+      - {{ . }}
+      {{- end }}
+      {{- end }}
     {{- if $.Values.global.retry }}
     retry:
       {{- toYaml $.Values.global.retry | nindent 6 }}
     {{- end }}
+    {{- end }}
   {{- if .ignoreDifferences }}
   ignoreDifferences:
-  {{- toYaml .ignoreDifferences | nindent 2 }}
+    {{- toYaml .ignoreDifferences | nindent 4 }}
   {{- end }}
 {{- end }}

@@ -21,23 +21,6 @@ global:
 # Platform applications with sync wave ordering
 applications:
   # Infrastructure Foundation (negative waves deploy first)
-  - name: metallb
-    annotations:
-      argocd.argoproj.io/sync-wave: '-4'
-    sources:
-      - repoURL: https://metallb.github.io/metallb
-        chart: metallb
-        targetRevision: '0.13.12'
-        helm:
-          releaseName: metallb
-          valueFiles:
-            - $values/v0.2.0/platform/charts/metallb/values.yaml
-      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
-        targetRevision: main
-        ref: values
-    destinationNamespaceOverwrite: metallb-system
-    syncOptions:
-      - ServerSideApply=true
 
   - name: ingress-nginx
     annotations:

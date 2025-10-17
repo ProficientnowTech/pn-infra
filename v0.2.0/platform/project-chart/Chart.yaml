@@ -9,7 +9,7 @@ keywords:
   - projects
   - governance
   - rbac
-home: https://github.com/pnow-devsupreme/pn-infra
+home: git@github.com:pnow-devsupreme/pn-infra.git
 maintainers:
   - name: Platform Team
     email: platform@proficientnow.tech

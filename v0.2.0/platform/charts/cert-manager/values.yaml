@@ -5,13 +5,13 @@ global:
   targetRevision: 'main'
   server: 'https://kubernetes.default.svc'
   targetNamespace: 'argocd'
-  project: 'platform'
+  project: 'default'
   syncWave: '-2'
 
 # Labels configuration
 labels:
   component: infrastructure
-  managed-by: argocd  # Override default Helm with ArgoCD
+  managed-by: argocd # Override default Helm with ArgoCD
 
 # Cert-Manager configuration
 chart:

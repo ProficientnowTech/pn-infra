@@ -12,7 +12,7 @@ labels:
 # Image configuration
 image:
   repository: quay.io/argoproj/argocd
-  tag: v2.13.1
+  tag: v3.1.8
   imagePullPolicy: IfNotPresent
 
   # Security context
@@ -29,10 +29,10 @@ image:
 
 # ArgoCD version configuration
 argocd:
-  version: '7.7.8' # Argo Helm chart version
-  appVersion: 'v2.13.1' # ArgoCD application version
+  version: '8.6.3' # Argo Helm chart version
+  appVersion: 'v3.1.8' # ArgoCD application version
   namespace: 'argocd'
-  
+
   # Ingress configuration for external access
   ingress:
     enabled: true

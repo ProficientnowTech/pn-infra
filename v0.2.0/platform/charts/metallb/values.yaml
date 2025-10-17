@@ -5,13 +5,13 @@ global:
   targetRevision: 'main'
   server: 'https://kubernetes.default.svc'
   targetNamespace: 'argocd'
-  project: 'platform'
+  project: 'default'
   syncWave: '-4'
 
 # Labels configuration
 labels:
   component: infrastructure
-  managed-by: argocd  # Override default Helm with ArgoCD
+  managed-by: argocd # Override default Helm with ArgoCD
 
 # MetalLB configuration
 chart:
@@ -33,30 +33,30 @@ syncPolicy:
 
 # MetalLB Configuration (merged from metallb-config)
 metallb:
-  namespace: "metallb-system"
-  
+  namespace: 'metallb-system'
+
   ipAddressPool:
     enabled: true
-    name: "public-traffic-pool"
+    name: 'public-traffic-pool'
     addresses:
-      - "192.168.101.121-192.168.101.125"
+      - '192.168.101.121-192.168.101.125'
     autoAssign: true
     avoidBuggyIPs: true
-    
+
   l2Advertisement:
     enabled: true
-    name: "public-traffic-advertisement"
+    name: 'public-traffic-advertisement'
     ipAddressPools:
-      - "public-traffic-pool"
+      - 'public-traffic-pool'
     nodeSelectors:
       # Target worker nodes with VLAN 101 interfaces
       - matchLabels:
-          kubernetes.io/hostname: "k8s-worker-01"
+          kubernetes.io/hostname: 'k8s-worker-01'
       - matchLabels:
-          kubernetes.io/hostname: "k8s-worker-02"
+          kubernetes.io/hostname: 'k8s-worker-02'
       - matchLabels:
-          kubernetes.io/hostname: "k8s-worker-03"
+          kubernetes.io/hostname: 'k8s-worker-03'
       - matchLabels:
-          kubernetes.io/hostname: "k8s-worker-04"
+          kubernetes.io/hostname: 'k8s-worker-04'
       - matchLabels:
-          kubernetes.io/hostname: "k8s-worker-05"
+          kubernetes.io/hostname: 'k8s-worker-05'

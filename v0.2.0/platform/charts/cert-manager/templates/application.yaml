@@ -28,7 +28,8 @@ spec:
             timeoutSeconds: 4
     - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
       targetRevision: {{ .Values.global.targetRevision | default "main" }}
-      path: v0.2.0/platform/charts/cert-manager/config
+      path: v0.2.0/platform/charts/cert-manager
+      include: "config.yaml"
   destination:
     server: {{ .Values.global.server | default "https://kubernetes.default.svc" }}
     namespace: {{ .Values.namespace | default "cert-manager" }}

@@ -28,7 +28,8 @@ spec:
       ref: values
     - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
       targetRevision: {{ .Values.global.targetRevision | default "main" }}
-      path: v0.2.0/platform/charts/argocd-self/config
+      path: v0.2.0/platform/charts/argocd-self
+      include: "config.yaml"
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

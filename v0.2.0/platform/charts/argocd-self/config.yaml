@@ -1,33 +1,22 @@
-{{- if .Values.argocd.ingress.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: argocd-server-ingress
-  namespace: {{ .Values.argocd.namespace | default "argocd" }}
+  namespace: argocd
   labels:
     app.kubernetes.io/name: argocd-server
-    app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/component: server
     managed-by: argocd
   annotations:
-    # Ingress class
-    kubernetes.io/ingress.class: {{ .Values.argocd.ingress.ingressClassName | default "nginx" }}
-    
-    # External-DNS automatic DNS management
-    external-dns.alpha.kubernetes.io/hostname: {{ .Values.argocd.ingress.hostname }}
+    kubernetes.io/ingress.class: nginx
+    external-dns.alpha.kubernetes.io/hostname: argocd.pnats.cloud
     external-dns.alpha.kubernetes.io/target: "ingress-nginx-controller.ingress-nginx.svc.cluster.local"
-    
-    # SSL and TLS configuration
-    cert-manager.io/cluster-issuer: {{ .Values.argocd.ingress.clusterIssuer | default "letsencrypt-prod" }}
-    
-    # NGINX specific annotations for ArgoCD
+    cert-manager.io/cluster-issuer: letsencrypt-production
     nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
-    
-    # Additional security headers
     nginx.ingress.kubernetes.io/server-snippet: |
       grpc_read_timeout 300;
       grpc_send_timeout 300;
@@ -35,13 +24,13 @@ metadata:
       client_header_timeout 60;
       client_max_body_size 10m;
 spec:
-  ingressClassName: {{ .Values.argocd.ingress.ingressClassName | default "nginx" }}
+  ingressClassName: nginx
   tls:
     - hosts:
-        - {{ .Values.argocd.ingress.hostname }}
-      secretName: {{ .Values.argocd.ingress.hostname }}-tls
+        - argocd.pnats.cloud
+      secretName: argocd.pnats.cloud-tls
   rules:
-    - host: {{ .Values.argocd.ingress.hostname }}
+    - host: argocd.pnats.cloud
       http:
         paths:
           - path: /
@@ -51,4 +40,3 @@ spec:
                 name: argocd-server
                 port:
                   number: 80
-{{- end }}

@@ -1,0 +1,350 @@
+#!/usr/bin/env bash
+
+# Platform Deployment Controller
+# Entry point for platform validation and deployment operations
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VALIDATE_SCRIPT="${SCRIPT_DIR}/validate.sh"
+DEPLOY_SCRIPT="${SCRIPT_DIR}/deploy.sh"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# Variables
+OPERATION=""
+SKIP_VALIDATION=""
+ENVIRONMENT="production"
+SSH_PRIVATE_KEY_PATH="$HOME/.ssh-manager/keys/pn-production/id_ed25519_pn-production-ansible-role_20250505-163646"
+
+log_info() {
+    echo -e "${BLUE}[PLATFORM]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+usage() {
+    cat << EOF
+Usage: $0 [OPERATION] [OPTIONS]
+
+OPERATIONS:
+    validate        Run platform validation only
+    deploy          Deploy platform applications (includes validation)
+    setup-secrets   Setup required secrets (Cloudflare, etc.)
+    status          Check platform deployment status
+
+OPTIONS:
+    --skip-validation       Skip validation (EMERGENCY USE ONLY)
+    --env ENVIRONMENT       Environment (production|staging|development)
+    -h, --help             Show this help
+
+EXAMPLES:
+    $0 validate                    # Run platform validation
+    $0 deploy                      # Validate then deploy platform
+    $0 setup-secrets               # Setup required secrets only
+    $0 deploy --env staging        # Deploy staging environment
+    $0 status                      # Check platform status
+EOF
+}
+
+run_validation() {
+    if [[ ! -x "$VALIDATE_SCRIPT" ]]; then
+        log_error "Platform validation script not found: $VALIDATE_SCRIPT"
+        return 1
+    fi
+
+    log_info "Running platform validation..."
+    "$VALIDATE_SCRIPT" "$ENVIRONMENT"
+}
+
+setup_required_secrets() {
+    log_info "Checking and setting up required secrets..."
+
+    # Check if cluster is accessible
+    if ! kubectl cluster-info >/dev/null 2>&1; then
+        log_warning "Cluster not accessible - skipping secret setup"
+        return 0
+    fi
+
+    echo
+    echo "🔐 Setting up required secrets for platform services..."
+    echo "   You can skip any secret setup by typing 'skip'"
+    echo
+
+    # Setup Cloudflare API token for cert-manager
+    setup_cloudflare_secret
+
+    # Setup additional secrets as needed
+    setup_ssh_private_key_secret
+    # setup_slack_webhook_secret
+
+    echo
+    log_success "Secret setup completed!"
+}
+
+setup_cloudflare_secret() {
+    local secret_name="cloudflare-api-token"
+    local namespace="cert-manager"
+
+    # Check if secret already exists
+    if kubectl get secret "$secret_name" -n "$namespace" >/dev/null 2>&1; then
+        log_success "Cloudflare API token secret already exists"
+        return 0
+    fi
+
+    log_info "Cloudflare API token secret not found in namespace: $namespace"
+    echo
+    echo "🔑 Cert-Manager requires a Cloudflare API token for DNS01 challenges."
+    echo "   The token needs the following permissions:"
+    echo "   - Zone:Zone:Read"
+    echo "   - Zone:DNS:Edit"
+    echo "   - Include: All zones"
+    echo
+
+    # Prompt for API token
+    read -p "Enter your Cloudflare API token (or 'skip' to continue without): " cloudflare_token
+
+    if [[ "$cloudflare_token" == "skip" || -z "$cloudflare_token" ]]; then
+        log_warning "Skipping Cloudflare secret creation - cert-manager may not work properly"
+        return 0
+    fi
+
+    # Create namespace if it doesn't exist
+    kubectl create namespace "$namespace" >/dev/null 2>&1 || true
+
+    # Create the secret
+    if kubectl create secret generic "$secret_name" \
+        --from-literal=api-token="$cloudflare_token" \
+        -n "$namespace" >/dev/null 2>&1; then
+        log_success "Cloudflare API token secret created successfully"
+    else
+        log_error "Failed to create Cloudflare API token secret"
+        return 1
+    fi
+}
+
+setup_ssh_private_key_secret() {
+    local secret_name="argocd-private-repo"
+    local namespace="argocd"
+
+    # Check if secret already exists
+    if kubectl get secret "$secret_name" -n "$namespace" >/dev/null 2>&1; then
+        log_success "SSH private key secret already exists"
+        return 0
+    fi
+
+    log_info "SSH private key secret not found in namespace: $namespace"
+    echo
+    echo "🔑 ArgoCD requires an SSH private key to access private Git repositories."
+    echo "   The key should have read access to your private repository."
+    echo
+
+    local ssh_key_path=""
+
+    # Use provided SSH key path if available
+    if [[ -n "$SSH_PRIVATE_KEY_PATH" && -f "$SSH_PRIVATE_KEY_PATH" ]]; then
+        ssh_key_path="$SSH_PRIVATE_KEY_PATH"
+        log_info "Using provided SSH key: $ssh_key_path"
+    else
+        # Try default locations
+        local default_keys=(
+            "$HOME/.ssh/id_rsa"
+            "$HOME/.ssh/id_ed25519"
+            "$HOME/.ssh/github_rsa"
+        )
+
+        for key in "${default_keys[@]}"; do
+            if [[ -f "$key" ]]; then
+                ssh_key_path="$key"
+                log_info "Found SSH key at default location: $ssh_key_path"
+                break
+            fi
+        done
+
+        # Prompt if no key found
+        if [[ -z "$ssh_key_path" ]]; then
+            read -p "Enter the path to your SSH private key (or 'skip' to continue without): " ssh_key_path
+            if [[ "$ssh_key_path" == "skip" || -z "$ssh_key_path" ]]; then
+                log_warning "Skipping SSH secret creation - private repos may not be accessible"
+                return 0
+            fi
+        fi
+    fi
+
+    # Expand path (handle ~)
+    ssh_key_path="${ssh_key_path/#\~/$HOME}"
+
+    if [[ ! -f "$ssh_key_path" ]]; then
+        log_error "SSH private key not found at: $ssh_key_path"
+        return 1
+    fi
+
+    # Create namespace if it doesn't exist
+    kubectl create namespace "$namespace" >/dev/null 2>&1 || true
+
+    # Create the secret
+    if kubectl create secret generic "$secret_name" \
+        --from-file=sshPrivateKey="$ssh_key_path" \
+        -n "$namespace" >/dev/null 2>&1; then
+        log_success "SSH private key secret created successfully"
+
+        # Label the secret for ArgoCD
+        kubectl label secret "$secret_name" \
+            --namespace "$namespace" \
+            argocd.argoproj.io/secret-type=repository \
+            --overwrite >/dev/null 2>&1
+    else
+        log_error "Failed to create SSH private key secret"
+        return 1
+    fi
+}
+
+update_configuration_values() {
+    log_info "Checking configuration values..."
+
+    # Check if important values need to be updated
+    local needs_update=false
+
+    # Check cert-manager email configuration
+    if grep -q "admin@example.com" "$SCRIPT_DIR/charts/cert-manager/values.yaml" 2>/dev/null; then
+        echo
+        log_warning "⚠️  Cert-Manager is using default email (admin@example.com)"
+        echo "   This should be updated to your actual email address for Let's Encrypt notifications."
+        echo "   File: charts/cert-manager/values.yaml"
+        needs_update=true
+    fi
+
+    # Check MetalLB IP configuration
+    if grep -q "192.168.102.50-192.168.102.80" "$SCRIPT_DIR/charts/metallb/values.yaml" 2>/dev/null; then
+        echo
+        log_warning "⚠️  MetalLB is using default IP range (192.168.102.50-80)"
+        echo "   This should be updated to match your network's available IP range."
+        echo "   File: charts/metallb/values.yaml"
+        needs_update=true
+    fi
+
+    if [[ "$needs_update" == "true" ]]; then
+        echo
+        echo "📝 Please review and update the configuration files mentioned above"
+        echo "   before deploying to production. You can continue for now, but"
+        echo "   some services may not work properly with default values."
+        echo
+        read -p "Continue with deployment? (y/N): " continue_deploy
+        if [[ ! "$continue_deploy" =~ ^[Yy]$ ]]; then
+            log_info "Deployment cancelled by user"
+            exit 0
+        fi
+    fi
+}
+
+run_deployment() {
+    if [[ ! -x "$DEPLOY_SCRIPT" ]]; then
+        log_error "Platform deployment script not found: $DEPLOY_SCRIPT"
+        return 1
+    fi
+
+    # Setup secrets and check configuration before deployment
+    setup_required_secrets
+    update_configuration_values
+
+    log_info "Starting platform deployment for environment: $ENVIRONMENT"
+    # Pass SSH key path if available
+    if [[ -n "$SSH_PRIVATE_KEY_PATH" && -f "$SSH_PRIVATE_KEY_PATH" ]]; then
+        SSH_PRIVATE_KEY_PATH="$SSH_PRIVATE_KEY_PATH" "$DEPLOY_SCRIPT" deploy "$ENVIRONMENT"
+    else
+        "$DEPLOY_SCRIPT" deploy "$ENVIRONMENT"
+    fi
+}
+
+enforce_validation() {
+    local operation="$1"
+
+    if [[ "$SKIP_VALIDATION" == "true" ]]; then
+        log_warning "⚠️  PLATFORM VALIDATION SKIPPED - Emergency mode"
+        return 0
+    fi
+
+    log_info "Platform validation required before $operation"
+    if run_validation; then
+        log_success "Platform validation passed - proceeding with $operation"
+    else
+        log_error "Platform validation failed - $operation aborted"
+        exit 1
+    fi
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        validate|deploy|setup-secrets|status)
+            OPERATION="$1"
+            shift
+            ;;
+        --skip-validation)
+            SKIP_VALIDATION="true"
+            shift
+            ;;
+        --env)
+            ENVIRONMENT="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            log_error "Unknown option: $1"
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+# Default operation
+[[ -z "$OPERATION" ]] && OPERATION="validate"
+
+log_info "Operation: $OPERATION | Environment: $ENVIRONMENT"
+
+# Execute operation
+case $OPERATION in
+    validate)
+        run_validation
+        ;;
+    deploy)
+        enforce_validation "$OPERATION"
+        run_deployment
+        ;;
+    setup-secrets)
+        setup_required_secrets
+        ;;
+    status)
+        if command -v kubectl &> /dev/null && kubectl cluster-info &> /dev/null; then
+            log_info "Checking ArgoCD applications status..."
+            kubectl get applications -n argocd 2>/dev/null || log_warning "ArgoCD not accessible"
+        else
+            log_warning "Cluster not accessible or kubectl not available"
+        fi
+        ;;
+    *)
+        log_error "Unknown operation: $OPERATION"
+        usage
+        exit 1
+        ;;
+esac
+
+log_success "Platform operation completed!"

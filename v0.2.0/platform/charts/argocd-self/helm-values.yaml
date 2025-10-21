@@ -1,40 +1,5 @@
----
-# Global configuration
-global:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
-  targetRevision: 'main'
-
-# Labels configuration
-labels:
-  component: gitops
-  managed-by: argocd # Override default Helm with ArgoCD
-
-# Image configuration
-image:
-  repository: quay.io/argoproj/argocd
-  tag: v3.1.8
-  imagePullPolicy: IfNotPresent
-
-  # Security context
-  securityContext:
-    runAsNonRoot: true
-    runAsUser: 999
-    runAsGroup: 999
-    fsGroup: 999
-
-  # Network policy
-  networkPolicy:
-    create: true
-    defaultDenyIngress: false
-
-# ArgoCD version configuration
-argocd:
-  version: '8.6.3' # Argo Helm chart version
-  appVersion: 'v3.1.8' # ArgoCD application version
-  namespace: 'argocd'
-
-# ArgoCD Helm chart values
-# Based on official ArgoCD Helm chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+# ArgoCD Helm Chart Values
+# These values are passed directly to the ArgoCD Helm chart
 
 ## ArgoCD Server configuration
 server:
@@ -289,27 +254,3 @@ serviceAccount:
 ## Monitoring configuration
 monitoring:
   enabled: true
-
-# Self-management specific configuration
-selfManagement:
-  enabled: true
-
-  # Prevent ArgoCD from pruning itself during updates
-  preserveResourcesOnDeletion: true
-
-  # Allow self-updates
-  allowSelfUpdate: true
-
-  # Bootstrap project for self-management
-  bootstrapProject:
-    name: argocd-self-management
-    description: 'ArgoCD self-management project'
-    sourceRepos:
-      - 'git@github.com:pnow-devsupreme/pn-infra.git'
-      - 'https://argoproj.github.io/argo-helm'
-    destinations:
-      - namespace: argocd
-        server: https://kubernetes.default.svc
-    clusterResourceWhitelist:
-      - group: '*'
-        kind: '*'

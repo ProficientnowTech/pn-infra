@@ -19,6 +19,7 @@ chart:
 
 namespace: 'cert-manager'
 
+# Cert-Manager Helm chart values
 cert-manager:
   crds:
     enabled: true

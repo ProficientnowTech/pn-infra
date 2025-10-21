@@ -1,0 +1,15 @@
+# Cert-Manager Helm Chart Values
+# These values are passed directly to the cert-manager Helm chart
+
+# Install CRDs
+crds:
+  enabled: true
+
+# Global cert-manager configuration
+global:
+  leaderElection:
+    namespace: "cert-manager"
+
+# Webhook configuration
+webhook:
+  timeoutSeconds: 4

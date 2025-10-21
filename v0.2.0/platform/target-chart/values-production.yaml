@@ -26,6 +26,9 @@ applications:
     annotations:
       argocd.argoproj.io/sync-wave: '-3'
     sources:
+      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
+        targetRevision: main
+        ref: values
       - repoURL: https://kubernetes.github.io/ingress-nginx
         chart: ingress-nginx
         targetRevision: '4.8.3'
@@ -33,25 +36,22 @@ applications:
           releaseName: ingress-nginx
           valueFiles:
             - $values/v0.2.0/platform/charts/ingress-nginx/values.yaml
-      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
-        targetRevision: main
-        ref: values
     destinationNamespaceOverwrite: ingress-nginx
 
   - name: cert-manager
     annotations:
       argocd.argoproj.io/sync-wave: '-2'
     sources:
+      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
+        targetRevision: main
+        ref: values
       - repoURL: https://charts.jetstack.io
         chart: cert-manager
         targetRevision: 'v1.13.2'
         helm:
           releaseName: cert-manager
           valueFiles:
-            - $values/v0.2.0/platform/charts/cert-manager/values.yaml
-      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
-        targetRevision: main
-        ref: values
+            - $values/v0.2.0/platform/charts/cert-manager/helm-values.yaml
     destinationNamespaceOverwrite: cert-manager
     syncOptions:
       - ServerSideApply=true
@@ -60,6 +60,9 @@ applications:
     annotations:
       argocd.argoproj.io/sync-wave: '-1'
     sources:
+      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
+        targetRevision: main
+        ref: values
       - repoURL: https://kubernetes-sigs.github.io/external-dns/
         chart: external-dns
         targetRevision: '1.15.0'
@@ -67,9 +70,6 @@ applications:
           releaseName: external-dns
           valueFiles:
             - $values/v0.2.0/platform/charts/external-dns/values.yaml
-      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
-        targetRevision: main
-        ref: values
     destinationNamespaceOverwrite: external-dns
 
   # ArgoCD Self-Management
@@ -83,7 +83,7 @@ applications:
         helm:
           releaseName: argocd
           valueFiles:
-            - $values/v0.2.0/platform/charts/argocd-self/values.yaml
+            - $values/v0.2.0/platform/charts/argocd-self/helm-values.yaml
       - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
         targetRevision: main
         ref: values

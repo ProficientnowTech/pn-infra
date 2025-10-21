@@ -92,7 +92,6 @@ setup_required_secrets() {
     setup_cloudflare_secret
 
     # Setup additional secrets as needed
-    setup_ssh_private_key_secret
     # setup_slack_webhook_secret
 
     echo

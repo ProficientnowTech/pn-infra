@@ -8,6 +8,8 @@ Thumbs.db
 *.swp
 *.swo
 
+node_modules
+
 # Claude files and agentic files
 .claude
 AGENTS.md

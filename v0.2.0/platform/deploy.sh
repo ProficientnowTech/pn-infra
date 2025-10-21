@@ -45,9 +45,11 @@ deploy_argocd() {
         log_info "Deploying ArgoCD..."
         if [[ -x "${SCRIPT_DIR}/bootstrap/install-argo.sh" ]]; then
             # Pass SSH key path to install script if provided
-            if [[ -n "$SSH_PRIVATE_KEY_PATH" ]]; then
+            if [[ -n "$SSH_PRIVATE_KEY_PATH" && -f "$SSH_PRIVATE_KEY_PATH" ]]; then
+                log_info "Using SSH key: $SSH_PRIVATE_KEY_PATH"
                 SSH_PRIVATE_KEY_PATH="$SSH_PRIVATE_KEY_PATH" "${SCRIPT_DIR}/bootstrap/install-argo.sh"
             else
+                log_warning "No SSH key provided or key not found - private repo access may not work"
                 "${SCRIPT_DIR}/bootstrap/install-argo.sh"
             fi
         else
@@ -108,9 +110,9 @@ show_status() {
         log_info "ArgoCD Pods:"
         kubectl get pods -n argocd
 
-         # Show repository secrets
+        # Show repository status
         echo
-        log_info "ArgoCD Repository Secrets:"
+        log_info "ArgoCD Repository Status:"
         kubectl get secrets -n argocd -l argocd.argoproj.io/secret-type=repository 2>/dev/null || log_warning "No repository secrets found"
     else
         log_warning "ArgoCD not deployed"

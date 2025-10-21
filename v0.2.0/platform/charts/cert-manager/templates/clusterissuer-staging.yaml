@@ -1,0 +1,26 @@
+{{- if .Values.letsencrypt.staging.enabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    app.kubernetes.io/name: cert-manager
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/part-of: platform
+spec:
+  acme:
+    server: {{ .Values.letsencrypt.staging.server }}
+    email: {{ .Values.letsencrypt.staging.email }}
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    solvers:
+      - dns01:
+          cloudflare:
+            email: {{ .Values.letsencrypt.staging.cloudflare.email }}
+            apiTokenSecretRef:
+              name: {{ .Values.letsencrypt.staging.cloudflare.secretName }}
+              key: {{ .Values.letsencrypt.staging.cloudflare.secretKey }}
+        selector:
+          dnsZones:
+            - "pnats.cloud"
+{{- end }}

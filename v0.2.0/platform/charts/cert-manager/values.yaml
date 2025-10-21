@@ -19,6 +19,34 @@ chart:
 
 namespace: 'cert-manager'
 
+cert-manager:
+  crds:
+    enabled: true
+  global:
+    leaderElection:
+      namespace: "cert-manager"
+  webhook:
+    timeoutSeconds: 4
+
+# Let's Encrypt Issuers Configuration
+letsencrypt:
+  production:
+    enabled: true
+    email: snoorullah@proficientnowtech.com
+    server: "https://acme-v02.api.letsencrypt.org/directory"
+    cloudflare:
+      secretName: cloudflare-api-token
+      secretKey: api-token
+      email: snoorullah@proficientnowtech.com
+  staging:
+    enabled: true
+    email: snoorullah@proficientnowtech.com
+    server: "https://acme-staging-v02.api.letsencrypt.org/directory"
+    cloudflare:
+      secretName: cloudflare-api-token
+      secretKey: api-token
+      email: snoorullah@proficientnowtech.com
+
 # Sync policy configuration
 syncPolicy:
   automated:
@@ -30,18 +58,3 @@ syncPolicy:
       duration: '5s'
       factor: 2
       maxDuration: '3m'
-
-# Let's Encrypt Issuers Configuration (merged from cert-manager-config)
-letsencrypt:
-  production:
-    enabled: true
-    email: snoorullah@proficientnowtech.com
-    cloudflare:
-      secretName: cloudflare-api-token
-      secretKey: api-token
-  staging:
-    enabled: true
-    email: snoorullah@proficientnowtech.com
-    cloudflare:
-      secretName: cloudflare-api-token
-      secretKey: api-token

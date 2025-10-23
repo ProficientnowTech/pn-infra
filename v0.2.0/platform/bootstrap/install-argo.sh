@@ -318,7 +318,7 @@ setup_argocd_repository() {
 }
 
 setup_argocd_projects() {
-	local argo_projects_file="${SCRIPT_DIR}/bootstrap/projects"
+	local argo_projects_file="${SCRIPT_DIR}/projects"
 
 	info "Setting up ArgoCD projects via Kustomization..."
 

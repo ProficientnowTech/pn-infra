@@ -23,19 +23,19 @@ ENVIRONMENT="production"
 SSH_PRIVATE_KEY_PATH="$HOME/.ssh/github_keys"
 
 log_info() {
-	echo -e "${BLUE}[INFO][$(date +'%H:%M:%S')][Orchestrator]${NC} $1"
+	echo -e "${BLUE}[INFO]    [$(date +'%H:%M:%S')] [Orchestrator]${NC} $1"
 }
 
 log_success() {
-	echo -e "${GREEN}[SUCCESS][$(date +'%H:%M:%S')][Orchestrator]${NC} $1"
+	echo -e "${GREEN}[SUCCESS] [$(date +'%H:%M:%S')] [Orchestrator]${NC} $1"
 }
 
 log_warning() {
-	echo -e "${YELLOW}[WARNING][$(date +'%H:%M:%S')][Orchestrator]${NC} $1"
+	echo -e "${YELLOW}[WARN]    [$(date +'%H:%M:%S')] [Orchestrator]${NC} $1"
 }
 
 log_error() {
-	echo -e "${RED}[ERROR][$(date +'%H:%M:%S')][Orchestrator]${NC} $1"
+	echo -e "${RED}[ERROR]   [$(date +'%H:%M:%S')] [Orchestrator]${NC} $1"
 }
 
 usage() {

@@ -16,10 +16,10 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-log() { echo -e "${GREEN}[SUCCESS][$(date +'%H:%M:%S')][Argo Bootstrap] $1${NC}"; }
-info() { echo -e "${BLUE}[INFO][$(date +'%H:%M:%S')][Argo Bootstrap] $1${NC}"; }
-warn() { echo -e "${YELLOW}[WARN][$(date +'%H:%M:%S')][Argo Bootstrap] $1${NC}"; }
-error() { echo -e "${RED}[WARN][$(date +'%H:%M:%S')][Argo Bootstrap] $1${NC}"; }
+log() { echo -e "${GREEN}[SUCCESS] [$(date +'%H:%M:%S')] [Argo Bootstrap] $1${NC}"; }
+info() { echo -e "${BLUE}[INFO]    [$(date +'%H:%M:%S')] [Argo Bootstrap] $1${NC}"; }
+warn() { echo -e "${YELLOW}[WARN]    [$(date +'%H:%M:%S')] [Argo Bootstrap] $1${NC}"; }
+error() { echo -e "${RED}[ERROR]   [$(date +'%H:%M:%S')] [Argo Bootstrap] $1${NC}"; }
 
 # Check prerequisites
 check_prerequisites() {

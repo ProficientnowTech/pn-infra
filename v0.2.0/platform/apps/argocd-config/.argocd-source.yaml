@@ -1,6 +1,0 @@
-# ArgoCD source metadata
-# This file can be used by ArgoCD to inject git metadata
-# Reference: https://argo-cd.readthedocs.io/en/stable/user-guide/build-environment/
-
-# The commit SHA will be available as an environment variable in ArgoCD
-# You can reference it in your templates using .Values.global.gitCommit

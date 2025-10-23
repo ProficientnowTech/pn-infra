@@ -116,7 +116,7 @@ check_argocd_bootstrap() {
 	log_info "Checking ArgoCD bootstrap configuration..."
 
 	local bootstrap_dir="${SCRIPT_DIR}/bootstrap"
-	local argocd_values="${bootstrap_dir}/bootstrap-argocd-values.yaml"
+	local argocd_values="${bootstrap_dir}/argocd/argocd-values.yaml"
 
 	if [[ ! -f "$argocd_values" ]]; then
 		log_error "ArgoCD bootstrap values not found"

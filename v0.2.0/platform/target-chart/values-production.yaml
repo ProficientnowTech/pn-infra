@@ -24,7 +24,7 @@ applications:
 
 - name: ingress-nginx
   annotations:
-    argocd.argoproj.io/sync-wave: '-3'
+    argocd.argoproj.io/sync-wave: "-3"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -33,7 +33,7 @@ applications:
 
 - name: cert-manager
   annotations:
-    argocd.argoproj.io/sync-wave: '-2'
+    argocd.argoproj.io/sync-wave: "-2"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -44,7 +44,7 @@ applications:
 
 - name: external-dns
   annotations:
-    argocd.argoproj.io/sync-wave: '-1'
+    argocd.argoproj.io/sync-wave: "-1"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -54,7 +54,7 @@ applications:
 # ArgoCD Self-Management
 - name: argocd-self
   annotations:
-    argocd.argoproj.io/sync-wave: '0'
+    argocd.argoproj.io/sync-wave: "0"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main

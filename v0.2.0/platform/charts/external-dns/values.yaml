@@ -7,7 +7,7 @@ global:
   server: https://kubernetes.default.svc
   targetNamespace: argocd
   project: default
-  syncWave: '-1'
+  syncWave: "-1"
 
 # External-DNS Helm chart version
 chart:

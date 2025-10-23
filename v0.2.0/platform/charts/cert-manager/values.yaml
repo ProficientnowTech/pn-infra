@@ -7,7 +7,7 @@ global:
   server: https://kubernetes.default.svc
   targetNamespace: argocd
   project: default
-  syncWave: '-2'
+  syncWave: "-2"
 
 # Cert-Manager Helm chart version
 chart:

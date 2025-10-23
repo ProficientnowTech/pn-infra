@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.global.name | default "cert-manager" }}
   namespace: {{ .Values.global.targetNamespace | default "argocd" }}
   annotations:
-    argocd.argoproj.io/sync-wave: {{ .Values.global.syncWave | default "-2" }}
+    argocd.argoproj.io/sync-wave: {{ .Values.global.syncWave | default "-2" | quote }}
   labels:
     app.kubernetes.io/name: cert-manager
     app.kubernetes.io/instance: {{ .Release.Name }}

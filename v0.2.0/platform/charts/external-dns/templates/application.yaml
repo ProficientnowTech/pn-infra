@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.global.name | default .Release.Name }}
   namespace: {{ .Values.global.targetNamespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: {{ .Values.global.syncWave }}
+    argocd.argoproj.io/sync-wave: {{ .Values.global.syncWave | quote }}
   labels:
     app.kubernetes.io/name: external-dns
     app.kubernetes.io/instance: {{ .Release.Name }}

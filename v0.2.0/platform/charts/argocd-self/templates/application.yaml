@@ -5,7 +5,7 @@ metadata:
   name: {{ .Values.global.name | default .Release.Name }}
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: '0'
+    argocd.argoproj.io/sync-wave: "0"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     link.argocd.argoproj.io/external-link: https://argo.pnats.cloud
   finalizers:

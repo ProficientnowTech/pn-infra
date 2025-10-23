@@ -186,7 +186,7 @@ print_argo_success() {
 }
 
 setup_argocd_repository() {
-	local repo_secret_file="${SCRIPT_DIR}/bootstrap/repositories/pn-infra.yaml"
+	local repo_secret_file="${SCRIPT_DIR}/repositories/pn-infra.yaml"
 	local temp_secret_file
 	# trap exit on error and clean up temp secret
 	trap 'rm -f "$temp_secret_file"' EXIT ERR
@@ -281,23 +281,27 @@ setup_argocd_repository() {
 	if kubectl apply -f "$temp_secret_file"; then
 		log "Repository secret successfully applied to ArgoCD"
 
-		# Clean up temporary file
-		rm -f "$temp_secret_file"
-
 		# Wait for repository connection
 		info "Waiting for repository connection to be established..."
 		local max_attempts=30
 		local attempt=1
 
 		while [[ $attempt -le $max_attempts ]]; do
-			if kubectl get secret -n argocd pn-infra -o jsonpath='{.metadata.annotations}' 2>/dev/null | grep -q "argocd.argoproj.io/repository-type"; then
-				log "Repository connection established"
+			# Check if the secret has the ArgoCD repository label
+			local secret_type=$(kubectl get secret -n argocd pn-infra -o json 2>/dev/null | jq -r '.metadata.labels["argocd.argoproj.io/secret-type"] // empty')
+
+			if [[ "$secret_type" == "repository" ]]; then
+				log "Repository connection established (secret labeled correctly)"
+				# Clean up temporary file
+				rm -f "$temp_secret_file"
 				return 0
 			fi
 
 			if [[ $attempt -eq $max_attempts ]]; then
 				warn "Repository secret applied but connection status unknown"
 				info "ArgoCD should pick up the repository shortly"
+				# Clean up temporary file
+				rm -f "$temp_secret_file"
 				return 0
 			fi
 
@@ -305,6 +309,7 @@ setup_argocd_repository() {
 			sleep 2
 			((attempt++))
 		done
+
 	else
 		error "Failed to apply repository secret"
 		rm -f "$temp_secret_file"

@@ -6,15 +6,15 @@ metadata:
   name: {{ .Values.clusterIssuerStaging.name }}
   labels:
     {{- range $key, $value := .Values.commonLabels }}
-    {{ $key }}: {{ $value }}
+    {{ $key }}: {{ $value | quote }}
     {{- end }}
     {{- range $key, $value := .Values.commonSelectors }}
-    {{ $key }}: {{ $value }}
+    {{ $key }}: {{ $value | quote }}
     {{- end }}
     {{- range $key, $value := .Values.clusterIssuerStaging.labels }}
-    {{ $key }}: {{ $value }}
+    {{ $key }}: {{ $value | quote }}
     {{- end }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name | quote }}
 spec:
   acme:
     server: {{ .Values.clusterIssuerStaging.acme.server }}

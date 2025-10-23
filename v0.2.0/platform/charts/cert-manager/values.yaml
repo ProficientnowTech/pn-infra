@@ -1,29 +1,46 @@
 ---
-# Global configuration
+# Cert-Manager Helm Chart Values
+# https://github.com/cert-manager/cert-manager/tree/master/deploy/charts/cert-manager
+
+# Install CRDs
+installCRDs: true
+
+# Namespace (informational - set by ArgoCD)
 global:
-  name: cert-manager
-  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  targetRevision: main
-  server: https://kubernetes.default.svc
-  targetNamespace: argocd
-  project: default
-  syncWave: "-2"
+  leaderElection:
+    namespace: cert-manager
 
-# Cert-Manager Helm chart version
-chart:
-  version: v1.16.1
+# Resource configuration
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
 
-# Target namespace
-namespace: cert-manager
+# Webhook configuration
+webhook:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
 
-# Sync policy configuration
-syncPolicy:
-  automated:
-    prune: true
-    selfHeal: true
-  retry:
-    limit: 5
-    backoff:
-      duration: 5s
-      factor: 2
-      maxDuration: 3m
+# CA Injector configuration
+cainjector:
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+
+# Prometheus monitoring
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: false

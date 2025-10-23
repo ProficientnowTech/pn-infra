@@ -1,39 +1,34 @@
 ---
-# Global configuration
-global:
-  name: external-dns
-  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  targetRevision: main
-  server: https://kubernetes.default.svc
-  targetNamespace: argocd
-  project: default
-  syncWave: "-1"
+# External-DNS Helm Chart Values
+# https://github.com/kubernetes-sigs/external-dns/tree/master/charts/external-dns
 
-# External-DNS Helm chart version
-chart:
-  version: 1.15.0
+# Provider configuration
+provider: cloudflare
 
-# Image configuration
-image:
-  tag: v0.15.0
+# Sources to monitor
+sources:
+  - ingress
+  - service
 
-# Target namespace
-namespace: external-dns
+# Domain filter
+domainFilters:
+  - pnats.cloud
 
-# Cloudflare configuration
-cloudflare:
-  domain: pnats.cloud
-  secretName: cloudflare-api-token
-  secretKey: api-token
-
-# Policy configuration
+# Policy
 policy: sync
+
+# TXT owner ID
 txtOwnerId: external-dns-pnats
 
-# Operational configuration
-interval: 1m
-logLevel: info
-logFormat: text
+# Cloudflare configuration
+env:
+  - name: CF_API_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: cloudflare-api-token
+        key: api-token
+
+# Deployment configuration
 replicas: 1
 
 # Resource configuration
@@ -45,18 +40,11 @@ resources:
     cpu: 200m
     memory: 256Mi
 
-# Metrics configuration
-metrics:
-  enabled: true
+# Operational configuration
+interval: 1m
+logLevel: info
+logFormat: text
 
-# Sync policy configuration
-syncPolicy:
-  automated:
-    prune: true
-    selfHeal: true
-  retry:
-    limit: 5
-    backoff:
-      duration: 5s
-      factor: 2
-      maxDuration: 3m
+# Metrics
+serviceMonitor:
+  enabled: false

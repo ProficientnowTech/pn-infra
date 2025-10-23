@@ -1,32 +1,53 @@
 ---
-# Global configuration
-global:
-  name: ingress-nginx
-  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  targetRevision: main
-  server: https://kubernetes.default.svc
-  targetNamespace: argocd
-  project: default
-  syncWave: "-3"
+# Ingress-NGINX Helm Chart Values
+# https://github.com/kubernetes/ingress-nginx/tree/main/charts/ingress-nginx
 
-# Ingress-NGINX Helm chart version
-chart:
-  version: 4.11.3
+controller:
+  # Replica configuration
+  replicaCount: 2
 
-# Target namespace
-namespace: ingress-nginx
+  # Resource configuration
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
-# Load balancer IP (empty = MetalLB auto-assign)
-loadBalancerIP: ''
+  # Service configuration
+  service:
+    type: LoadBalancer
+    # loadBalancerIP: ""  # MetalLB will auto-assign
+    externalTrafficPolicy: Local
 
-# Sync policy configuration
-syncPolicy:
-  automated:
-    prune: true
-    selfHeal: true
-  retry:
-    limit: 5
-    backoff:
-      duration: 5s
-      factor: 2
-      maxDuration: 3m
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  # Metrics
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+# Default backend
+defaultBackend:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 10m
+      memory: 20Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi

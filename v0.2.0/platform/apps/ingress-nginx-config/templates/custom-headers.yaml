@@ -1,0 +1,23 @@
+{{- if .Values.customHeaders.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.customHeaders.name }}
+  namespace: {{ .Values.ingressNginx.namespace }}
+  labels:
+    {{- range $key, $value := .Values.commonLabels }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+    {{- range $key, $value := .Values.commonSelectors }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+    {{- range $key, $value := .Values.customHeaders.labels }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  {{- range $key, $value := .Values.customHeaders.headers }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}

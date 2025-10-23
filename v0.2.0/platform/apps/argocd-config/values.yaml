@@ -1,0 +1,152 @@
+---
+# Global configuration
+global:
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: 'main'
+
+# Common labels - applied to all resources (informational)
+commonLabels:
+  # Informational labels (not used for selection)
+  platform.pnats.cloud/owner: 'Shaik Noorullah'
+  platform.pnats.cloud/org: ProficientNowTech
+  platform.pnats.cloud/docs: docs.pnats.cloud/config-charts/#argocd-config
+  platform.pnats.cloud/chart-version: 0.1.0
+  platform.pnats.cloud/maintained-by: platform-team
+
+# Common selectors - used for selecting/matching resources
+# These are stable values used for queries like: kubectl get all -l key=value
+commonSelectors:
+  # Core identification
+  app.kubernetes.io/part-of: argocd-app
+  app.kubernetes.io/managed-by: argocd
+  app.kubernetes.io/version: v3.1.8
+
+  # Platform organization
+  platform.pnats.cloud/layer: platform
+  platform.pnats.cloud/environment: production
+  platform.pnats.cloud/tier: critical
+
+  # Team/Ownership (for routing alerts, access control)
+  platform.pnats.cloud/team: platform-team
+  platform.pnats.cloud/owner-email: snoorullah@proficientnowtech.com
+
+  # Operational
+  platform.pnats.cloud/monitoring-enabled: "true"
+  platform.pnats.cloud/backup-policy: daily
+  platform.pnats.cloud/cost-center: platform-ops
+
+  # Version tracking (set via CI/CD or manually)
+  platform.pnats.cloud/git-commit: HEAD  # Will be replaced by CI/CD
+  platform.pnats.cloud/release-id: manual-deploy  # Will be replaced by CI/CD
+
+# ArgoCD namespace
+argocd:
+  namespace: argocd
+
+## Ingress configuration
+ingress:
+  enabled: true
+  # Resource-specific labels (merged with commonLabels)
+  labels:
+    app.kubernetes.io/name: argocd-server-ingress
+    app.kubernetes.io/component: ingress-config
+  name: argocd-server-ingress
+  ingressClassName: nginx
+  hostname: argocd.pnats.cloud
+  path: /
+  pathType: Prefix
+  serviceName: argocd-server
+  servicePort: 80
+
+  # TLS configuration
+  tls:
+    enabled: true
+    secretName: argocd.pnats.cloud-tls
+
+  # Ingress annotations
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    external-dns.alpha.kubernetes.io/hostname: argocd.pnats.cloud
+    external-dns.alpha.kubernetes.io/target: "ingress-nginx-controller.ingress-nginx.svc.cluster.local"
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      grpc_read_timeout 300;
+      grpc_send_timeout 300;
+      client_body_timeout 60;
+      client_header_timeout 60;
+      client_max_body_size 10m;
+
+## ArgoCD ConfigMap (argocd-cm) configuration
+configMap:
+  enabled: true
+
+  # Resource-specific labels (merged with commonLabels)
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/component: server-config
+
+  # Status badge configuration
+  statusbadge:
+    enabled: true
+
+  # Exec into pods configuration
+  exec:
+    enabled: true
+
+  # Application configuration
+  application:
+    instanceLabelKey: argocd.argoproj.io/instance
+
+  # Server configuration
+  server:
+    insecure: true
+    grpcWeb: true
+
+  # Timeout configuration
+  timeout:
+    reconciliation: 180s
+    hardReconciliation: 0s
+
+  # Helm repositories
+  repositories:
+  - type: helm
+    url: https://argoproj.github.io/argo-helm
+    name: argo
+  - type: helm
+    url: https://charts.rook.io/release
+    name: rook-release
+  - type: helm
+    url: https://helm.releases.hashicorp.com
+    name: hashicorp
+  - type: helm
+    url: https://prometheus-community.github.io/helm-charts
+    name: prometheus-community
+  - type: helm
+    url: https://grafana.github.io/helm-charts
+    name: grafana
+  - type: helm
+    url: https://ray-project.github.io/kuberay-helm/
+    name: kuberay
+  - type: helm
+    url: https://helm.ngc.nvidia.com/nvidia
+    name: nvidia
+  # Resource customizations (health checks, etc.)
+  resourceCustomizations:
+    argoproj.io/Application:
+      health.lua: |
+        hs = {}
+        hs.status = "Progressing"
+        hs.message = ""
+        if obj.status ~= nil then
+          if obj.status.health ~= nil then
+            hs.status = obj.status.health.status
+            if obj.status.health.message ~= nil then
+              hs.message = obj.status.health.message
+            end
+          end
+        end
+        return hs

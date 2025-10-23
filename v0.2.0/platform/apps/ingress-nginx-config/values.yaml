@@ -1,0 +1,86 @@
+---
+# Global configuration
+global:
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: 'main'
+
+# Common labels - applied to all resources (informational)
+commonLabels:
+  platform.pnats.cloud/owner: 'Shaik Noorullah'
+  platform.pnats.cloud/org: ProficientNowTech
+  platform.pnats.cloud/docs: docs.pnats.cloud/config-charts/#ingress-nginx-config
+  platform.pnats.cloud/chart-version: 0.1.0
+  platform.pnats.cloud/maintained-by: platform-team
+
+# Common selectors - used for selecting/matching resources
+commonSelectors:
+  app.kubernetes.io/part-of: ingress-nginx-app
+  app.kubernetes.io/managed-by: argocd
+  app.kubernetes.io/version: v1.11.3
+  platform.pnats.cloud/layer: infrastructure
+  platform.pnats.cloud/environment: production
+  platform.pnats.cloud/tier: critical
+  platform.pnats.cloud/team: platform-team
+  platform.pnats.cloud/owner-email: snoorullah@proficientnowtech.com
+  platform.pnats.cloud/monitoring-enabled: "true"
+  platform.pnats.cloud/backup-policy: daily
+  platform.pnats.cloud/cost-center: platform-ops
+  platform.pnats.cloud/git-commit: HEAD
+  platform.pnats.cloud/release-id: manual-deploy
+
+# Ingress-NGINX namespace
+ingressNginx:
+  namespace: ingress-nginx
+
+# NGINX Configuration ConfigMap
+nginxConfig:
+  enabled: true
+  name: nginx-configuration
+
+  # Resource-specific labels
+  labels:
+    app.kubernetes.io/name: nginx-configuration
+    app.kubernetes.io/component: nginx-config
+
+  # SSL Configuration
+  ssl:
+    protocols: TLSv1.2 TLSv1.3
+    ciphers: ECDHE-RSA-AES128-GCM-SHA256,ECDHE-RSA-AES256-GCM-SHA384,ECDHE-RSA-AES128-SHA,ECDHE-RSA-AES256-SHA,ECDHE-RSA-AES128-SHA256,ECDHE-RSA-AES256-SHA384
+
+  # Proxy Configuration
+  proxy:
+    setHeaders: ingress-nginx/custom-headers
+    bodySize: 100m
+    readTimeout: "300"
+    sendTimeout: "300"
+    connectTimeout: "300"
+
+  # GZIP Compression
+  gzip:
+    enabled: "true"
+    types: application/javascript,application/json,application/xml,text/css,text/javascript,text/plain,text/xml
+
+  # Rate Limiting
+  rateLimit:
+    connections: "20"
+    rateAfter: 1024k
+    rate: 512k
+
+# Custom Headers ConfigMap
+customHeaders:
+  enabled: true
+  name: custom-headers
+
+  # Resource-specific labels
+  labels:
+    app.kubernetes.io/name: custom-headers
+    app.kubernetes.io/component: security-headers
+
+  # Security headers
+  headers:
+    X-Frame-Options: DENY
+    X-Content-Type-Options: nosniff
+    X-XSS-Protection: "1; mode=block"
+    Referrer-Policy: strict-origin-when-cross-origin
+    Strict-Transport-Security: max-age=31536000; includeSubDomains
+    Content-Security-Policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"

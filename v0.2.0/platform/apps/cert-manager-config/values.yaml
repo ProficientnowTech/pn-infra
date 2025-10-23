@@ -1,0 +1,85 @@
+---
+# Global configuration
+global:
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: 'main'
+
+# Common labels - applied to all resources (informational)
+commonLabels:
+  platform.pnats.cloud/owner: 'Shaik Noorullah'
+  platform.pnats.cloud/org: ProficientNowTech
+  platform.pnats.cloud/docs: docs.pnats.cloud/config-charts/#cert-manager-config
+  platform.pnats.cloud/chart-version: 0.1.0
+  platform.pnats.cloud/maintained-by: platform-team
+
+# Common selectors - used for selecting/matching resources
+commonSelectors:
+  app.kubernetes.io/part-of: cert-manager-app
+  app.kubernetes.io/managed-by: argocd
+  app.kubernetes.io/version: v1.16.1
+  platform.pnats.cloud/layer: infrastructure
+  platform.pnats.cloud/environment: production
+  platform.pnats.cloud/tier: critical
+  platform.pnats.cloud/team: platform-team
+  platform.pnats.cloud/owner-email: snoorullah@proficientnowtech.com
+  platform.pnats.cloud/monitoring-enabled: "true"
+  platform.pnats.cloud/backup-policy: daily
+  platform.pnats.cloud/cost-center: platform-ops
+  platform.pnats.cloud/git-commit: HEAD
+  platform.pnats.cloud/release-id: manual-deploy
+
+# Cert-Manager namespace
+certManager:
+  namespace: cert-manager
+
+# Let's Encrypt ClusterIssuer - Production
+clusterIssuerProduction:
+  enabled: true
+  name: letsencrypt-production
+
+  # Resource-specific labels
+  labels:
+    app.kubernetes.io/name: letsencrypt-production
+    app.kubernetes.io/component: clusterissuer
+
+  # ACME configuration
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: snoorullah@proficientnowtech.com
+    privateKeySecretName: letsencrypt-production
+
+  # DNS01 solver configuration
+  solver:
+    dns01:
+      cloudflare:
+        email: snoorullah@proficientnowtech.com
+        apiTokenSecretName: cloudflare-api-token
+        apiTokenSecretKey: api-token
+      dnsZones:
+        - pnats.cloud
+
+# Let's Encrypt ClusterIssuer - Staging
+clusterIssuerStaging:
+  enabled: false
+  name: letsencrypt-staging
+
+  # Resource-specific labels
+  labels:
+    app.kubernetes.io/name: letsencrypt-staging
+    app.kubernetes.io/component: clusterissuer
+
+  # ACME configuration
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: snoorullah@proficientnowtech.com
+    privateKeySecretName: letsencrypt-staging
+
+  # DNS01 solver configuration
+  solver:
+    dns01:
+      cloudflare:
+        email: snoorullah@proficientnowtech.com
+        apiTokenSecretName: cloudflare-api-token
+        apiTokenSecretKey: api-token
+      dnsZones:
+        - pnats.cloud

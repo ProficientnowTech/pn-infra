@@ -1,0 +1,40 @@
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.ingress.name }}
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    {{- range $key, $value := .Values.commonLabels }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+    {{- range $key, $value := .Values.commonSelectors }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+    {{- range $key, $value := .Values.ingress.labels }}
+    {{ $key }}: {{ $value }}
+    {{- end }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.ingressClassName }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.hostname }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.hostname }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.path }}
+            pathType: {{ .Values.ingress.pathType }}
+            backend:
+              service:
+                name: {{ .Values.ingress.serviceName }}
+                port:
+                  number: {{ .Values.ingress.servicePort }}
+{{- end }}

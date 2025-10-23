@@ -5,6 +5,10 @@ kind: ConfigMap
 metadata:
   name: argocd-cm
   namespace: {{ .Values.argocd.namespace }}
+  annotations:
+    {{- range $key, $value := .Values.commonAnnotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
   labels:
     {{- range $key, $value := .Values.commonLabels }}
     {{ $key }}: {{ $value | quote }}

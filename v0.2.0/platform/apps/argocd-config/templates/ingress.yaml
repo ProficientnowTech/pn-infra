@@ -5,6 +5,11 @@ kind: Ingress
 metadata:
   name: {{ .Values.ingress.name }}
   namespace: {{ .Values.argocd.namespace }}
+  annotations:
+    {{- range $key, $value := .Values.commonAnnotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
   labels:
     {{- range $key, $value := .Values.commonLabels }}
     {{ $key }}: {{ $value | quote }}
@@ -16,8 +21,6 @@ metadata:
     {{ $key }}: {{ $value | quote }}
     {{- end }}
     app.kubernetes.io/instance: {{ .Release.Name | quote }}
-  annotations:
-    {{- toYaml .Values.ingress.annotations | nindent 4 }}
 spec:
   ingressClassName: {{ .Values.ingress.ingressClassName }}
   {{- if .Values.ingress.tls.enabled }}

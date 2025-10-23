@@ -4,40 +4,32 @@ global:
   repoURL: https://github.com/pnow-devsupreme/pn-infra.git
   targetRevision: 'main'
 
-# Common labels - applied to all resources (informational)
-commonLabels:
-  # Informational labels (not used for selection)
+# Common annotations - informational metadata (not used for selection)
+commonAnnotations:
   platform.pnats.cloud/owner: 'Shaik Noorullah'
+  platform.pnats.cloud/owner-email: 'snoorullah@proficientnowtech.com'
+  platform.pnats.cloud/docs: 'docs.pnats.cloud/config-charts/#argocd-config'
+  platform.pnats.cloud/git-commit: HEAD
+  platform.pnats.cloud/release-id: manual-deploy
+
+# Common labels - applied to all resources (valid label values only)
+commonLabels:
   platform.pnats.cloud/org: ProficientNowTech
-  platform.pnats.cloud/docs: docs.pnats.cloud/config-charts/#argocd-config
   platform.pnats.cloud/chart-version: 0.1.0
   platform.pnats.cloud/maintained-by: platform-team
 
 # Common selectors - used for selecting/matching resources
-# These are stable values used for queries like: kubectl get all -l key=value
 commonSelectors:
-  # Core identification
   app.kubernetes.io/part-of: argocd-app
   app.kubernetes.io/managed-by: argocd
   app.kubernetes.io/version: v3.1.8
-
-  # Platform organization
   platform.pnats.cloud/layer: platform
   platform.pnats.cloud/environment: production
   platform.pnats.cloud/tier: critical
-
-  # Team/Ownership (for routing alerts, access control)
   platform.pnats.cloud/team: platform-team
-  platform.pnats.cloud/owner-email: snoorullah@proficientnowtech.com
-
-  # Operational
   platform.pnats.cloud/monitoring-enabled: "true"
   platform.pnats.cloud/backup-policy: daily
   platform.pnats.cloud/cost-center: platform-ops
-
-  # Version tracking (set via CI/CD or manually)
-  platform.pnats.cloud/git-commit: HEAD  # Will be replaced by CI/CD
-  platform.pnats.cloud/release-id: manual-deploy  # Will be replaced by CI/CD
 
 # ArgoCD namespace
 argocd:

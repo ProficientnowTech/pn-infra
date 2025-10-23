@@ -23,19 +23,19 @@ ENVIRONMENT="production"
 SSH_PRIVATE_KEY_PATH="$HOME/.ssh/github_keys"
 
 log_info() {
-	echo -e "${BLUE}[PLATFORM]${NC} $1"
+	echo -e "${BLUE}[INFO][$(date +'%H:%M:%S')][Orchestrator]${NC} $1"
 }
 
 log_success() {
-	echo -e "${GREEN}[SUCCESS]${NC} $1"
+	echo -e "${GREEN}[SUCCESS][$(date +'%H:%M:%S')][Orchestrator]${NC} $1"
 }
 
 log_warning() {
-	echo -e "${YELLOW}[WARNING]${NC} $1"
+	echo -e "${YELLOW}[WARNING][$(date +'%H:%M:%S')][Orchestrator]${NC} $1"
 }
 
 log_error() {
-	echo -e "${RED}[ERROR]${NC} $1"
+	echo -e "${RED}[ERROR][$(date +'%H:%M:%S')][Orchestrator]${NC} $1"
 }
 
 usage() {
@@ -120,8 +120,12 @@ setup_cloudflare_secret() {
 	echo "   - Include: All zones"
 	echo
 
-	# Prompt for API token
-	read -p "Enter your Cloudflare API token (or 'skip' to continue without): " cloudflare_token
+	# Prompt for API token and validate
+	if [[ ! "$cloudflare_token" =~ ^[a-zA-Z0-9_-]{40,}$ ]]; then
+		log_warning "Token format looks invalid (should be 40+ alphanumeric characters)"
+		read -p "Continue anyway? (y/N): " -r
+		[[ ! $REPLY =~ ^[Yy]$ ]] && return 0
+	fi
 
 	if [[ "$cloudflare_token" == "skip" || -z "$cloudflare_token" ]]; then
 		log_warning "Skipping Cloudflare secret creation - cert-manager may not work properly"

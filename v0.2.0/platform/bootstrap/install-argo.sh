@@ -43,7 +43,12 @@ check_prerequisites() {
 install_argocd() {
 	log "🚀 Installing ArgoCD..."
 
-	helm repo add argo https://argoproj.github.io/argo-helm >/dev/null 2>&1 || true
+	if ! helm repo list | grep -q "^argo\\s"; then
+		helm repo add argo https://argoproj.github.io/argo-helm || {
+			error "Failed to add Argo Helm repository"
+			return 1
+		}
+	fi
 	helm repo update >/dev/null 2>&1
 
 	helm upgrade --install argocd argo/argo-cd \
@@ -116,7 +121,7 @@ wait_for_argocd() {
 
 # Get ArgoCD admin password
 get_argocd_password() {
-	local max_attempts=30
+	local max_attempts=60
 	local attempt=1
 
 	while [ $attempt -le $max_attempts ]; do
@@ -260,9 +265,15 @@ setup_argocd_repository() {
 	sed "s/TOKEN_PLACEHOLDER/$REPO_TOKEN/g" "$repo_secret_file" >"$temp_secret_file"
 
 	# Wait for ArgoCD namespace to be ready
-	info "Waiting for ArgoCD namespace..."
+	info "Waiting for ArgoCD components to be ready..."
+	kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s || {
+		warn "ArgoCD server not fully ready, but continuing with repository setup..."
+	}
+	kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-application-controller -n argocd --timeout=120s || {
+		warn "ArgoCD application controller not fully ready, but continuing with repository setup..."
+	}
 	kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-repo-server -n argocd --timeout=120s || {
-		warn "ArgoCD not fully ready, but continuing with repository setup..."
+		warn "ArgoCD repo server not fully ready, but continuing with repository setup..."
 	}
 
 	# Apply the repository secret

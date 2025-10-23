@@ -3,7 +3,7 @@
 
 # Default repository configuration
 default:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
   targetRevision: 'main'
 
 # Global configuration
@@ -20,171 +20,143 @@ global:
 
 # Platform applications with sync wave ordering
 applications:
-  # Infrastructure Foundation (negative waves deploy first)
+# Infrastructure Foundation (negative waves deploy first)
 
-  - name: ingress-nginx
-    annotations:
-      argocd.argoproj.io/sync-wave: '-3'
-    sources:
-      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
-        targetRevision: main
-        ref: values
-      - repoURL: https://kubernetes.github.io/ingress-nginx
-        chart: ingress-nginx
-        targetRevision: '4.8.3'
-        helm:
-          releaseName: ingress-nginx
-          valueFiles:
-            - $values/v0.2.0/platform/charts/ingress-nginx/values.yaml
-    destinationNamespaceOverwrite: ingress-nginx
+- name: ingress-nginx
+  annotations:
+    argocd.argoproj.io/sync-wave: '-3'
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/ingress-nginx
+  destinationNamespaceOverwrite: ingress-nginx
 
-  - name: cert-manager
-    annotations:
-      argocd.argoproj.io/sync-wave: '-2'
-    sources:
-      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
-        targetRevision: main
-        ref: values
-      - repoURL: https://charts.jetstack.io
-        chart: cert-manager
-        targetRevision: 'v1.13.2'
-        helm:
-          releaseName: cert-manager
-          valueFiles:
-            - $values/v0.2.0/platform/charts/cert-manager/helm-values.yaml
-    destinationNamespaceOverwrite: cert-manager
-    syncOptions:
-      - ServerSideApply=true
+- name: cert-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: '-2'
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/cert-manager
+  destinationNamespaceOverwrite: cert-manager
+  syncOptions:
+  - ServerSideApply=true
 
-  - name: external-dns
-    annotations:
-      argocd.argoproj.io/sync-wave: '-1'
-    sources:
-      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
-        targetRevision: main
-        ref: values
-      - repoURL: https://kubernetes-sigs.github.io/external-dns/
-        chart: external-dns
-        targetRevision: '1.15.0'
-        helm:
-          releaseName: external-dns
-          valueFiles:
-            - $values/v0.2.0/platform/charts/external-dns/values.yaml
-    destinationNamespaceOverwrite: external-dns
+- name: external-dns
+  annotations:
+    argocd.argoproj.io/sync-wave: '-1'
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/external-dns
+  destinationNamespaceOverwrite: external-dns
 
-  # ArgoCD Self-Management
-  - name: argocd-self
-    annotations:
-      argocd.argoproj.io/sync-wave: '0'
-    sources:
-      - repoURL: https://argoproj.github.io/argo-helm
-        chart: argo-cd
-        targetRevision: '7.7.8'
-        helm:
-          releaseName: argocd
-          valueFiles:
-            - $values/v0.2.0/platform/charts/argocd-self/helm-values.yaml
-      - repoURL: git@github.com:pnow-devsupreme/pn-infra.git
-        targetRevision: main
-        ref: values
-    destinationNamespaceOverwrite: argocd
-    syncOptions:
-      - Replace=false
-      - ApplyOutOfSyncOnly=true
-    ignoreDifferences:
-      - group: argoproj.io
-        kind: Application
-        jqPathExpressions:
-          - .status
-          - .operation
+# ArgoCD Self-Management
+- name: argocd-self
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/argocd-self
+  destinationNamespaceOverwrite: argocd
+  syncOptions:
+  - Replace=false
+  - ApplyOutOfSyncOnly=true
+  ignoreDifferences:
+  - group: argoproj.io
+    kind: Application
+    jqPathExpressions:
+    - .status
+    - .operation
 
-  # Storage Foundation
-  # - name: rook-ceph
-  #   annotations:
-  #     argocd.argoproj.io/sync-wave: "1"
-  #   sources:
-  #     - repoURL: https://charts.rook.io/release
-  #       chart: rook-ceph
-  #       targetRevision: "v1.18.3"
-  #       helm:
-  #         releaseName: rook-ceph
-  #         valueFiles:
-  #           - $values/v0.2.0/platform/charts/rook-ceph/values.yaml
-  #     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  #       targetRevision: main
-  #       ref: values
-  #   destinationNamespaceOverwrite: rook-ceph
+# Storage Foundation
+# - name: rook-ceph
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "1"
+#   sources:
+#     - repoURL: https://charts.rook.io/release
+#       chart: rook-ceph
+#       targetRevision: "v1.18.3"
+#       helm:
+#         releaseName: rook-ceph
+#         valueFiles:
+#           - $values/v0.2.0/platform/charts/rook-ceph/values.yaml
+#     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#       targetRevision: main
+#       ref: values
+#   destinationNamespaceOverwrite: rook-ceph
 
-  # - name: rook-ceph-cluster
-  #   annotations:
-  #     argocd.argoproj.io/sync-wave: "2"
-  #   sources:
-  #     - repoURL: https://charts.rook.io/release
-  #       chart: rook-ceph-cluster
-  #       targetRevision: "v1.18.3"
-  #       helm:
-  #         releaseName: rook-ceph-cluster
-  #         parameters:
-  #           - name: operatorNamespace
-  #             value: rook-ceph
-  #         valueFiles:
-  #           - $values/v0.2.0/platform/charts/rook-ceph-cluster/values.yaml
-  #     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  #       targetRevision: main
-  #       ref: values
-  #   destinationNamespaceOverwrite: rook-ceph
-  #   ignoreDifferences:
-  #     - group: ceph.rook.io
-  #       kind: CephCluster
-  #       jsonPointers:
-  #         - /status
+# - name: rook-ceph-cluster
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "2"
+#   sources:
+#     - repoURL: https://charts.rook.io/release
+#       chart: rook-ceph-cluster
+#       targetRevision: "v1.18.3"
+#       helm:
+#         releaseName: rook-ceph-cluster
+#         parameters:
+#           - name: operatorNamespace
+#             value: rook-ceph
+#         valueFiles:
+#           - $values/v0.2.0/platform/charts/rook-ceph-cluster/values.yaml
+#     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#       targetRevision: main
+#       ref: values
+#   destinationNamespaceOverwrite: rook-ceph
+#   ignoreDifferences:
+#     - group: ceph.rook.io
+#       kind: CephCluster
+#       jsonPointers:
+#         - /status
 
-  # # Security Platform (commented out for initial deployment)
-  # - name: vault
-  #   annotations:
-  #     argocd.argoproj.io/sync-wave: "3"
-  #   sources:
-  #     - repoURL: https://helm.releases.hashicorp.com
-  #       chart: vault
-  #       targetRevision: "0.25.0"
-  #       helm:
-  #         releaseName: vault
-  #         valueFiles:
-  #           - $values/v0.2.0/platform/charts/vault/values.yaml
-  #     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  #       targetRevision: main
-  #       ref: values
-  #   destinationNamespaceOverwrite: vault
+# # Security Platform (commented out for initial deployment)
+# - name: vault
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "3"
+#   sources:
+#     - repoURL: https://helm.releases.hashicorp.com
+#       chart: vault
+#       targetRevision: "0.25.0"
+#       helm:
+#         releaseName: vault
+#         valueFiles:
+#           - $values/v0.2.0/platform/charts/vault/values.yaml
+#     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#       targetRevision: main
+#       ref: values
+#   destinationNamespaceOverwrite: vault
 
-  # # Monitoring Platform (commented out for initial deployment)
-  # - name: prometheus
-  #   annotations:
-  #     argocd.argoproj.io/sync-wave: "4"
-  #   sources:
-  #     - repoURL: https://prometheus-community.github.io/helm-charts
-  #       chart: kube-prometheus-stack
-  #       targetRevision: "65.1.1"
-  #       helm:
-  #         releaseName: prometheus
-  #         valueFiles:
-  #           - $values/v0.2.0/platform/charts/prometheus/values.yaml
-  #     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  #       targetRevision: main
-  #       ref: values
-  #   destinationNamespaceOverwrite: monitoring
+# # Monitoring Platform (commented out for initial deployment)
+# - name: prometheus
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "4"
+#   sources:
+#     - repoURL: https://prometheus-community.github.io/helm-charts
+#       chart: kube-prometheus-stack
+#       targetRevision: "65.1.1"
+#       helm:
+#         releaseName: prometheus
+#         valueFiles:
+#           - $values/v0.2.0/platform/charts/prometheus/values.yaml
+#     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#       targetRevision: main
+#       ref: values
+#   destinationNamespaceOverwrite: monitoring
 
-  # - name: grafana
-  #   annotations:
-  #     argocd.argoproj.io/sync-wave: "5"
-  #   sources:
-  #     - repoURL: https://grafana.github.io/helm-charts
-  #       chart: grafana
-  #       targetRevision: "8.5.2"
-  #       helm:
-  #         releaseName: grafana
-  #         valueFiles:
-  #           - $values/v0.2.0/platform/charts/grafana/values.yaml
-  #     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  #       targetRevision: main
-  #       ref: values
-  #   destinationNamespaceOverwrite: monitoring
+# - name: grafana
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "5"
+#   sources:
+#     - repoURL: https://grafana.github.io/helm-charts
+#       chart: grafana
+#       targetRevision: "8.5.2"
+#       helm:
+#         releaseName: grafana
+#         valueFiles:
+#           - $values/v0.2.0/platform/charts/grafana/values.yaml
+#     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#       targetRevision: main
+#       ref: values
+#   destinationNamespaceOverwrite: monitoring

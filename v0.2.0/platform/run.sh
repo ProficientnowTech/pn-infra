@@ -89,7 +89,10 @@ setup_required_secrets() {
 	echo
 
 	# Setup Cloudflare API token for cert-manager
-	setup_cloudflare_secret
+	setup_cloudflare_secret || {
+		log_error "Failed to setup required secrets"
+		return 1
+	}
 
 	# Setup additional secrets as needed
 	# setup_slack_webhook_secret
@@ -262,7 +265,10 @@ run_deployment() {
 	fi
 
 	# Setup secrets and check configuration before deployment
-	setup_required_secrets
+	setup_cloudflare_secret || {
+		log_error "Failed to setup required secrets"
+		return 1
+	}
 	update_configuration_values
 
 	log_info "Starting platform deployment for environment: $ENVIRONMENT"

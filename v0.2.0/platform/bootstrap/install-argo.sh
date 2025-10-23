@@ -311,7 +311,7 @@ setup_argocd_projects() {
 
 	# Check if secret file exists
 	if [[ ! -f "$argo_projects_file/kustomization.yaml" ]]; then
-		error "Projects Kustomization file not found: $repo_secret_file"
+		error "Projects Kustomization file not found: $argo_projects_file"
 		return 1
 	fi
 

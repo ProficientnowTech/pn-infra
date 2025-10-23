@@ -1,13 +1,13 @@
 ---
 # Global configuration
 global:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
   targetRevision: 'main'
 
 # Labels configuration
 labels:
   component: gitops
-  managed-by: argocd # Override default Helm with ArgoCD
+  managed-by: argocd
 
 # Image configuration
 image:
@@ -29,9 +29,9 @@ image:
 
 # ArgoCD version configuration
 argocd:
-  version: '8.6.3' # Argo Helm chart version
-  appVersion: 'v3.1.8' # ArgoCD application version
-  namespace: 'argocd'
+  version: 8.6.3
+  appVersion: v3.1.8
+  namespace: argocd
 
 # ArgoCD Helm chart values
 # Based on official ArgoCD Helm chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
@@ -78,13 +78,10 @@ server:
 
   # Server configuration
   config:
+    statusbadge.enabled: true
+    exec.enabled: true
     # Git repositories
     repositories: |
-      - type: git
-        url: git@github.com:pnow-devsupreme/pn-infra.git
-        name: pn-infra
-        password: |
-          $github-token:token
       - type: helm
         url: https://argoproj.github.io/argo-helm
         name: argo
@@ -162,8 +159,8 @@ controller:
 
   # Environment variables
   env:
-    - name: ARGOCD_CONTROLLER_REPLICAS
-      value: '2'
+  - name: ARGOCD_CONTROLLER_REPLICAS
+    value: '2'
 
 ## ArgoCD Repo Server
 repoServer:
@@ -289,27 +286,3 @@ serviceAccount:
 ## Monitoring configuration
 monitoring:
   enabled: true
-
-# Self-management specific configuration
-selfManagement:
-  enabled: true
-
-  # Prevent ArgoCD from pruning itself during updates
-  preserveResourcesOnDeletion: true
-
-  # Allow self-updates
-  allowSelfUpdate: true
-
-  # Bootstrap project for self-management
-  bootstrapProject:
-    name: argocd-self-management
-    description: 'ArgoCD self-management project'
-    sourceRepos:
-      - 'git@github.com:pnow-devsupreme/pn-infra.git'
-      - 'https://argoproj.github.io/argo-helm'
-    destinations:
-      - namespace: argocd
-        server: https://kubernetes.default.svc
-    clusterResourceWhitelist:
-      - group: '*'
-        kind: '*'

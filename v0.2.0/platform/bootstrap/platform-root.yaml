@@ -1,0 +1,67 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-app
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: '-100'
+    platform.pn-infra.io/app-type: 'root-of-root'
+    platform.pn-infra.io/deployed-by: 'platform/deploy.sh'
+    platform.pn-infra.io/hooks-enabled: 'false'
+  labels:
+    app.kubernetes.io/name: platform-root-template-driven
+    managed-by: argocd
+    app-type: root-application
+    deployment-mode: template-driven
+spec:
+  project: default
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    path: v0.2.0/platform/target-chart
+    targetRevision: main
+    helm:
+      valueFiles:
+      - values-production.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=false
+    - RespectIgnoreDifferences=true
+    - PrunePropagationPolicy=foreground
+    - Replace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 5m
+
+  # Health checks for template-driven system
+  ignoreDifferences:
+  - group: argoproj.io
+    kind: Application
+    jqPathExpressions:
+    - .status
+    - .operation
+  # Ignore differences in generated applications
+  - group: argoproj.io
+    kind: Application
+    jsonPointers:
+    - /metadata/annotations/platform.pn-infra.io~1generated-by
+    - /metadata/annotations/platform.pn-infra.io~1version
+  # Application-level configuration
+  info:
+  - name: 'Description'
+    value: 'Template-driven root application that generates all platform infrastructure applications via target-chart'
+  - name: 'Owner'
+    value: 'Platform Team'
+  - name: 'Managed-by'
+    value: 'argocd'
+  # - name: 'Documentation'
+  # value: 'https://github.com/pnow-devsupreme/pn-infra/blob/main/v0.2.0/docs'

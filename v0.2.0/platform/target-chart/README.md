@@ -15,7 +15,7 @@ The target-chart generates multiple ArgoCD Applications from a single configurat
 ```
 Infrastructure Foundation:
 ├── metallb (LoadBalancer)
-├── ingress-nginx (Ingress Controller)  
+├── ingress-nginx (Ingress Controller)
 ├── cert-manager (TLS Certificates)
 ├── metallb-config, ingress-nginx-config, cert-manager-config
 
@@ -59,7 +59,7 @@ default:
   repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
   targetRevision: 'main'
 
-# Stack identifier  
+# Stack identifier
 stackName: 'production'  # Used in labels and naming
 
 # Applications to deploy
@@ -76,7 +76,6 @@ applications:
 global:
   # ArgoCD project for all applications
   project: 'platform'
-  
   # Sync policy for all applications
   syncPolicy:
     automated:
@@ -85,7 +84,6 @@ global:
     syncOptions:
       - 'CreateNamespace=true'
       - 'RespectIgnoreDifferences=true'
-  
   # Retry configuration
   retry:
     limit: 3
@@ -93,7 +91,6 @@ global:
       duration: '5s'
       factor: 2
       maxDuration: '3m'
-
   # Hooks configuration (production only)
   hooks:
     enabled: true
@@ -117,7 +114,7 @@ commonLabels:
   platform.pn-infra.io/stack: 'platform'
   platform.pn-infra.io/environment: 'production'
 
-# Annotations applied to ALL generated applications  
+# Annotations applied to ALL generated applications
 commonAnnotations:
   platform.pn-infra.io/generated-by: 'target-chart'
 ```

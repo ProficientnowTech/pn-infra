@@ -1,52 +1,20 @@
 ---
 # Global configuration
 global:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
-  targetRevision: 'main'
-  server: 'https://kubernetes.default.svc'
-  targetNamespace: 'argocd'
-  project: 'default'
+  name: cert-manager
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: main
+  server: https://kubernetes.default.svc
+  targetNamespace: argocd
+  project: default
   syncWave: '-2'
 
-# Labels configuration
-labels:
-  component: infrastructure
-  managed-by: argocd # Override default Helm with ArgoCD
-
-# Cert-Manager configuration
+# Cert-Manager Helm chart version
 chart:
-  version: 'v1.16.1' # Helm chart version
+  version: v1.16.1
 
-namespace: 'cert-manager'
-
-# Cert-Manager Helm chart values
-cert-manager:
-  crds:
-    enabled: true
-  global:
-    leaderElection:
-      namespace: "cert-manager"
-  webhook:
-    timeoutSeconds: 4
-
-# Let's Encrypt Issuers Configuration
-letsencrypt:
-  production:
-    enabled: true
-    email: snoorullah@proficientnowtech.com
-    server: "https://acme-v02.api.letsencrypt.org/directory"
-    cloudflare:
-      secretName: cloudflare-api-token
-      secretKey: api-token
-      email: snoorullah@proficientnowtech.com
-  staging:
-    enabled: true
-    email: snoorullah@proficientnowtech.com
-    server: "https://acme-staging-v02.api.letsencrypt.org/directory"
-    cloudflare:
-      secretName: cloudflare-api-token
-      secretKey: api-token
-      email: snoorullah@proficientnowtech.com
+# Target namespace
+namespace: cert-manager
 
 # Sync policy configuration
 syncPolicy:
@@ -56,6 +24,6 @@ syncPolicy:
   retry:
     limit: 5
     backoff:
-      duration: '5s'
+      duration: 5s
       factor: 2
-      maxDuration: '3m'
+      maxDuration: 3m

@@ -1,69 +1,56 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: {{ .Values.global.name | default .Release.Name }}
-  namespace: {{ .Values.global.targetNamespace | default "argocd" }}
+  namespace: {{ .Values.global.targetNamespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: '{{ .Values.global.syncWave | default "-3" }}'
+    argocd.argoproj.io/sync-wave: {{ .Values.global.syncWave }}
   labels:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/instance: {{ .Release.Name }}
     app.kubernetes.io/part-of: platform
 spec:
-  # project: {{ .Values.global.project | default "platform-core" }}
-  project: default
+  project: {{ .Values.global.project }}
   sources:
     - repoURL: https://kubernetes.github.io/ingress-nginx
       chart: ingress-nginx
-      targetRevision: {{ .Values.chart.version | default "4.11.3" }}
+      targetRevision: {{ .Values.chart.version }}
       helm:
         releaseName: ingress-nginx
         values: |
           controller:
             service:
               type: LoadBalancer
-              loadBalancerIP: {{ .Values.loadBalancerIP | default "" }}
+              loadBalancerIP: {{ .Values.loadBalancerIP }}
             config:
               use-real-ip: "true"
               compute-full-forwarded-for: "true"
               use-forwarded-headers: "true"
-              {{- if .Values.nginx.config.enabled }}
-              # Custom configuration from ingress-nginx-config
-              proxy-set-headers: {{ .Values.namespace | default "ingress-nginx" }}/custom-headers
-              ssl-protocols: {{ .Values.nginx.config.ssl.protocols | quote }}
-              ssl-ciphers: {{ .Values.nginx.config.ssl.ciphers | quote }}
-              proxy-body-size: {{ .Values.nginx.config.proxy.bodySize | quote }}
-              proxy-read-timeout: {{ .Values.nginx.config.proxy.readTimeout | quote }}
-              proxy-send-timeout: {{ .Values.nginx.config.proxy.sendTimeout | quote }}
-              proxy-connect-timeout: {{ .Values.nginx.config.proxy.connectTimeout | quote }}
-              enable-gzip: {{ .Values.nginx.config.gzip.enabled | quote }}
-              gzip-types: {{ .Values.nginx.config.gzip.types | quote }}
-              limit-connections: {{ .Values.nginx.config.rateLimit.connections | quote }}
-              limit-rate-after: {{ .Values.nginx.config.rateLimit.rateAfter | quote }}
-              limit-rate: {{ .Values.nginx.config.rateLimit.rate | quote }}
-              {{- end }}
             metrics:
               enabled: true
             admissionWebhooks:
               enabled: true
-    - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
-      targetRevision: {{ .Values.global.targetRevision | default "main" }}
-      path: v0.2.0/platform/charts/ingress-nginx/config
+    - repoURL: {{ .Values.global.repoURL }}
+      targetRevision: {{ .Values.global.targetRevision }}
+      path: v0.2.0/platform/apps/ingress-nginx-config
+      helm:
+        releaseName: ingress-nginx-config
   destination:
-    server: {{ .Values.global.server | default "https://kubernetes.default.svc" }}
-    namespace: {{ .Values.namespace | default "ingress-nginx" }}
+    server: {{ .Values.global.server }}
+    namespace: {{ .Values.namespace }}
   syncPolicy:
     automated:
-      prune: {{ .Values.syncPolicy.automated.prune | default true }}
-      selfHeal: {{ .Values.syncPolicy.automated.selfHeal | default true }}
+      prune: {{ .Values.syncPolicy.automated.prune }}
+      selfHeal: {{ .Values.syncPolicy.automated.selfHeal }}
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
       - PrunePropagationPolicy=foreground
       - Replace=true
     retry:
-      limit: {{ .Values.syncPolicy.retry.limit | default 5 }}
+      limit: {{ .Values.syncPolicy.retry.limit }}
       backoff:
-        duration: {{ .Values.syncPolicy.retry.backoff.duration | default "5s" }}
-        factor: {{ .Values.syncPolicy.retry.backoff.factor | default 2 }}
-        maxDuration: {{ .Values.syncPolicy.retry.backoff.maxDuration | default "3m" }}
+        duration: {{ .Values.syncPolicy.retry.backoff.duration }}
+        factor: {{ .Values.syncPolicy.retry.backoff.factor }}
+        maxDuration: {{ .Values.syncPolicy.retry.backoff.maxDuration }}

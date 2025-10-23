@@ -1,76 +1,62 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: {{ .Values.global.name | default .Release.Name }}
-  namespace: {{ .Values.global.targetNamespace | default "argocd" }}
+  namespace: {{ .Values.global.targetNamespace }}
   annotations:
-    argocd.argoproj.io/sync-wave: '{{ .Values.global.syncWave | default "-1" }}'
+    argocd.argoproj.io/sync-wave: {{ .Values.global.syncWave }}
   labels:
-    helm.sh/chart: external-dns-0.1.0
     app.kubernetes.io/name: external-dns
     app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/version: "v0.15.0"
-    app.kubernetes.io/managed-by: argocd
-    app.kubernetes.io/component: dns-management
+    app.kubernetes.io/part-of: platform
 spec:
-  # project: {{ .Values.global.project | default "platform-core" }}
-  project: default
+  project: {{ .Values.global.project }}
   sources:
     - repoURL: https://kubernetes-sigs.github.io/external-dns/
       chart: external-dns
-      targetRevision: {{ .Values.chart.version | default "1.15.0" }}
+      targetRevision: {{ .Values.chart.version }}
       helm:
         releaseName: external-dns
         values: |
-          # External-DNS configuration
           image:
             repository: registry.k8s.io/external-dns/external-dns
-            tag: {{ .Values.image.tag | default "v0.15.0" }}
-          
-          # Cloudflare provider configuration
+            tag: {{ .Values.image.tag }}
+
           provider: cloudflare
-          
-          # DNS domain filter
+
           domainFilters:
-            - {{ .Values.cloudflare.domain | default "pnats.cloud" }}
-          
-          # Policy configuration
-          policy: {{ .Values.policy | default "sync" }}
-          
-          # Registry configuration
+            - {{ .Values.cloudflare.domain }}
+
+          policy: {{ .Values.policy }}
+
           registry: txt
-          txtOwnerId: {{ .Values.txtOwnerId | default "external-dns-pnats" }}
-          
-          # Interval settings
-          interval: {{ .Values.interval | default "1m" }}
-          
-          # Log configuration
-          logLevel: {{ .Values.logLevel | default "info" }}
-          logFormat: {{ .Values.logFormat | default "text" }}
-          
-          # Sources to watch
+          txtOwnerId: {{ .Values.txtOwnerId }}
+
+          interval: {{ .Values.interval }}
+
+          logLevel: {{ .Values.logLevel }}
+          logFormat: {{ .Values.logFormat }}
+
           sources:
             - ingress
             - service
-          
-          # Cloudflare specific settings
+
           env:
             - name: CF_API_TOKEN
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.cloudflare.secretName | default "cloudflare-api-token" }}
-                  key: {{ .Values.cloudflare.secretKey | default "api-token" }}
-          
-          # Resource configuration
+                  name: {{ .Values.cloudflare.secretName }}
+                  key: {{ .Values.cloudflare.secretKey }}
+
           resources:
             requests:
-              cpu: {{ .Values.resources.requests.cpu | default "50m" }}
-              memory: {{ .Values.resources.requests.memory | default "64Mi" }}
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
             limits:
-              cpu: {{ .Values.resources.limits.cpu | default "200m" }}
-              memory: {{ .Values.resources.limits.memory | default "256Mi" }}
-          
-          # Security context
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+
           securityContext:
             runAsNonRoot: true
             runAsUser: 65534
@@ -78,40 +64,37 @@ spec:
             capabilities:
               drop:
                 - ALL
-          
-          # Service account
+
           serviceAccount:
             create: true
-            annotations:
-              {{- range $key, $value := .Values.serviceAccount.annotations }}
-              {{ $key }}: {{ $value | quote }}
-              {{- end }}
-          
-          # RBAC
+
           rbac:
             create: true
-            
-          # Deployment strategy
-          replicas: {{ .Values.replicas | default 1 }}
-          
-          # Monitoring
+
+          replicas: {{ .Values.replicas }}
+
           metrics:
-            enabled: {{ .Values.metrics.enabled | default true }}
+            enabled: {{ .Values.metrics.enabled }}
             port: 7979
+    - repoURL: {{ .Values.global.repoURL }}
+      targetRevision: {{ .Values.global.targetRevision }}
+      path: v0.2.0/platform/apps/external-dns-config
+      helm:
+        releaseName: external-dns-config
   destination:
-    server: {{ .Values.global.server | default "https://kubernetes.default.svc" }}
-    namespace: {{ .Values.namespace | default "external-dns" }}
+    server: {{ .Values.global.server }}
+    namespace: {{ .Values.namespace }}
   syncPolicy:
     automated:
-      prune: {{ .Values.syncPolicy.automated.prune | default true }}
-      selfHeal: {{ .Values.syncPolicy.automated.selfHeal | default true }}
+      prune: {{ .Values.syncPolicy.automated.prune }}
+      selfHeal: {{ .Values.syncPolicy.automated.selfHeal }}
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
       - PrunePropagationPolicy=foreground
     retry:
-      limit: {{ .Values.syncPolicy.retry.limit | default 5 }}
+      limit: {{ .Values.syncPolicy.retry.limit }}
       backoff:
-        duration: {{ .Values.syncPolicy.retry.backoff.duration | default "5s" }}
-        factor: {{ .Values.syncPolicy.retry.backoff.factor | default 2 }}
-        maxDuration: {{ .Values.syncPolicy.retry.backoff.maxDuration | default "3m" }}
+        duration: {{ .Values.syncPolicy.retry.backoff.duration }}
+        factor: {{ .Values.syncPolicy.retry.backoff.factor }}
+        maxDuration: {{ .Values.syncPolicy.retry.backoff.maxDuration }}

@@ -26,18 +26,32 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: "-3"
   sources:
+  - repoURL: https://kubernetes.github.io/ingress-nginx
+    chart: ingress-nginx
+    targetRevision: 4.11.3
+    helm:
+      releaseName: ingress-nginx
+      valueFiles:
+      - $values/v0.2.0/platform/charts/ingress-nginx/values.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    path: v0.2.0/platform/charts/ingress-nginx
+    ref: values
   destinationNamespaceOverwrite: ingress-nginx
 
 - name: cert-manager
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
   sources:
+  - repoURL: https://charts.jetstack.io
+    chart: cert-manager
+    targetRevision: v1.16.1
+    helm:
+      releaseName: cert-manager
+      valueFiles:
+      - $values/v0.2.0/platform/charts/cert-manager/values.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    path: v0.2.0/platform/charts/cert-manager
+    ref: values
   destinationNamespaceOverwrite: cert-manager
   syncOptions:
   - ServerSideApply=true
@@ -46,9 +60,16 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
   sources:
+  - repoURL: https://kubernetes-sigs.github.io/external-dns/
+    chart: external-dns
+    targetRevision: 1.15.0
+    helm:
+      releaseName: external-dns
+      valueFiles:
+      - $values/v0.2.0/platform/charts/external-dns/values.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    path: v0.2.0/platform/charts/external-dns
+    ref: values
   destinationNamespaceOverwrite: external-dns
 
 # ArgoCD Self-Management
@@ -56,9 +77,16 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
   sources:
+  - repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-cd
+    targetRevision: 8.6.3
+    helm:
+      releaseName: argocd
+      valueFiles:
+      - $values/v0.2.0/platform/charts/argocd-self/values.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    path: v0.2.0/platform/charts/argocd-self
+    ref: values
   destinationNamespaceOverwrite: argocd
   syncOptions:
   - Replace=false
@@ -69,6 +97,43 @@ applications:
     jqPathExpressions:
     - .status
     - .operation
+
+# Configuration Applications (deployed after main charts)
+- name: ingress-nginx-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/apps/ingress-nginx-config
+  destinationNamespaceOverwrite: ingress-nginx
+
+- name: cert-manager-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/apps/cert-manager-config
+  destinationNamespaceOverwrite: cert-manager
+
+- name: external-dns-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/apps/external-dns-config
+  destinationNamespaceOverwrite: external-dns
+
+- name: argocd-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/apps/argocd-config
+  destinationNamespaceOverwrite: argocd
 
 # Storage Foundation
 # - name: rook-ceph

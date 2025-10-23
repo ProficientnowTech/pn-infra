@@ -82,7 +82,7 @@ ingress:
 
 ## ArgoCD ConfigMap (argocd-cm) configuration
 configMap:
-  enabled: true
+  enabled: false  # Disabled - ArgoCD Helm chart manages argocd-cm, configure via Helm values instead
 
   # Resource-specific labels (merged with commonLabels)
   labels:

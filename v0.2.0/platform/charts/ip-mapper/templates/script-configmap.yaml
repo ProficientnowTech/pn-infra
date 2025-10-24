@@ -29,14 +29,20 @@ data:
     echo "[INFO] Loaded ${#IP_MAP[@]} IP mappings"
 
     # Get all ingresses with external-dns hostname annotation
-    INGRESSES=$(kubectl get ingress -A -o json)
+    echo "[INFO] Fetching all ingresses..."
+    INGRESSES=$(kubectl get ingress -A -o json) || {
+        echo "[ERROR] Failed to fetch ingresses"
+        exit 1
+    }
 
+    echo "[INFO] Processing ingresses..."
     PROCESSED=0
     UPDATED=0
     SKIPPED=0
 
     # Process each ingress
     while IFS='|' read -r namespace name lb_ip hostname; do
+        echo "[DEBUG] Processing: $namespace/$name | IP:$lb_ip | Host:$hostname"
         [[ -z "$namespace" ]] && continue
         ((PROCESSED++))
 

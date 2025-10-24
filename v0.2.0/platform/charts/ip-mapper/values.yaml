@@ -1,0 +1,39 @@
+---
+# IP Mapper Configuration
+
+# Namespace
+namespace: platform-system
+
+# IP Mappings (Internal IP -> Public IP)
+ipMappings:
+  192.168.101.121: 103.110.174.18
+  192.168.101.122: 103.110.174.19
+  192.168.101.123: 103.110.174.20
+  192.168.101.124: 103.110.174.21
+  192.168.101.125: 103.110.174.22
+  192.168.101.126: 103.110.174.23
+  192.168.101.127: 103.110.174.24
+  192.168.101.128: 103.110.174.25
+
+# CronJob configuration
+cronjob:
+  # Run every 2 minutes
+  schedule: "*/2 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  restartPolicy: OnFailure
+
+# Container image
+image:
+  repository: bitnami/kubectl
+  tag: "1.31"
+  pullPolicy: IfNotPresent
+
+# Resources
+resources:
+  requests:
+    cpu: 10m
+    memory: 32Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi

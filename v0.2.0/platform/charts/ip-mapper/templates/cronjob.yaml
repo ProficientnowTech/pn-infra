@@ -1,0 +1,33 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ip-mapper
+  namespace: {{ .Values.namespace }}
+spec:
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  successfulJobsHistoryLimit: {{ .Values.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: ip-mapper
+          restartPolicy: {{ .Values.cronjob.restartPolicy }}
+          containers:
+          - name: ip-mapper
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            command:
+            - /bin/bash
+            - /scripts/update-targets.sh
+            volumeMounts:
+            - name: script
+              mountPath: /scripts
+            resources:
+              {{- toYaml .Values.resources | nindent 14 }}
+          volumes:
+          - name: script
+            configMap:
+              name: ip-mapper-script
+              defaultMode: 0755

@@ -1,0 +1,11 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ip-mapping
+  namespace: {{ .Values.namespace }}
+data:
+  mappings: |
+    {{- range $internal, $public := .Values.ipMappings }}
+    {{ $internal }}={{ $public }}
+    {{- end }}

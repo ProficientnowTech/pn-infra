@@ -348,8 +348,13 @@ apply_metallb_addresspools() {
 
 	info "Applying Metallb AddressPools.."
 
-	if [[! -f "$metallb_manifests/kustomization"]]; then
-		error "Metallb AddressPools Manifests Not Found"
+	if [[ ! -d "$metallb_manifests" ]]; then
+		error "Metallb AddressPools directory not found: $metallb_manifests"
+		return 1
+	fi
+
+	if [[ ! -f "$metallb_manifests/kustomization.yaml" ]]; then
+		error "Metallb kustomization.yaml not found in: $metallb_manifests"
 		return 1
 	fi
 

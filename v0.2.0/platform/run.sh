@@ -103,18 +103,26 @@ setup_required_secrets() {
 
 setup_cloudflare_secret() {
 	local secret_name="cloudflare-api-token"
-	local namespace="cert-manager"
+	local namespaces=("cert-manager" "external-dns")
 	local cloudflare_token=""
+	local needs_creation=false
 
-	# Check if secret already exists
-	if kubectl get secret "$secret_name" -n "$namespace" >/dev/null 2>&1; then
-		log_success "Cloudflare API token secret already exists"
+	# Check if secret exists in any namespace
+	for ns in "${namespaces[@]}"; do
+		if ! kubectl get secret "$secret_name" -n "$ns" >/dev/null 2>&1; then
+			needs_creation=true
+			break
+		fi
+	done
+
+	if [[ "$needs_creation" == "false" ]]; then
+		log_success "Cloudflare API token secret already exists in all required namespaces"
 		return 0
 	fi
 
-	log_info "Cloudflare API token secret not found in namespace: $namespace"
+	log_info "Cloudflare API token secret needed for cert-manager and external-dns"
 	echo
-	echo "🔑 Cert-Manager requires a Cloudflare API token for DNS01 challenges."
+	echo "🔑 Cert-Manager and External-DNS require a Cloudflare API token."
 	echo "   The token needs the following permissions:"
 	echo "   - Zone:Zone:Read"
 	echo "   - Zone:DNS:Edit"
@@ -129,7 +137,7 @@ setup_cloudflare_secret() {
 
 		# Allow skipping
 		if [[ "$cloudflare_token" == "skip" || -z "$cloudflare_token" ]]; then
-			log_warning "Skipping Cloudflare secret creation - cert-manager may not work properly"
+			log_warning "Skipping Cloudflare secret creation - cert-manager and external-dns may not work properly"
 			return 0
 		fi
 
@@ -146,16 +154,34 @@ setup_cloudflare_secret() {
 		break
 	done
 
-	# Create namespace if it doesn't exist
-	kubectl create namespace "$namespace" >/dev/null 2>&1 || true
+	# Create secret in all required namespaces
+	local success=true
+	for ns in "${namespaces[@]}"; do
+		# Skip if secret already exists in this namespace
+		if kubectl get secret "$secret_name" -n "$ns" >/dev/null 2>&1; then
+			log_success "Cloudflare API token secret already exists in namespace: $ns"
+			continue
+		fi
 
-	# Create the secret
-	if kubectl create secret generic "$secret_name" \
-		--from-literal=api-token="$cloudflare_token" \
-		-n "$namespace" >/dev/null 2>&1; then
-		log_success "Cloudflare API token secret created successfully"
+		# Create namespace if it doesn't exist
+		kubectl create namespace "$ns" >/dev/null 2>&1 || true
+
+		# Create the secret
+		if kubectl create secret generic "$secret_name" \
+			--from-literal=api-token="$cloudflare_token" \
+			-n "$ns" >/dev/null 2>&1; then
+			log_success "Cloudflare API token secret created in namespace: $ns"
+		else
+			log_error "Failed to create Cloudflare API token secret in namespace: $ns"
+			success=false
+		fi
+	done
+
+	if [[ "$success" == "true" ]]; then
+		log_success "Cloudflare API token secrets created successfully"
+		return 0
 	else
-		log_error "Failed to create Cloudflare API token secret"
+		log_error "Failed to create Cloudflare API token secrets in some namespaces"
 		return 1
 	fi
 }
@@ -467,11 +493,14 @@ reset_argocd() {
 reset_platform_secrets() {
 	log_info "Removing platform secrets..."
 
-	# Remove Cloudflare API token secret
-	if kubectl get secret cloudflare-api-token -n cert-manager >/dev/null 2>&1; then
-		kubectl delete secret cloudflare-api-token -n cert-manager || true
-		log_info "Removed Cloudflare API token secret"
-	fi
+	# Remove Cloudflare API token secrets from all namespaces
+	local namespaces=("cert-manager" "external-dns")
+	for ns in "${namespaces[@]}"; do
+		if kubectl get secret cloudflare-api-token -n "$ns" >/dev/null 2>&1; then
+			kubectl delete secret cloudflare-api-token -n "$ns" || true
+			log_info "Removed Cloudflare API token secret from namespace: $ns"
+		fi
+	done
 
 	# Remove SSH repository secret (if ArgoCD namespace still exists)
 	if kubectl get namespace argocd >/dev/null 2>&1; then

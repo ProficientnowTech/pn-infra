@@ -4,11 +4,17 @@ global:
   repoURL: https://github.com/pnow-devsupreme/pn-infra.git
   targetRevision: 'main'
 
-# Common labels - applied to all resources (informational)
-commonLabels:
+# Common annotations - informational metadata (not used for selection)
+commonAnnotations:
   platform.pnats.cloud/owner: 'Shaik Noorullah'
+  platform.pnats.cloud/owner-email: 'snoorullah@proficientnowtech.com'
+  platform.pnats.cloud/docs: 'docs.pnats.cloud/config-charts/#external-dns-config'
+  platform.pnats.cloud/git-commit: HEAD
+  platform.pnats.cloud/release-id: manual-deploy
+
+# Common labels - applied to all resources (valid label values only)
+commonLabels:
   platform.pnats.cloud/org: ProficientNowTech
-  platform.pnats.cloud/docs: docs.pnats.cloud/config-charts/#external-dns-config
   platform.pnats.cloud/chart-version: 0.1.0
   platform.pnats.cloud/maintained-by: platform-team
 
@@ -21,12 +27,9 @@ commonSelectors:
   platform.pnats.cloud/environment: production
   platform.pnats.cloud/tier: high
   platform.pnats.cloud/team: platform-team
-  platform.pnats.cloud/owner-email: snoorullah@proficientnowtech.com
   platform.pnats.cloud/monitoring-enabled: "true"
   platform.pnats.cloud/backup-policy: none
   platform.pnats.cloud/cost-center: platform-ops
-  platform.pnats.cloud/git-commit: HEAD
-  platform.pnats.cloud/release-id: manual-deploy
 
 # External-DNS namespace
 externalDns:

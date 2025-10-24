@@ -188,8 +188,6 @@ print_argo_success() {
 setup_argocd_repository() {
 	local repo_secret_file="${SCRIPT_DIR}/repositories/pn-infra.yaml"
 	local temp_secret_file=""
-	# trap exit on error and clean up temp secret (check if set first)
-	trap '[[ -n "$temp_secret_file" ]] && rm -f "$temp_secret_file"' EXIT ERR
 
 	info "Setting up ArgoCD repository access via Kubernetes Secret..."
 

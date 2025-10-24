@@ -104,6 +104,7 @@ setup_required_secrets() {
 setup_cloudflare_secret() {
 	local secret_name="cloudflare-api-token"
 	local namespace="cert-manager"
+	local cloudflare_token=""
 
 	# Check if secret already exists
 	if kubectl get secret "$secret_name" -n "$namespace" >/dev/null 2>&1; then
@@ -118,19 +119,32 @@ setup_cloudflare_secret() {
 	echo "   - Zone:Zone:Read"
 	echo "   - Zone:DNS:Edit"
 	echo "   - Include: All zones"
+	echo "   You can type 'skip' to skip this step"
 	echo
 
-	# Prompt for API token and validate
-	if [[ ! "$cloudflare_token" =~ ^[a-zA-Z0-9_-]{40,}$ ]]; then
-		log_warning "Token format looks invalid (should be 40+ alphanumeric characters)"
-		read -p "Continue anyway? (y/N): " -r
-		[[ ! $REPLY =~ ^[Yy]$ ]] && return 0
-	fi
+	# Prompt for API token (hidden input)
+	while true; do
+		read -r -s -p "Enter your Cloudflare API Token (input hidden, or 'skip'): " cloudflare_token
+		echo
 
-	if [[ "$cloudflare_token" == "skip" || -z "$cloudflare_token" ]]; then
-		log_warning "Skipping Cloudflare secret creation - cert-manager may not work properly"
-		return 0
-	fi
+		# Allow skipping
+		if [[ "$cloudflare_token" == "skip" || -z "$cloudflare_token" ]]; then
+			log_warning "Skipping Cloudflare secret creation - cert-manager may not work properly"
+			return 0
+		fi
+
+		# Validate token format
+		if [[ ! "$cloudflare_token" =~ ^[a-zA-Z0-9_-]{40,}$ ]]; then
+			log_warning "Token format looks invalid (should be 40+ alphanumeric characters)"
+			read -p "Continue anyway? (y/N): " -r
+			echo
+			if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+				continue
+			fi
+		fi
+
+		break
+	done
 
 	# Create namespace if it doesn't exist
 	kubectl create namespace "$namespace" >/dev/null 2>&1 || true

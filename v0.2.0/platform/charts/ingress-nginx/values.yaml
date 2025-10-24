@@ -40,6 +40,14 @@ controller:
     enabled: true
     minAvailable: 1
 
+  # Allow snippets for advanced configurations (e.g., ArgoCD GRPC)
+  allowSnippetAnnotations: true
+
+  # Additional configuration
+  config:
+    # Enable snippets in ConfigMap as well
+    allow-snippet-annotations: "true"
+
 # Default backend
 defaultBackend:
   enabled: true

@@ -37,7 +37,7 @@ argocd:
 
 ## Ingress configuration
 ingress:
-  enabled: true
+  enabled: true  # argocd-config manages the ingress
   # Resource-specific labels (merged with commonLabels)
   labels:
     app.kubernetes.io/name: argocd-server-ingress

@@ -69,12 +69,7 @@ server:
 
   # Ingress configuration for external access
   ingress:
-    enabled: true
-    ingressClassName: nginx
-    hostname: argocd.pnats.cloud
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-    tls: true
+    enabled: false  # Disabled - managed by argocd-config application
 
   # Server configuration
   config:

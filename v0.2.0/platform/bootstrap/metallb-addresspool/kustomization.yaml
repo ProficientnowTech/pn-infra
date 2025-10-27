@@ -4,4 +4,5 @@ kind: Kustomization
 
 resources:
 - metallb-ipaddresspool.yaml
-- metallb-l2advertisement.yaml
+- metallb-bgpadvertisement.yaml
+- metallb-bgppeer.yaml

@@ -1,0 +1,21 @@
+---
+apiVersion: metallb.io/v1beta2
+kind: BGPPeer
+metadata:
+  name: sophos-firewall
+  namespace: metallb-system
+spec:
+  # Sophos Firewall BGP peer
+  myASN: 64512
+  peerASN: 65000
+  peerAddress: 172.17.0.1
+
+  # Only establish BGP from worker nodes (which have VLAN 101 IPs)
+  # This excludes control-plane nodes
+  nodeSelectors:
+  - matchExpressions:
+    - key: node-role.kubernetes.io/control-plane
+      operator: DoesNotExist
+
+  # Optional: Add password if configured on Sophos
+  # password: "your-bgp-password"

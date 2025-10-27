@@ -72,15 +72,6 @@ applications:
     ref: values
   destinationNamespaceOverwrite: external-dns
 
-- name: ip-mapper
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-  sources:
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/charts/ip-mapper
-  destinationNamespaceOverwrite: platform-system
-
 # ArgoCD Self-Management
 - name: argocd-self
   annotations:

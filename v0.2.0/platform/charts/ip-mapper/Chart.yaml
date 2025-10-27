@@ -1,7 +1,0 @@
----
-apiVersion: v2
-name: ip-mapper
-description: Maps internal LoadBalancer IPs to public IPs for external-dns
-type: application
-version: 0.1.0
-appVersion: "1.0"

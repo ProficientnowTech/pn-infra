@@ -1,0 +1,21 @@
+apiVersion: metallb.io/v1beta2
+kind: BGPPeer
+metadata:
+  name: {{ .Values.bgpPeer.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  myASN: {{ .Values.bgpPeer.myASN }}
+  peerASN: {{ .Values.bgpPeer.peerASN }}
+  peerAddress: {{ .Values.bgpPeer.peerAddress }}
+  {{- if .Values.bgpPeer.peerPort }}
+  peerPort: {{ .Values.bgpPeer.peerPort }}
+  {{- end }}
+  {{- if .Values.bgpPeer.holdTime }}
+  holdTime: {{ .Values.bgpPeer.holdTime }}
+  {{- end }}
+  {{- if .Values.bgpPeer.keepaliveTime }}
+  keepaliveTime: {{ .Values.bgpPeer.keepaliveTime }}
+  {{- end }}
+  {{- if .Values.bgpPeer.routerID }}
+  routerID: {{ .Values.bgpPeer.routerID }}
+  {{- end }}

@@ -377,6 +377,12 @@ reset_platform() {
 	# Remove platform secrets
 	reset_platform_secrets
 
+	# Remove MetalLB resources
+	reset_metallb_resources
+
+	# Remove platform CRDs
+	reset_platform_crds
+
 	# Remove platform namespaces
 	reset_platform_namespaces
 
@@ -511,9 +517,93 @@ reset_platform_secrets() {
 	fi
 }
 
+reset_metallb_resources() {
+	log_info "Removing MetalLB configuration resources (addresspools, advertisements, peers)..."
+
+	# Check if MetalLB namespace exists
+	if ! kubectl get namespace metallb-system >/dev/null 2>&1; then
+		log_info "MetalLB namespace not found - skipping MetalLB resource cleanup"
+		return 0
+	fi
+
+	# Only delete resources managed by metallb-addresspool kustomization
+	# Do NOT delete MetalLB controller/speaker or namespace itself
+
+	log_info "Deleting MetalLB IPAddressPools..."
+	kubectl delete ipaddresspool --all -n metallb-system --timeout=60s 2>/dev/null || true
+
+	log_info "Deleting MetalLB L2Advertisements..."
+	kubectl delete l2advertisement --all -n metallb-system --timeout=60s 2>/dev/null || true
+
+	log_info "Deleting MetalLB BGPAdvertisements..."
+	kubectl delete bgpadvertisement --all -n metallb-system --timeout=60s 2>/dev/null || true
+
+	log_info "Deleting MetalLB BGPPeers..."
+	kubectl delete bgppeer --all -n metallb-system --timeout=60s 2>/dev/null || true
+
+	log_success "MetalLB configuration resources cleaned up (MetalLB controller/speaker unchanged)"
+}
+
+reset_platform_crds() {
+	log_info "Removing platform CRDs and cluster-scoped resources..."
+
+	# Delete cluster-scoped resources created by platform apps
+	log_info "Deleting ClusterIssuers..."
+	kubectl delete clusterissuer --all --timeout=60s 2>/dev/null || true
+
+	log_info "Deleting ClusterRoles created by platform..."
+	kubectl delete clusterrole -l app.kubernetes.io/part-of=argocd --timeout=60s 2>/dev/null || true
+	kubectl delete clusterrole -l app.kubernetes.io/name=cert-manager --timeout=60s 2>/dev/null || true
+	kubectl delete clusterrole -l app.kubernetes.io/name=external-dns --timeout=60s 2>/dev/null || true
+	kubectl delete clusterrole -l app.kubernetes.io/name=ingress-nginx --timeout=60s 2>/dev/null || true
+
+	log_info "Deleting ClusterRoleBindings created by platform..."
+	kubectl delete clusterrolebinding -l app.kubernetes.io/part-of=argocd --timeout=60s 2>/dev/null || true
+	kubectl delete clusterrolebinding -l app.kubernetes.io/name=cert-manager --timeout=60s 2>/dev/null || true
+	kubectl delete clusterrolebinding -l app.kubernetes.io/name=external-dns --timeout=60s 2>/dev/null || true
+	kubectl delete clusterrolebinding -l app.kubernetes.io/name=ingress-nginx --timeout=60s 2>/dev/null || true
+
+	log_info "Deleting ValidatingWebhookConfigurations..."
+	kubectl delete validatingwebhookconfigurations -l app.kubernetes.io/name=cert-manager --timeout=60s 2>/dev/null || true
+	kubectl delete validatingwebhookconfigurations -l app.kubernetes.io/name=ingress-nginx --timeout=60s 2>/dev/null || true
+
+	log_info "Deleting MutatingWebhookConfigurations..."
+	kubectl delete mutatingwebhookconfigurations -l app.kubernetes.io/name=cert-manager --timeout=60s 2>/dev/null || true
+	kubectl delete mutatingwebhookconfigurations -l app.kubernetes.io/name=ingress-nginx --timeout=60s 2>/dev/null || true
+
+	# List of CRDs to remove
+	# Note: MetalLB CRDs are NOT deleted as MetalLB is installed separately
+	local crds=(
+		# Cert-Manager CRDs
+		"certificaterequests.cert-manager.io"
+		"certificates.cert-manager.io"
+		"challenges.acme.cert-manager.io"
+		"clusterissuers.cert-manager.io"
+		"issuers.cert-manager.io"
+		"orders.acme.cert-manager.io"
+		# ArgoCD CRDs
+		"applications.argoproj.io"
+		"applicationsets.argoproj.io"
+		"appprojects.argoproj.io"
+	)
+
+	log_info "Deleting platform CRDs..."
+	for crd in "${crds[@]}"; do
+		if kubectl get crd "$crd" >/dev/null 2>&1; then
+			log_info "Deleting CRD: $crd"
+			# Remove finalizers first to avoid hanging
+			kubectl patch crd "$crd" --type='merge' -p='{"metadata":{"finalizers":[]}}' 2>/dev/null || true
+			kubectl delete crd "$crd" --timeout=60s 2>/dev/null || true
+		fi
+	done
+
+	log_success "Platform CRDs and cluster-scoped resources cleaned up"
+}
+
 reset_platform_namespaces() {
 	log_info "Removing platform namespaces..."
 
+	# Note: metallb-system is NOT deleted as MetalLB itself is installed separately
 	local namespaces=("ingress-nginx" "cert-manager" "external-dns" "argocd")
 
 	for ns in "${namespaces[@]}"; do

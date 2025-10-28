@@ -1,0 +1,6 @@
+apiVersion: v2
+name: metallb-bgp
+description: A Helm chart for MetalLB BGP configuration
+type: application
+version: 0.1.0
+appVersion: "1.0"

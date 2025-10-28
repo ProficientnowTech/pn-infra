@@ -343,30 +343,6 @@ setup_argocd_projects() {
 	fi
 }
 
-apply_metallb_addresspools() {
-	local metallb_manifests="${SCRIPT_DIR}/metallb-addresspool"
-
-	info "Applying Metallb AddressPools.."
-
-	if [[ ! -d "$metallb_manifests" ]]; then
-		error "Metallb AddressPools directory not found: $metallb_manifests"
-		return 1
-	fi
-
-	if [[ ! -f "$metallb_manifests/kustomization.yaml" ]]; then
-		error "Metallb kustomization.yaml not found in: $metallb_manifests"
-		return 1
-	fi
-
-	if kubectl apply -k "$metallb_manifests"; then
-		log "Metallb AddressPools and L2Advertisements Created Successfully!"
-		return 0
-	else
-		error "Failed to apply Metallb Manifests"
-		return 1
-	fi
-}
-
 # Main
 main() {
 	log "🚀 Starting ArgoCD installation (${ENVIRONMENT})..."
@@ -377,7 +353,6 @@ main() {
 	setup_argocd_repository
 	setup_argocd_projects
 	print_argo_success
-	apply_metallb_addresspools
 
 	log "✅ ArgoCD installation and repository setup completed!"
 }

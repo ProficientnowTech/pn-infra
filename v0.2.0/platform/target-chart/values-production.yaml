@@ -99,9 +99,17 @@ applications:
     - .operation
 
 # Configuration Applications (deployed after main charts)
-- name: ingress-nginx-config
+- name: metallb-config
   annotations:
     argocd.argoproj.io/sync-wave: "1"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/apps/metallb-config
+  destinationNamespaceOverwrite: metallb-system
+- name: ingress-nginx-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -110,7 +118,7 @@ applications:
 
 - name: cert-manager-config
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "3"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -119,7 +127,7 @@ applications:
 
 - name: external-dns-config
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "4"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -128,7 +136,7 @@ applications:
 
 - name: argocd-config
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "5"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main

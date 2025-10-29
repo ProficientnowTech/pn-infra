@@ -10,18 +10,25 @@ ipAddressPool:
   - 103.110.174.18-103.110.174.25
   autoAssign: true
 
-# BGP Peer configuration
-bgpPeer:
-  name: sophos-firewall
-  myASN: 64512
-  peerASN: 65000
-  peerAddress: 192.168.101.1
-  peerPort: 179
-  holdTime: 90s
-  # routerID removed - MetalLB will auto-generate unique IDs per speaker
+# BGP Peer configuration - DISABLED (switched to L2 mode)
+# bgpPeer:
+#   name: sophos-firewall
+#   myASN: 64512
+#   peerASN: 65000
+#   peerAddress: 192.168.101.1
+#   peerPort: 179
+#   holdTime: 90s
 
-# BGP Advertisement configuration
-bgpAdvertisement:
-  name: public-bgp-advertisement
+# BGP Advertisement configuration - DISABLED (switched to L2 mode)
+# bgpAdvertisement:
+#   name: public-bgp-advertisement
+#   ipAddressPools:
+#   - public-pool
+
+# L2 Advertisement configuration (ARP-based announcements)
+l2Advertisement:
+  name: public-l2-advertisement
   ipAddressPools:
   - public-pool
+  interfaces:
+  - public_traffic  # VLAN 101 interface on worker nodes

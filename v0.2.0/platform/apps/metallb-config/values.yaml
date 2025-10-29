@@ -18,7 +18,7 @@ bgpPeer:
   peerAddress: 192.168.101.1
   peerPort: 179
   holdTime: 90s
-  routerID: 192.168.101.1
+  # routerID removed - MetalLB will auto-generate unique IDs per speaker
 
 # BGP Advertisement configuration
 bgpAdvertisement:

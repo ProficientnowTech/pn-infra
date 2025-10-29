@@ -7,7 +7,7 @@ namespace: metallb-system
 ipAddressPool:
   name: public-pool
   addresses:
-  - 103.110.174.18-103.110.174.25
+  - 103.110.174.18-103.110.174.23
   autoAssign: true
 
 # BGP Peer configuration - DISABLED (switched to L2 mode)
@@ -31,4 +31,4 @@ l2Advertisement:
   ipAddressPools:
   - public-pool
   interfaces:
-  - public_traffic  # VLAN 101 interface on worker nodes
+  - public_traffic # VLAN 101 interface on worker nodes

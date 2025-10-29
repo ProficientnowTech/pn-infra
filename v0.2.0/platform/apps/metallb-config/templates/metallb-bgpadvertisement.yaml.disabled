@@ -1,8 +1,0 @@
-apiVersion: metallb.io/v1beta1
-kind: BGPAdvertisement
-metadata:
-  name: {{ .Values.bgpAdvertisement.name }}
-  namespace: {{ .Values.namespace }}
-spec:
-  ipAddressPools:
-    {{- toYaml .Values.bgpAdvertisement.ipAddressPools | nindent 4 }}

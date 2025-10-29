@@ -18,7 +18,6 @@ bgpPeer:
   peerAddress: 192.168.101.1
   peerPort: 179
   holdTime: 90s
-  keepaliveTime: 30s
   routerID: 192.168.101.1
 
 # BGP Advertisement configuration

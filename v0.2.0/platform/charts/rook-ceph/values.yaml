@@ -1,8 +1,9 @@
 ---
 # Global configuration
 global:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
   targetRevision: 'main'
+  targetNamespace: 'argocd'
   # Default hooks configuration (can be overridden by parent)
   hooks:
     enabled: true
@@ -14,6 +15,17 @@ global:
       monitoring: false
     notifications:
       syncFailure: true
+    # Hook job configuration
+    job:
+      image: bitnami/kubectl:latest
+      serviceAccountName: argocd-server
+      ttlSecondsAfterFinished: 300
+      backoffLimit: 3
+    # Storage validation configuration
+    storageValidation:
+      requiredNamespaces:
+        - rook-ceph
+        - local-path-storage
 
 # Labels configuration
 labels:
@@ -26,7 +38,7 @@ labels:
 # Image configuration
 image:
   repository: rook/ceph
-  tag: v1.18.3
+  tag: v1.18.4
   pullPolicy: IfNotPresent
 
 # Resource configuration for the operator
@@ -47,33 +59,64 @@ tolerations:
     operator: Equal
     effect: NoSchedule
 
+crds:
+  enabled: true
+
+
 # CSI configuration - CSI operator is now default in v1.18+
 csi:
+  disableCsiDriver: false  # Enable CSI driver (default behavior)
   enableRbdDriver: true
   enableCephfsDriver: true
   enableGrpcMetrics: true
-  # CSI images
-  csiRBDProvisionerImage: registry.k8s.io/sig-storage/csi-provisioner:v5.1.0
-  csiRBDAttacherImage: registry.k8s.io/sig-storage/csi-attacher:v4.7.0
-  csiCephFSProvisionerImage: registry.k8s.io/sig-storage/csi-provisioner:v5.1.0
-  csiCephFSAttacherImage: registry.k8s.io/sig-storage/csi-attacher:v4.7.0
+  enableCephfsSnapshotter: true
+  enableRBDSnapshotter: true
+  enableCSIEncryption: false
+
+  provisionerReplicas: 2
+
+  # Enable Ceph CSI Liveness sidecar deployment
+  enableLiveness: true
+
+  # CSI metrics configuration
+  cephfsLivenessMetricsPort: 9081
+  rbdLivenessMetricsPort: 8080
+
+  serviceMonitor:
+    enabled: true
+    interval: 10s
+
+  nfs:
+    enabled: false
+
+  topology:
+    enabled: false
+
+  # CSI Log level (0-5, higher = more verbose)
+  logLevel: 0
+
+  # GRPC timeout for CSI operations
+  grpcTimeoutInSeconds: 150
 
 # Discovery daemon configuration
 enableDiscoveryDaemon: true
+
+# Use Host Network for Operator
+useOperatorHostNetwork: true
+
+
 
 # Monitoring configuration
 monitoring:
   enabled: true
 
 # Security context
-securityContext:
+containerSecurityContext:
   runAsNonRoot: true
   runAsUser: 2016
   runAsGroup: 2016
-  fsGroup: 2016
-
-# Feature toggles
-enableSelinuxRelabeling: false
+  capabilities:
+    drop: ["ALL"]
 
 # Operator settings
 currentNamespaceOnly: false

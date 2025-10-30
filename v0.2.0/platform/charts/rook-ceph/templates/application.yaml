@@ -2,23 +2,25 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ include "rook-ceph.fullname" . }}
+  name: {{ .Chart.Name }}
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: '1'
+    argocd.argoproj.io/sync-wave: "{{ index .Chart.Annotations "platform.pn-infra.io/sync-wave" }}"
   labels:
-{{ include "rook-ceph.labels" . | nindent 4 }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/component: {{ .Values.labels.component }}
+    app.kubernetes.io/managed-by: {{ .Values.labels.managedBy | default "argocd" }}
 spec:
   project: default
   sources:
     - repoURL: https://charts.rook.io/release
       chart: rook-ceph
-      targetRevision: v1.18.3
+      targetRevision: {{ .Chart.AppVersion }}
       helm:
         releaseName: rook-ceph
         valueFiles:
           - $values/platform/charts/rook-ceph/values.yaml
-    - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
+    - repoURL: {{ .Values.global.repoURL | default "https://github.com/pnow-devsupreme/pn-infra.git" }}
       targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values
   destination:

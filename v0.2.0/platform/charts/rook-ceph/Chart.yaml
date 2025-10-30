@@ -3,7 +3,7 @@ name: rook-ceph
 description: Rook-Ceph storage operator for distributed storage platform
 type: application
 version: 0.1.0
-appVersion: "v1.18.3"
+appVersion: "v1.18.4"
 
 keywords:
   - storage

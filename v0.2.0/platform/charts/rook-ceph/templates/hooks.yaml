@@ -5,29 +5,29 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ .Values.global.name | default .Release.Name }}-storage-presync-validation
-  namespace: {{ .Values.global.targetNamespace | default "argocd" }}
+  namespace: {{ .Values.global.targetNamespace }}
   annotations:
     argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "-5"
 spec:
-  ttlSecondsAfterFinished: 300
+  ttlSecondsAfterFinished: {{ .Values.global.hooks.job.ttlSecondsAfterFinished }}
   template:
     spec:
-      serviceAccountName: argocd-server
+      serviceAccountName: {{ .Values.global.hooks.job.serviceAccountName }}
       containers:
       - name: storage-validator
-        image: bitnami/kubectl:latest
+        image: {{ .Values.global.hooks.job.image }}
         command:
         - sh
         - -c
         - |
           set -e
           echo "💾 Starting storage prerequisites validation..."
-          
+
           # Check 1: Verify required namespaces
           echo "Checking storage-related namespaces..."
-          REQUIRED_NS="rook-ceph local-path-storage"
+          REQUIRED_NS="{{- range $i, $ns := .Values.global.hooks.storageValidation.requiredNamespaces }}{{- if $i }} {{ end }}{{ $ns }}{{- end }}"
           for ns in $REQUIRED_NS; do
             if kubectl get namespace $ns >/dev/null 2>&1; then
               echo "✅ Namespace $ns exists"
@@ -53,7 +53,7 @@ spec:
           fi
           
           echo "🎉 Storage prerequisites validation completed!"
-          
+
       restartPolicy: Never
-  backoffLimit: 3
+  backoffLimit: {{ .Values.global.hooks.job.backoffLimit }}
 {{- end }}

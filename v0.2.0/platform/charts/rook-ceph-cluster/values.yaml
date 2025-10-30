@@ -97,18 +97,9 @@ cephClusterSpec:
   # Placement configuration for Ceph daemons
   placement:
     all:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-            - matchExpressions:
-                - key: role
-                  operator: In
-                  values:
-                    - storage-node
-                - key: ceph-osd
-                  operator: In
-                  values:
-                    - enabled
+      nodeSelector:
+        role: storage-node
+        ceph-osd: enabled
       tolerations:
         - key: node-role.kubernetes.io/control-plane
           operator: Exists

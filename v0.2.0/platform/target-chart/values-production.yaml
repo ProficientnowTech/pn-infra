@@ -178,6 +178,24 @@ applications:
     targetRevision: main
     ref: values
   destinationNamespaceOverwrite: rook-ceph
+  ignoreDifferences:
+  - group: ceph.rook.io
+    kind: CephCluster
+    jqPathExpressions:
+    - .status
+    - .spec.cephVersion.image
+  - group: ceph.rook.io
+    kind: CephBlockPool
+    jqPathExpressions:
+    - .status
+  - group: ceph.rook.io
+    kind: CephFilesystem
+    jqPathExpressions:
+    - .status
+  - group: ceph.rook.io
+    kind: CephObjectStore
+    jqPathExpressions:
+    - .status
 
 # # Security Platform (commented out for initial deployment)
 # - name: vault

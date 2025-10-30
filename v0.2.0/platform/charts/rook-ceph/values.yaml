@@ -60,8 +60,7 @@ csi:
   rbdLivenessMetricsPort: 8080
 
   serviceMonitor:
-    enabled: true
-    interval: 10s
+    enabled: false
 
   nfs:
     enabled: false

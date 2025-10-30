@@ -22,7 +22,7 @@ spec:
           - name: operatorNamespace
             value: {{ .Values.operatorNamespace }}
         valueFiles:
-          - $values/v0.2.0/platform/charts/rook-ceph-cluster/values.yaml
+          - $values/platform/charts/rook-ceph-cluster/values.yaml
     - repoURL: {{ .Values.global.repoURL | default "https://github.com/pnow-devsupreme/pn-infra.git" }}
       targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values

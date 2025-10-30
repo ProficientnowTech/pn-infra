@@ -60,13 +60,10 @@ ingress:
     kubernetes.io/ingress.class: nginx
     external-dns.alpha.kubernetes.io/hostname: argocd.pnats.cloud
     cert-manager.io/cluster-issuer: letsencrypt-production
-    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     nginx.ingress.kubernetes.io/server-snippet: |
-      grpc_read_timeout 300;
-      grpc_send_timeout 300;
       client_body_timeout 60;
       client_header_timeout 60;
       client_max_body_size 10m;

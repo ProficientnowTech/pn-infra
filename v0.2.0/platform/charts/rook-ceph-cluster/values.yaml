@@ -53,7 +53,7 @@ cephClusterSpec:
 
   # Dashboard configuration
   dashboard:
-    enabled: false
+    enabled: true
     ssl: true
     port: 8443
 

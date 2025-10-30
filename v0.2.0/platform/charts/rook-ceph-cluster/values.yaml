@@ -60,7 +60,7 @@ cephClusterSpec:
   # Monitoring configuration
   monitoring:
     enabled: false
-    createPrometheusRules: false # We'll create these when prometheus is deployed
+    # createPrometheusRules: false # Not supported in v1.18.4 schema
 
   # Network configuration
   network:
@@ -298,9 +298,9 @@ cephObjectStores:
         requests:
           cpu: "500m"
           memory: "1Gi"
-    healthCheck:
-      bucket:
-        interval: 60s
+    # healthCheck:
+    #   bucket:
+    #     interval: 60s  # Not supported in v1.18.4 schema
   storageClass:
     enabled: true
     name: ceph-bucket

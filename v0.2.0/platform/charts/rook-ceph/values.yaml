@@ -3,29 +3,6 @@
 global:
   repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
   targetRevision: 'main'
-  targetNamespace: 'argocd'
-  # Default hooks configuration (can be overridden by parent)
-  hooks:
-    enabled: true
-    validation:
-      infrastructure: false
-      storage: true
-    healthChecks:
-      rookCeph: false
-      monitoring: false
-    notifications:
-      syncFailure: true
-    # Hook job configuration
-    job:
-      image: bitnami/kubectl:latest
-      serviceAccountName: argocd-server
-      ttlSecondsAfterFinished: 300
-      backoffLimit: 3
-    # Storage validation configuration
-    storageValidation:
-      requiredNamespaces:
-        - rook-ceph
-        - local-path-storage
 
 # Labels configuration
 labels:

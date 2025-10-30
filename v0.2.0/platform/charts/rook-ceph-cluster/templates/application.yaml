@@ -2,29 +2,28 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ include "rook-ceph-cluster.fullname" . }}
+  name: {{ .Chart.Name }}
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: '2'
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
+    argocd.argoproj.io/sync-wave: "{{ index .Chart.Annotations "platform.pn-infra.io/sync-wave" }}"
   labels:
-{{ include "rook-ceph-cluster.labels" . | nindent 4 }}
-
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/component: {{ .Values.labels.component }}
+    app.kubernetes.io/managed-by: {{ .Values.labels.managedBy | default "argocd" }}
 spec:
   project: default
   sources:
     - repoURL: https://charts.rook.io/release
       chart: rook-ceph-cluster
-      targetRevision: v1.18.3
+      targetRevision: {{ .Chart.AppVersion }}
       helm:
         releaseName: rook-ceph-cluster
         parameters:
           - name: operatorNamespace
-            value: rook-ceph
+            value: {{ .Values.operatorNamespace }}
         valueFiles:
           - $values/v0.2.0/platform/charts/rook-ceph-cluster/values.yaml
-    - repoURL: {{ .Values.global.repoURL | default "git@github.com:pnow-devsupreme/pn-infra.git" }}
+    - repoURL: {{ .Values.global.repoURL | default "https://github.com/pnow-devsupreme/pn-infra.git" }}
       targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values
   destination:
@@ -35,18 +34,12 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
+      - CreateNamespace=false  # Namespace created by operator
       - RespectIgnoreDifferences=true
-      - PrunePropagationPolicy=foreground
-      - Replace=true
+      - ServerSideApply=true
     retry:
       limit: 5
       backoff:
-        duration: 10s
+        duration: 5s
         factor: 2
-        maxDuration: 5m
-  ignoreDifferences:
-    - group: ceph.rook.io
-      kind: CephCluster
-      jsonPointers:
-        - /status
+        maxDuration: 3m

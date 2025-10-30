@@ -273,6 +273,12 @@ rbac:
     p, role:readonly, applications, sync, */*, allow
     g, argocd-admins, role:admin
 
+## Configuration overrides
+configs:
+  params:
+    # Run server without TLS (nginx ingress terminates TLS)
+    server.insecure: "true"
+
 ## Service Account
 serviceAccount:
   create: true

@@ -36,43 +36,43 @@ cephClusterSpec:
 
   # Monitor configuration
   mon:
-    count: 3  # Should match number of storage nodes
-    allowMultiplePerNode: false  # Don't run multiple mons on same node
+    count: 3 # Should match number of storage nodes
+    allowMultiplePerNode: false # Don't run multiple mons on same node
     volumeClaimTemplate:
       spec:
-        storageClassName: local-path  # Use local-path for mon data
+        storageClassName: local-path # Use local-path for mon data
         resources:
           requests:
             storage: 10Gi
 
   # Manager configuration
   mgr:
-    count: 2  # Run 2 managers for HA
+    count: 2 # Run 2 managers for HA
     allowMultiplePerNode: false
     modules:
-      - name: pg_autoscaler
-        enabled: true
-      - name: rook
-        enabled: true
+    - name: pg_autoscaler
+      enabled: true
+    - name: rook
+      enabled: true
 
   # Dashboard configuration
   dashboard:
-    enabled: true
+    enabled: false
     ssl: true
     port: 8443
 
   # Monitoring configuration
   monitoring:
-    enabled: true
-    createPrometheusRules: false  # We'll create these when prometheus is deployed
+    enabled: false
+    createPrometheusRules: false # We'll create these when prometheus is deployed
 
   # Network configuration
   network:
     connections:
       encryption:
-        enabled: false  # Disable for performance in trusted network
+        enabled: false # Disable for performance in trusted network
       compression:
-        enabled: false  # Disable for performance
+        enabled: false # Disable for performance
       requireMsgr2: false
 
   # Crash collector
@@ -87,7 +87,7 @@ cephClusterSpec:
 
   # Cleanup policy on cluster deletion
   cleanupPolicy:
-    confirmation: ""  # Must be set to "yes-really-destroy-data" to allow cleanup
+    confirmation: "" # Must be set to "yes-really-destroy-data" to allow cleanup
     sanitizeDisks:
       method: quick
       dataSource: zero
@@ -100,22 +100,22 @@ cephClusterSpec:
 
   # Storage Configuration
   storage:
-    useAllNodes: false  # Explicitly define which nodes to use
-    useAllDevices: false  # Explicitly define which devices to use
+    useAllNodes: false # Explicitly define which nodes to use
+    useAllDevices: false # Explicitly define which devices to use
 
     nodes:
-      - name: "k8s-master-01"
-        devices:
-          - name: "/dev/sdb"
-      - name: "k8s-master-02"
-        devices:
-          - name: "/dev/sdb"
-      - name: "k8s-master-03"
-        devices:
-          - name: "/dev/sdb"
-      - name: "k8s-worker-02"
-        devices:
-          - name: "/dev/sdb"
+    - name: "k8s-master-01"
+      devices:
+      - name: "/dev/sdb"
+    - name: "k8s-master-02"
+      devices:
+      - name: "/dev/sdb"
+    - name: "k8s-master-03"
+      devices:
+      - name: "/dev/sdb"
+    - name: "k8s-worker-02"
+      devices:
+      - name: "/dev/sdb"
 
   # Remove OSDs that are not in the list above
   removeOSDsIfOutAndSafeToRemove: false
@@ -186,116 +186,116 @@ cephClusterSpec:
 # Ingress for Ceph Dashboard
 ingress:
   dashboard:
-    enabled: false  # Enable after cluster is healthy
-    host: ceph.pnow.tech
+    enabled: false # Enable after cluster is healthy
+    host: ceph.pnats.cloud
     ingressClassName: nginx
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-production
       nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
       nginx.ingress.kubernetes.io/ssl-passthrough: "true"
     tls:
-      - secretName: ceph-dashboard-tls
-        hosts:
-          - ceph.pnow.tech
+    - secretName: ceph-dashboard-tls
+      hosts:
+      - ceph.pnats.cloud
 
 # CephBlockPool for RBD
 cephBlockPools:
-  - name: replicapool
-    spec:
-      failureDomain: host  # Replicate across hosts
-      replicated:
-        size: 3  # 3 replicas (matches number of OSDs)
-        requireSafeReplicaSize: true
-    storageClass:
-      enabled: true
-      name: ceph-block
-      isDefault: false
-      reclaimPolicy: Delete
-      allowVolumeExpansion: true
-      volumeBindingMode: Immediate
-      mountOptions: []
-      parameters:
-        imageFormat: "2"
-        imageFeatures: layering
-        csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
-        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
-        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
-        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
-        csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
-        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
-        csi.storage.k8s.io/fstype: ext4
+- name: replicapool
+  spec:
+    failureDomain: host # Replicate across hosts
+    replicated:
+      size: 3 # 3 replicas (matches number of OSDs)
+      requireSafeReplicaSize: true
+  storageClass:
+    enabled: true
+    name: ceph-block
+    isDefault: false
+    reclaimPolicy: Delete
+    allowVolumeExpansion: true
+    volumeBindingMode: Immediate
+    mountOptions: []
+    parameters:
+      imageFormat: "2"
+      imageFeatures: layering
+      csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+      csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+      csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+      csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+      csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+      csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+      csi.storage.k8s.io/fstype: ext4
 
 # CephFilesystem for CephFS
 cephFileSystems:
-  - name: cephfs
-    spec:
-      metadataPool:
-        replicated:
-          size: 3
-      dataPools:
-        - name: data0
-          failureDomain: host
-          replicated:
-            size: 3
-      metadataServer:
-        activeCount: 1
-        activeStandby: true
-        resources:
-          limits:
-            cpu: "1000m"
-            memory: "4Gi"
-          requests:
-            cpu: "500m"
-            memory: "1Gi"
-        priorityClassName: system-cluster-critical
-    storageClass:
-      enabled: true
-      name: ceph-filesystem
-      isDefault: false
-      reclaimPolicy: Delete
-      allowVolumeExpansion: true
-      volumeBindingMode: Immediate
-      mountOptions: []
-      parameters:
-        csi.storage.k8s.io/provisioner-secret-name: rook-csi-cephfs-provisioner
-        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
-        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-cephfs-provisioner
-        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
-        csi.storage.k8s.io/node-stage-secret-name: rook-csi-cephfs-node
-        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
-        csi.storage.k8s.io/fstype: ext4
+- name: cephfs
+  spec:
+    metadataPool:
+      replicated:
+        size: 3
+    dataPools:
+    - name: data0
+      failureDomain: host
+      replicated:
+        size: 3
+    metadataServer:
+      activeCount: 1
+      activeStandby: true
+      resources:
+        limits:
+          cpu: "1000m"
+          memory: "4Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+      priorityClassName: system-cluster-critical
+  storageClass:
+    enabled: true
+    name: ceph-filesystem
+    isDefault: false
+    reclaimPolicy: Delete
+    allowVolumeExpansion: true
+    volumeBindingMode: Immediate
+    mountOptions: []
+    parameters:
+      csi.storage.k8s.io/provisioner-secret-name: rook-csi-cephfs-provisioner
+      csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+      csi.storage.k8s.io/controller-expand-secret-name: rook-csi-cephfs-provisioner
+      csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+      csi.storage.k8s.io/node-stage-secret-name: rook-csi-cephfs-node
+      csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+      csi.storage.k8s.io/fstype: ext4
 
 # CephObjectStore for RGW (S3/Swift)
 cephObjectStores:
-  - name: objectstore
-    spec:
-      metadataPool:
-        failureDomain: host
-        replicated:
-          size: 3
-      dataPool:
-        failureDomain: host
-        replicated:
-          size: 3  # Using replicated instead of erasure coding for 3-node cluster
-      preservePoolsOnDelete: true
-      gateway:
-        port: 80
-        securePort: 443
-        instances: 2  # Run 2 RGW instances for HA
-        priorityClassName: system-cluster-critical
-        resources:
-          limits:
-            cpu: "1000m"
-            memory: "2Gi"
-          requests:
-            cpu: "500m"
-            memory: "1Gi"
-      healthCheck:
-        bucket:
-          interval: 60s
-    storageClass:
-      enabled: true
-      name: ceph-bucket
-      reclaimPolicy: Delete
-      parameters:
-        region: us-east-1
+- name: objectstore
+  spec:
+    metadataPool:
+      failureDomain: host
+      replicated:
+        size: 3
+    dataPool:
+      failureDomain: host
+      replicated:
+        size: 3 # Using replicated instead of erasure coding for 3-node cluster
+    preservePoolsOnDelete: true
+    gateway:
+      port: 80
+      securePort: 443
+      instances: 2 # Run 2 RGW instances for HA
+      priorityClassName: system-cluster-critical
+      resources:
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+    healthCheck:
+      bucket:
+        interval: 60s
+  storageClass:
+    enabled: true
+    name: ceph-bucket
+    reclaimPolicy: Delete
+    parameters:
+      region: ap-south-2

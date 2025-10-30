@@ -187,7 +187,8 @@ cephClusterSpec:
 ingress:
   dashboard:
     enabled: false # Enable after cluster is healthy
-    host: ceph.pnats.cloud
+    host:
+      name: ceph.pnats.cloud
     ingressClassName: nginx
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-production

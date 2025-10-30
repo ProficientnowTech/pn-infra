@@ -34,7 +34,6 @@ spec:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
       - PrunePropagationPolicy=foreground
-      - Replace=true
       - ServerSideApply=true
     retry:
       limit: 5

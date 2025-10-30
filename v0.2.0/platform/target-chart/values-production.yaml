@@ -184,6 +184,7 @@ applications:
     jqPathExpressions:
     - .status
     - .spec.cephVersion.image
+    - .spec.placement
   - group: ceph.rook.io
     kind: CephBlockPool
     jqPathExpressions:

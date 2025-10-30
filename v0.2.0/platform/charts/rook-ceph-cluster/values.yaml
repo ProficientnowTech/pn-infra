@@ -36,12 +36,12 @@ cephClusterSpec:
 
   # Monitor configuration
   mon:
-    count: 3  # Deploy 3 monitors for quorum
-    allowMultiplePerNode: false  # Don't run multiple mons on same node
+    count: 3 # Deploy 3 monitors for quorum
+    allowMultiplePerNode: false # Don't run multiple mons on same node
     # Use hostPath instead of PVCs for monitor data
     # volumeClaimTemplate: null  # Disabled - using dataDirHostPath instead
 
-  # Manager configuration
+    # Manager configuration
   mgr:
     count: 2 # Run 2 managers for HA
     allowMultiplePerNode: false
@@ -62,7 +62,7 @@ cephClusterSpec:
     enabled: false
     # createPrometheusRules: false # Not supported in v1.18.4 schema
 
-  # Network configuration
+    # Network configuration
   network:
     connections:
       encryption:
@@ -101,28 +101,28 @@ cephClusterSpec:
         role: storage-node
         ceph-osd: enabled
       tolerations:
-        - key: node-role.kubernetes.io/control-plane
-          operator: Exists
-          effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
 
   # Storage Configuration
   storage:
-    useAllNodes: false  # Explicitly define which nodes to use
-    useAllDevices: false  # Explicitly define which devices to use
+    useAllNodes: false # Explicitly define which nodes to use
+    useAllDevices: false # Explicitly define which devices to use
 
     nodes:
-      - name: "k8s-master-01"
-        devices:
-          - name: "/dev/sdb"
-      - name: "k8s-master-02"
-        devices:
-          - name: "/dev/sdb"
-      - name: "k8s-master-03"
-        devices:
-          - name: "/dev/sdb"
-      - name: "k8s-worker-02"
-        devices:
-          - name: "/dev/sdb"
+    - name: "k8s-master-01"
+      devices:
+      - name: "/dev/sdb"
+    - name: "k8s-master-02"
+      devices:
+      - name: "/dev/sdb"
+    - name: "k8s-master-03"
+      devices:
+      - name: "/dev/sdb"
+    - name: "k8s-worker-02"
+      devices:
+      - name: "/dev/sdb"
 
   # Remove OSDs that are not in the list above
   removeOSDsIfOutAndSafeToRemove: false
@@ -193,7 +193,7 @@ cephClusterSpec:
 # Ingress for Ceph Dashboard
 ingress:
   dashboard:
-    enabled: false # Enable after cluster is healthy
+    enabled: true # Enable after cluster is healthy
     host:
       name: ceph.pnats.cloud
     ingressClassName: nginx

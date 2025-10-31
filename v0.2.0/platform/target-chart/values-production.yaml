@@ -146,23 +146,16 @@ applications:
 # Storage Foundation
 - name: rook-ceph
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "10"
   sources:
-  - repoURL: https://charts.rook.io/release
-    chart: rook-ceph
-    targetRevision: v1.18.4
-    helm:
-      releaseName: rook-ceph
-      valueFiles:
-      - $values/v0.2.0/platform/charts/rook-ceph/values.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    ref: values
+    path: v0.2.0/platform/charts/rook-ceph
   destinationNamespaceOverwrite: rook-ceph
 
 - name: rook-ceph-cluster
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "20"
   sources:
   - repoURL: https://charts.rook.io/release
     chart: rook-ceph-cluster

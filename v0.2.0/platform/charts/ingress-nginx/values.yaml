@@ -43,6 +43,10 @@ controller:
   # Allow snippets for advanced configurations (e.g., ArgoCD GRPC)
   allowSnippetAnnotations: true
 
+  # Admission webhook configuration
+  admissionWebhooks:
+    failurePolicy: Ignore  # Don't block if webhook validation fails
+
   # Additional configuration
   config:
     # Enable snippets in ConfigMap as well

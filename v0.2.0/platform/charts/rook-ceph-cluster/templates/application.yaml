@@ -22,7 +22,7 @@ spec:
           - name: operatorNamespace
             value: {{ .Values.operatorNamespace }}
         valueFiles:
-          - $values/platform/charts/rook-ceph-cluster/values.yaml
+          - $values/v0.2.0/platform/charts/rook-ceph-cluster/values.yaml
     - repoURL: {{ .Values.global.repoURL | default "https://github.com/pnow-devsupreme/pn-infra.git" }}
       targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values
@@ -34,7 +34,7 @@ spec:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=false  # Namespace created by operator
+      - CreateNamespace=false
       - RespectIgnoreDifferences=true
       - ServerSideApply=true
     retry:
@@ -43,3 +43,22 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+  ignoreDifferences:
+  - group: ceph.rook.io
+    kind: CephCluster
+    jqPathExpressions:
+    - .status
+    - .spec.cephVersion.image
+    - .spec.placement
+  - group: ceph.rook.io
+    kind: CephBlockPool
+    jqPathExpressions:
+    - .status
+  - group: ceph.rook.io
+    kind: CephFilesystem
+    jqPathExpressions:
+    - .status
+  - group: ceph.rook.io
+    kind: CephObjectStore
+    jqPathExpressions:
+    - .status

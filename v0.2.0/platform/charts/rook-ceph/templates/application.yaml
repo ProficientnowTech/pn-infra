@@ -19,7 +19,7 @@ spec:
       helm:
         releaseName: rook-ceph
         valueFiles:
-          - $values/platform/charts/rook-ceph/values.yaml
+          - $values/v0.2.0/platform/charts/rook-ceph/values.yaml 
     - repoURL: {{ .Values.global.repoURL | default "https://github.com/pnow-devsupreme/pn-infra.git" }}
       targetRevision: {{ .Values.global.targetRevision | default "main" }}
       ref: values

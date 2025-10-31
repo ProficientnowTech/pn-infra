@@ -144,58 +144,62 @@ applications:
   destinationNamespaceOverwrite: argocd
 
 # Storage Foundation
-# - name: rook-ceph
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "10"
-#   sources:
-#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-#     targetRevision: main
-#     path: v0.2.0/platform/charts/rook-ceph
-#   destinationNamespaceOverwrite: rook-ceph
-
 - name: rook-ceph
-  path: v0.2.0/platform/charts/rook-ceph
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  sources:
+  - repoURL: https://charts.rook.io/release
+    chart: rook-ceph
+    targetRevision: v1.18.4
+    helm:
+      releaseName: rook-ceph
+      valueFiles:
+      - $values/v0.2.0/platform/charts/rook-ceph/values.yaml
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    ref: values
+  destinationNamespaceOverwrite: rook-ceph
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true
 
 - name: rook-ceph-cluster
-  path: v0.2.0/platform/charts/rook-ceph-cluster
-
-# - name: rook-ceph-cluster
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "20"
-#   sources:
-#   - repoURL: https://charts.rook.io/release
-#     chart: rook-ceph-cluster
-#     targetRevision: v1.18.4
-#     helm:
-#       releaseName: rook-ceph-cluster
-#       parameters:
-#         - name: operatorNamespace
-#           value: rook-ceph
-#       valueFiles:
-#       - $values/v0.2.0/platform/charts/rook-ceph-cluster/values.yaml
-#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-#     targetRevision: main
-#     ref: values
-#   destinationNamespaceOverwrite: rook-ceph
-#   ignoreDifferences:
-#   - group: ceph.rook.io
-#     kind: CephCluster
-#     jqPathExpressions:
-#     - .status
-#     - .spec.cephVersion.image
-#     - .spec.placement
-#   - group: ceph.rook.io
-#     kind: CephBlockPool
-#     jqPathExpressions:
-#     - .status
-#   - group: ceph.rook.io
-#     kind: CephFilesystem
-#     jqPathExpressions:
-#     - .status
-#   - group: ceph.rook.io
-#     kind: CephObjectStore
-#     jqPathExpressions:
-#     - .status
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  sources:
+  - repoURL: https://charts.rook.io/release
+    chart: rook-ceph-cluster
+    targetRevision: v1.18.4
+    helm:
+      releaseName: rook-ceph-cluster
+      parameters:
+      - name: operatorNamespace
+        value: rook-ceph
+      valueFiles:
+      - $values/v0.2.0/platform/charts/rook-ceph-cluster/values.yaml
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    ref: values
+  destinationNamespaceOverwrite: rook-ceph
+  ignoreDifferences:
+  - group: ceph.rook.io
+    kind: CephCluster
+    jqPathExpressions:
+    - .status
+    - .spec.cephVersion.image
+    - .spec.placement
+  - group: ceph.rook.io
+    kind: CephBlockPool
+    jqPathExpressions:
+    - .status
+  - group: ceph.rook.io
+    kind: CephFilesystem
+    jqPathExpressions:
+    - .status
+  - group: ceph.rook.io
+    kind: CephObjectStore
+    jqPathExpressions:
+    - .status
 
 # # Security Platform (commented out for initial deployment)
 # - name: vault

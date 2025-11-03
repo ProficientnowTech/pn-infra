@@ -1,0 +1,172 @@
+---
+# Global configuration
+global:
+  repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: zolando-pg-operator
+  component-category: database
+  db-type: relational-db
+  db-type-name: postgres
+  managed-by: argocd
+
+# Zalando Postgres Operator Configuration
+# Based on: https://github.com/zalando/postgres-operator
+postgres-operator:
+  enabled: true
+
+  # Operator image
+  image:
+    repository: registry.opensource.zalan.do/acid/postgres-operator
+    tag: v1.10.0
+    pullPolicy: IfNotPresent
+
+  # Configuration for the operator
+  config:
+    # Cluster domain
+    cluster_domain: cluster.local
+
+    # Connection pooler configuration
+    connection_pooler:
+      number_of_instances: 2
+
+    # Load balancers for HA
+    enable_master_load_balancer: true
+    enable_replica_load_balancer: true
+
+    # Resource configuration for Postgres clusters
+    resources:
+      default_cpu_request: 100m
+      default_memory_request: 100Mi
+      default_cpu_limit: 1000m
+      default_memory_limit: 1Gi
+
+    # Storage configuration
+    storage_resize_mode: pvc
+
+    # Postgres versions
+    supported_postgres_versions:
+    - "16"
+    - "15"
+    - "14"
+    # Timeouts
+    resync_period: 1800
+    pod_terminate_grace_period: 600
+
+    # Monitoring
+    enable_pgversion_env_var: true
+
+    # S3 Backup Configuration
+    aws_region: "us-east-1" # Will be overridden by secret
+    aws_s3_bucket: "" # Will be populated from secret
+
+    # Backup configuration
+    logical_backup_schedule: "0 2 * * *" # Daily at 2 AM
+    logical_backup_provider: "s3"
+    logical_backup_s3_bucket: "" # Will be populated from secret
+    logical_backup_s3_region: "us-east-1" # Will be overridden by secret
+
+    # WAL-G configuration for continuous archiving
+    wal_s3_bucket: "" # Will be populated from secret
+    use_wal_g_bucket: true
+
+    # KMS encryption for backups
+    aws_kms_key_id: "" # Will be populated from secret
+    aws_kms_signing_key_id: "" # Will be populated from secret
+
+  # Resource limits for the operator itself
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "200m"
+
+  # Service account and RBAC
+  serviceAccount:
+    create: true
+    name: postgres-operator
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  # Pod environment configuration for S3 backups
+  podEnvironmentConfig:
+    enabled: true
+    secretRef:
+      name: postgres-backup-credentials
+      key: AWS_ACCESS_KEY_ID
+      secretKeyRef: AWS_ACCESS_KEY_ID
+    configMapRef: {}
+
+  # Additional environment variables for Spilo pods
+  spilo:
+    # S3 configuration for backups
+    environmentConfigMap: "postgres-backup-config"
+
+    # Enable S3 wal-g backup
+    walgs3:
+      enabled: true
+      bucket: "" # Will be populated from secret
+      endpoint: "https://s3.ap-south-2.amazonaws.com" # Adjust for your region
+      # KMS encryption
+      kmsKeyId: "" # Will be populated from secret
+
+# CRDs - the operator will manage these
+crds:
+  enabled: true
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+
+# Pod configuration
+podLabels:
+  app.kubernetes.io/component: database-operator
+  app.kubernetes.io/part-of: platform
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+
+# Additional configuration for S3 backups
+configMaps:
+  postgres-backup-config:
+    enabled: true
+    data:
+      # WAL-G S3 configuration
+      WALG_S3_PREFIX: "s3://" # Will be completed with bucket from secret
+      WALG_S3_SSE_KMS_ID: "" # Will be populated from secret
+      WALG_S3_SSE: "aws:kms"
+      WALG_S3_STORAGE_CLASS: "STANDARD"
+
+      # Backup compression and performance
+      WALG_COMPRESSION_METHOD: "lz4"
+      WALG_UPLOAD_CONCURRENCY: "2"
+      WALG_DOWNLOAD_CONCURRENCY: "2"
+      WALG_DISABLE_S3_SSE: "false"
+
+      # Backup retention
+      WALG_BACKUP_COMPRESSION_METHOD: "lz4"
+      WALG_BACKUP_LABEL: "cluster-name"
+
+      # Logging
+      WALG_LOG_LEVEL: "INFO"
+      WALG_S3_LOG_LEVEL: "INFO"
+
+      # PG configuration for backups
+      USE_WALG_BACKUP: "true"
+      USE_WALG_RESTORE: "true"
+
+      # AWS configuration
+      AWS_REGION: "us-east-1" # Will be overridden by secret
+      AWS_S3_FORCE_PATH_STYLE: "false"
+      AWS_EC2_METADATA_DISABLED: "true"

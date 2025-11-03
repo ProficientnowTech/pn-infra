@@ -59,5 +59,6 @@ kubeconfig
 *_rsa
 *.pub
 *.secret
+*.env
 
 inventory

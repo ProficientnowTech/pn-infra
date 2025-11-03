@@ -205,6 +205,20 @@ ingress:
     - secretName: ceph-dashboard-tls
       hosts:
       - ceph.pnats.cloud
+  rgw:
+    enabled: true
+    host:
+      name: s3.pnats.cloud
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    tls:
+    - secretName: ceph-rgw-s3-tls
+      hosts:
+      - s3.pnats.cloud
 
 # CephBlockPool for RBD
 cephBlockPools:
@@ -273,9 +287,51 @@ cephFileSystems:
       csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
       csi.storage.k8s.io/fstype: ext4
 
-# CephObjectStore for RGW (S3/Swift)
+# Object Storage Configuration (Multisite setup)
+cephObjectRealms:
+- name: pn-platform-realm
+  metadata:
+    name: pn-platform-realm
+    namespace: rook-ceph
+  spec:
+    # For a new realm, we don't need pull endpoint initially
+    # This will be the master realm
+
+cephObjectZoneGroups:
+- name: ap-south-2
+  metadata:
+    name: ap-south-2
+    namespace: rook-ceph
+  spec:
+    realm: pn-platform-realm
+    # Master zone group - this is the default/main one
+    # No endpoints needed for master zone group initially
+
+cephObjectZones:
+- name: ap-south-2a
+  metadata:
+    name: ap-south-2a
+    namespace: rook-ceph
+  spec:
+    zoneGroup: ap-south-2
+    # For the master zone, we don't need customEndpoints initially
+    # Rook will create the endpoints automatically
+    metadataPool:
+      failureDomain: host
+      replicated:
+        size: 3
+    dataPool:
+      failureDomain: host
+      replicated:
+        size: 3
+    # Using replicated pools for 3-node cluster (better than erasure coding for small clusters)
+
+    # CephObjectStore for RGW (S3/Swift)
 cephObjectStores:
-- name: objectstore
+- name: pn-platform-objectstore
+  metadata:
+    name: pn-platform-objectstore
+    namespace: rook-ceph
   spec:
     metadataPool:
       failureDomain: host
@@ -284,12 +340,11 @@ cephObjectStores:
     dataPool:
       failureDomain: host
       replicated:
-        size: 3 # Using replicated instead of erasure coding for 3-node cluster
+        size: 3
     preservePoolsOnDelete: true
     gateway:
       port: 80
-      # securePort: 443  # Disabled - TLS termination handled by ingress
-      instances: 2 # Run 2 RGW instances for HA
+      instances: 2
       priorityClassName: system-cluster-critical
       resources:
         limits:
@@ -298,12 +353,34 @@ cephObjectStores:
         requests:
           cpu: "500m"
           memory: "1Gi"
-    # healthCheck:
-    #   bucket:
-    #     interval: 60s  # Not supported in v1.18.4 schema
-  storageClass:
-    enabled: true
-    name: ceph-bucket
-    reclaimPolicy: Delete
-    parameters:
-      region: ap-south-2
+    zone:
+      name: ap-south-2a
+
+# CephObjectStoreUser for StackGres backups
+cephObjectStoreUsers:
+- name: stackgres-user
+  metadata:
+    name: stackgres-user
+    namespace: rook-ceph
+  spec:
+    store: pn-platform-objectstore
+    displayName: "StackGres Backup User"
+    # Quotas for backups
+    quotas:
+      maxSize: "100Gi"
+      maxObjects: 10000
+# Admin User snoorullah
+- name: snoorullah
+  metadata:
+    name: snoorullah
+    namespace: rook-ceph
+  spec:
+    store: pn-platform-objectstore
+    displayName: "Admin User"
+    # Quotas for backups
+    quotas:
+      maxSize: "256Gi"
+      maxObjects: 1000000
+    capabilities:
+      user: "*"
+      bucket: "*"

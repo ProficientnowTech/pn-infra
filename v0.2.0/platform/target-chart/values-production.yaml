@@ -143,6 +143,16 @@ applications:
     path: v0.2.0/platform/apps/argocd-config
   destinationNamespaceOverwrite: argocd
 
+# deploy stackgres-secret
+- name: stackgres-s3-credentials
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/apps/stackgres-s3-credentials
+  destinationNamespaceOverwrite: argocd
+
 # Storage Foundation
 - name: rook-ceph
   annotations:
@@ -200,6 +210,41 @@ applications:
     kind: CephObjectStore
     jqPathExpressions:
     - .status
+
+- name: zalando-pg
+  annotations:
+    argocd.argoproj.io/sync-wave: "300"
+  sources:
+  - repoURL: https://github.com/zalando/postgres-operator.git
+    chart: postgres-operator
+    targetRevision: v1.10.0
+    helm:
+      releaseName: zalando-pg
+      valueFiles:
+      - $values/v0.2.0/platform/charts/zalando-pg/values.yaml
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    ref: values
+  destinationNamespaceOverwrite: postgres-operator
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jqPathExpressions:
+    - .status
+    - .spec.template.spec.containers[0].image
+  - group: apps
+    kind: StatefulSet
+    jqPathExpressions:
+    - .status
+    - .spec.template.spec.containers[0].image
+  - group: apps
+    kind: ReplicaSet
+    jqPathExpressions:
+    - .status
+    - .spec.template.spec.containers[0].image
 
 # # Security Platform (commented out for initial deployment)
 # - name: vault

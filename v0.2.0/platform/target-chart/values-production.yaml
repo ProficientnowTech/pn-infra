@@ -143,16 +143,6 @@ applications:
     path: v0.2.0/platform/apps/argocd-config
   destinationNamespaceOverwrite: argocd
 
-# deploy stackgres-secret
-- name: stackgres-s3-credentials
-  annotations:
-    argocd.argoproj.io/sync-wave: "60"
-  sources:
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/apps/stackgres-s3-credentials
-  destinationNamespaceOverwrite: argocd
-
 # Storage Foundation
 - name: rook-ceph
   annotations:

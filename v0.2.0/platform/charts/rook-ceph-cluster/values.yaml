@@ -288,7 +288,7 @@ cephObjectStores:
     preservePoolsOnDelete: true
     gateway:
       port: 80
-      securePort: 443
+      # securePort: 443  # Disabled - TLS termination handled by ingress
       instances: 2 # Run 2 RGW instances for HA
       priorityClassName: system-cluster-critical
       resources:

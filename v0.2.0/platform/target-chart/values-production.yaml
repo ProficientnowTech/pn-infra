@@ -207,7 +207,7 @@ applications:
   sources:
   - repoURL: https://opensource.zalando.com/postgres-operator/charts/postgres-operator
     chart: postgres-operator
-    targetRevision: v1.10.0
+    targetRevision: v1.15.0
     helm:
       releaseName: zalando-pg
       valueFiles:

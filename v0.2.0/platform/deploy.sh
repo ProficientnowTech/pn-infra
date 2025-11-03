@@ -90,7 +90,7 @@ deploy_platform_secrets() {
 # AWS Access Key for S3 backups
 AWS_ACCESS_KEY_ID=
 
-# AWS Secret Key for S3 backups  
+# AWS Secret Key for S3 backups
 AWS_SECRET_ACCESS_KEY=
 
 # AWS Region for S3 bucket
@@ -500,6 +500,11 @@ show_status() {
 check_platform_deployed() {
 	log_info "Checking if platform applications are already deployed..."
 
+	# Check if S3 backup secret exists (indicates previous deployment)
+	if kubectl get secret postgres-backup-credentials -n postgres-operator >/dev/null 2>&1; then
+		log_info "S3 backup secret exists - platform has been deployed before"
+	fi
+
 	# Check if ArgoCD has any applications
 	if ! kubectl get applications -n argocd >/dev/null 2>&1; then
 		log_info "No ArgoCD applications found - platform not deployed"
@@ -553,11 +558,6 @@ check_platform_deployed() {
 	else
 		log_info "Insufficient core applications found ($found_apps) - platform not fully deployed"
 		return 1
-	fi
-
-	# Check if S3 backup secret exists (indicates previous deployment)
-	if kubectl get secret postgres-backup-credentials -n postgres-operator >/dev/null 2>&1; then
-		log_info "S3 backup secret exists - platform has been deployed before"
 	fi
 
 }
@@ -615,6 +615,9 @@ show_status() {
 case $OPERATION in
 deploy)
 	deploy_platform_applications
+	;;
+create-secrets)
+	create_platform_secrets
 	;;
 status)
 	show_status

@@ -205,7 +205,7 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: "300"
   sources:
-  - repoURL: https://github.com/zalando/postgres-operator.git
+  - repoURL: https://opensource.zalando.com/postgres-operator/charts/postgres-operator
     chart: postgres-operator
     targetRevision: v1.10.0
     helm:

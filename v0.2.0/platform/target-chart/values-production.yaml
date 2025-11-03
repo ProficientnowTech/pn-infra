@@ -24,7 +24,7 @@ applications:
 
 - name: ingress-nginx
   annotations:
-    argocd.argoproj.io/sync-wave: "-3"
+    argocd.argoproj.io/sync-wave: "-30"
   sources:
   - repoURL: https://kubernetes.github.io/ingress-nginx
     chart: ingress-nginx
@@ -40,7 +40,7 @@ applications:
 
 - name: cert-manager
   annotations:
-    argocd.argoproj.io/sync-wave: "-2"
+    argocd.argoproj.io/sync-wave: "-20"
   sources:
   - repoURL: https://charts.jetstack.io
     chart: cert-manager
@@ -58,7 +58,7 @@ applications:
 
 - name: external-dns
   annotations:
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "-10"
   sources:
   - repoURL: https://kubernetes-sigs.github.io/external-dns/
     chart: external-dns
@@ -101,7 +101,7 @@ applications:
 # Configuration Applications (deployed after main charts)
 - name: metallb-config
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "10"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -109,7 +109,7 @@ applications:
   destinationNamespaceOverwrite: metallb-system
 - name: ingress-nginx-config
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "20"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -118,7 +118,7 @@ applications:
 
 - name: cert-manager-config
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "30"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -127,7 +127,7 @@ applications:
 
 - name: external-dns-config
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "40"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -136,7 +136,7 @@ applications:
 
 - name: argocd-config
   annotations:
-    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-wave: "50"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
@@ -146,7 +146,7 @@ applications:
 # Storage Foundation
 - name: rook-ceph
   annotations:
-    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-wave: "100"
   sources:
   - repoURL: https://charts.rook.io/release
     chart: rook-ceph
@@ -165,7 +165,7 @@ applications:
 
 - name: rook-ceph-cluster
   annotations:
-    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-wave: "200"
   sources:
   - repoURL: https://charts.rook.io/release
     chart: rook-ceph-cluster

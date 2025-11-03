@@ -98,7 +98,7 @@ cephClusterSpec:
   placement:
     all:
       nodeSelector:
-        role: storage-node
+        role: storage
         ceph-osd: enabled
       tolerations:
       - key: node-role.kubernetes.io/control-plane

@@ -69,9 +69,9 @@ issuer:
   create: false
   # You can choose Issuer or ClusterIssuer here. The first one is namespaced, the second one
   # is available for global usage.
-  # kind: Issuer
+  kind: ClusterIssuer
   # type: selfSigned
-  # name: redis-operator-issuer
+  name: letsencrypt-production
   # email: shubham.gupta@opstree.com
   # server: https://acme-v02.api.letsencrypt.org/directory
   # privateKeySecretName: letsencrypt-prod
@@ -83,7 +83,7 @@ certmanager:
   # Whether to use cert-manager for certificate management
   # Only effective when webhook=true
   # If webhook=true and certmanager.enabled=false, you need to manually create certificate secret
-  enabled: true
+  enabled: false
   # API version of the cert-manager CRDs
   apiVersion: "cert-manager.io/v1"
 

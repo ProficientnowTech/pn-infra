@@ -277,6 +277,9 @@ applications:
     targetRevision: main
     ref: values
   destinationNamespaceOverwrite: redis-operator
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
 
 # - name: infisical-operator
 #   annotations:

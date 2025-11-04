@@ -179,6 +179,9 @@ applications:
       - $values/v0.2.0/platform/charts/rook-ceph-cluster/values.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
+    path: v0.2.0/platform/charts/rook-ceph-cluster/multisite
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
     ref: values
   destinationNamespaceOverwrite: rook-ceph
   ignoreDifferences:

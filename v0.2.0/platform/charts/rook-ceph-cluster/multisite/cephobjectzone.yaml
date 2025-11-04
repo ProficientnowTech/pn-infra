@@ -1,0 +1,15 @@
+apiVersion: ceph.rook.io/v1
+kind: CephObjectZone
+metadata:
+  name: ap-south-2a
+  namespace: rook-ceph
+spec:
+  zoneGroup: ap-south-2
+  metadataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+  dataPool:
+    failureDomain: host
+    replicated:
+      size: 3

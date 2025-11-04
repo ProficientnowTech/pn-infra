@@ -200,6 +200,10 @@ applications:
     kind: CephObjectStore
     jqPathExpressions:
     - .status
+  - group: storage.k8s.io
+    kind: StorageClass
+    jqPathExpressions:
+    - .parameters
 
 - name: zalando-pg
   annotations:

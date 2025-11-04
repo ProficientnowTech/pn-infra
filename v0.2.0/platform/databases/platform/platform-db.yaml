@@ -153,6 +153,12 @@ spec:
       secretKeyRef:
         name: postgres-backup-credentials
         key: AWS_REGION
+
+  # WAL-G configuration from ConfigMap
+  envFrom:
+  - configMapRef:
+      name: postgres-backup-config
+
   # Patroni configuration for HA
   patroni:
     initdb:

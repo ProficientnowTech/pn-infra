@@ -29,9 +29,9 @@ data:
   WALG_BACKUP_COMPRESSION_METHOD: "lz4"
   WALG_DELTA_MAX_STEPS: "6"  # Number of delta backups before full backup
 
-  # WAL-G Logging
-  WALG_LOG_LEVEL: "INFO"
-  WALG_S3_LOG_LEVEL: "INFO"
+  # WAL-G Logging (must be NORMAL, DEVEL, or ERROR)
+  WALG_LOG_LEVEL: "NORMAL"
+  WALG_S3_LOG_LEVEL: "NORMAL"
 
   # Enable WAL-G for backup and restore
   USE_WALG_BACKUP: "true"

@@ -3,7 +3,7 @@ apiVersion: "acid.zalan.do/v1"
 kind: postgresql
 metadata:
   name: platform-db
-  namespace: postgres-operator
+  namespace: platform-db-pg
   labels:
     app.kubernetes.io/name: platform-db
     app.kubernetes.io/component: database
@@ -13,7 +13,20 @@ spec:
   teamId: "platform"
 
   # High Availability Configuration
-  numberOfInstances: 3  # 3 instances for HA (1 master + 2 replicas)
+  numberOfInstances: 5
+
+  # Load balancers for HA
+  enableMasterLoadBalancer: true
+  enableReplicaLoadBalancer: true
+
+  # Connection pooler for efficient connection management
+  enableConnectionPooler: true
+  enableReplicaConnectionPooler: true # set to enable connectionPooler for replica service
+  enableMasterPoolerLoadBalancer: true
+  enableReplicaPoolerLoadBalancer: true
+
+  # Enable logical backups (snapshots) - Daily at 2 AM via operator config
+  enableLogicalBackup: true
 
   # PostgreSQL version
   postgresql:
@@ -31,14 +44,14 @@ spec:
       # WAL settings for PITR
       wal_level: "replica"
       archive_mode: "on"
-      archive_timeout: "300s"  # 5 minutes
+      archive_timeout: "300s" # 5 minutes
       max_wal_senders: "10"
       wal_keep_size: "1GB"
 
       # Logging for audit
       logging_collector: "on"
-      log_statement: "ddl"  # Log all DDL statements
-      log_min_duration_statement: "1000"  # Log queries > 1s
+      log_statement: "ddl" # Log all DDL statements
+      log_min_duration_statement: "1000" # Log queries > 1s
       log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
 
       # Checkpoint tuning
@@ -50,7 +63,7 @@ spec:
     size: 50Gi
     storageClass: ceph-block
     # Prevent accidental deletion
-    iops: 3000  # For SSD performance
+    iops: 3000 # For SSD performance
 
   # Resource allocation (critical workload)
   resources:
@@ -67,20 +80,20 @@ spec:
     platform_admin:
     - superuser
     - createdb
-
     # Application users (one per database)
-    infisical_user: []
-    grafana_user: []
-    authentik_user: []
-    vault_user: []
+    infisical_user:
+    - createdb
+    grafana_user:
+    - createdb
+    authentik_user:
+    - createdb
 
   # Databases - All will be backed up automatically
   databases:
-    platform_db: platform_admin       # Default database
-    infisical: infisical_user         # Infisical secrets management
-    grafana: grafana_user             # Grafana dashboards
-    authentik: authentik_user         # Authentik SSO
-    vault: vault_user                 # Vault secrets
+    platform_db: platform_admin # Default database
+    infisical: infisical_user # Infisical secrets management
+    grafana: grafana_user # Grafana dashboards
+    authentik: authentik_user # Authentik SSO
 
   # Prepared databases (optional - for future expansion)
   preparedDatabases:
@@ -98,14 +111,7 @@ spec:
       extensions:
         pg_stat_statements: public
         pgcrypto: public
-    vault:
-      defaultUsers: true
-      extensions:
-        pg_stat_statements: public
-        pgcrypto: public
 
-  # Connection pooler for efficient connection management
-  enableConnectionPooler: true
   connectionPooler:
     numberOfInstances: 2
     mode: transaction
@@ -117,20 +123,12 @@ spec:
         cpu: 500m
         memory: 256Mi
 
-  # Load balancers for HA
-  enableMasterLoadBalancer: true
-  enableReplicaLoadBalancer: true
-
-  # Enable logical backups (snapshots) - Daily at 2 AM via operator config
-  enableLogicalBackup: true
-
   # Pod anti-affinity for HA (spread across nodes)
   podAntiAffinity: true
   tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
-
   # Environment variables for WAL-G (PITR)
   env:
   # AWS credentials from secret
@@ -149,12 +147,10 @@ spec:
       secretKeyRef:
         name: postgres-backup-credentials
         key: AWS_REGION
-
   # WAL-G configuration from ConfigMap
   envFrom:
   - configMapRef:
       name: postgres-backup-config
-
   # Patroni configuration for HA
   patroni:
     initdb:
@@ -171,11 +167,11 @@ spec:
     ttl: 30
     loop_wait: 10
     retry_timeout: 10
-    synchronous_mode: false  # Async replication for performance
+    synchronous_mode: false # Async replication for performance
     synchronous_mode_strict: false
 
   # Monitoring
-  enableShmVolume: true  # Required for pg_stat_statements
+  enableShmVolume: true # Required for pg_stat_statements
 
   # Sidecars for monitoring (optional)
   sidecars:
@@ -202,7 +198,6 @@ spec:
         secretKeyRef:
           name: postgres.platform-db.credentials.postgresql.acid.zalan.do
           key: password
-
   # Additional annotations
   annotations:
     backup-enabled: "true"

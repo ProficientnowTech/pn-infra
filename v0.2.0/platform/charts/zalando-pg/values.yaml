@@ -52,8 +52,8 @@ postgres-operator:
 
   # Load Balancer Configuration
   configLoadBalancer:
-    enable_master_load_balancer: false
-    enable_replica_load_balancer: false
+    enable_master_load_balancer: true
+    enable_replica_load_balancer: true
 
   # PostgreSQL Pod Resources
   configPostgresPodResources:
@@ -68,14 +68,14 @@ postgres-operator:
   configLogicalBackup:
     logical_backup_docker_image: "ghcr.io/zalando/postgres-operator/logical-backup:v1.13.0"
     logical_backup_provider: "s3"
-    logical_backup_schedule: "0 2 * * *"  # Daily at 2 AM
+    logical_backup_schedule: "0 2 * * *" # Daily at 2 AM
     logical_backup_s3_bucket: "pn-platform-db-backups"
     logical_backup_s3_region: "ap-south-2"
-    logical_backup_s3_endpoint: ""  # Use default AWS S3 endpoint
+    logical_backup_s3_endpoint: "" # Use default AWS S3 endpoint
     logical_backup_s3_bucket_prefix: "spilo"
     logical_backup_s3_sse: "AES256"
-    logical_backup_s3_access_key_id: ""  # Will use pod_environment_secret
-    logical_backup_s3_secret_access_key: ""  # Will use pod_environment_secret
+    logical_backup_s3_access_key_id: "" # Will use pod_environment_secret
+    logical_backup_s3_secret_access_key: "" # Will use pod_environment_secret
     logical_backup_cronjob_environment_secret: "postgres-backup-credentials"
 
   # General Configuration
@@ -112,7 +112,6 @@ postgres-operator:
     runAsUser: 1000
     runAsGroup: 1000
     fsGroup: 1000
-
 
 # CRDs - the operator will manage these
 crds:

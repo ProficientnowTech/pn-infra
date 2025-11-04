@@ -198,5 +198,5 @@ spec:
     - name: DATA_SOURCE_PASS
       valueFrom:
         secretKeyRef:
-          name: postgres.platform-db.credentials.postgresql.acid.zalan.do
+          name: postgres.platform-db-cluster.credentials.postgresql.acid.zalan.do
           key: password

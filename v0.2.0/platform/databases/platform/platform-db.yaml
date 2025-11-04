@@ -129,8 +129,7 @@ spec:
         cpu: 500m
         memory: 256Mi
 
-  # Pod anti-affinity for HA (spread across nodes)
-  podAntiAffinity: true
+  # Tolerations for scheduling
   tolerations:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
@@ -153,11 +152,6 @@ spec:
       secretKeyRef:
         name: postgres-backup-credentials
         key: AWS_REGION
-
-  # WAL-G configuration from ConfigMap
-  envFrom:
-  - configMapRef:
-      name: postgres-backup-config
 
   # Patroni configuration for HA
   patroni:

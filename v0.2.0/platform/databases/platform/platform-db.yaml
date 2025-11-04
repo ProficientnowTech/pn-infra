@@ -1,0 +1,211 @@
+---
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: platform-db
+  namespace: postgres-operator
+  labels:
+    app.kubernetes.io/name: platform-db
+    app.kubernetes.io/component: database
+    criticality: high
+spec:
+  # Team identifier
+  teamId: "platform"
+
+  # High Availability Configuration
+  numberOfInstances: 3  # 3 instances for HA (1 master + 2 replicas)
+
+  # PostgreSQL version
+  postgresql:
+    version: "16"
+    parameters:
+      # Performance tuning
+      shared_buffers: "512MB"
+      effective_cache_size: "2GB"
+      maintenance_work_mem: "128MB"
+      work_mem: "16MB"
+
+      # Connection settings
+      max_connections: "200"
+
+      # WAL settings for PITR
+      wal_level: "replica"
+      archive_mode: "on"
+      archive_timeout: "300s"  # 5 minutes
+      max_wal_senders: "10"
+      wal_keep_size: "1GB"
+
+      # Logging for audit
+      logging_collector: "on"
+      log_statement: "ddl"  # Log all DDL statements
+      log_min_duration_statement: "1000"  # Log queries > 1s
+      log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+
+      # Checkpoint tuning
+      checkpoint_timeout: "15min"
+      checkpoint_completion_target: "0.9"
+
+  # Storage configuration
+  volume:
+    size: 50Gi
+    storageClass: ceph-block
+    # Prevent accidental deletion
+    iops: 3000  # For SSD performance
+
+  # Resource allocation (critical workload)
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+  # Users and their permissions
+  users:
+    # Platform admin user
+    platform_admin:
+    - superuser
+    - createdb
+
+    # Application users (one per database)
+    infisical_user: []
+    grafana_user: []
+    authentik_user: []
+    vault_user: []
+
+  # Databases - All will be backed up automatically
+  databases:
+    platform_db: platform_admin       # Default database
+    infisical: infisical_user         # Infisical secrets management
+    grafana: grafana_user             # Grafana dashboards
+    authentik: authentik_user         # Authentik SSO
+    vault: vault_user                 # Vault secrets
+
+  # Prepared databases (optional - for future expansion)
+  preparedDatabases:
+    infisical:
+      defaultUsers: true
+      extensions:
+        pg_stat_statements: public
+        pgcrypto: public
+    grafana:
+      defaultUsers: true
+      extensions:
+        pg_stat_statements: public
+    authentik:
+      defaultUsers: true
+      extensions:
+        pg_stat_statements: public
+        pgcrypto: public
+    vault:
+      defaultUsers: true
+      extensions:
+        pg_stat_statements: public
+        pgcrypto: public
+
+  # Connection pooler for efficient connection management
+  enableConnectionPooler: true
+  connectionPooler:
+    numberOfInstances: 2
+    mode: transaction
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+
+  # Load balancers for HA
+  enableMasterLoadBalancer: true
+  enableReplicaLoadBalancer: true
+
+  # Enable logical backups (snapshots) - Daily at 2 AM via operator config
+  enableLogicalBackup: true
+
+  # Pod anti-affinity for HA (spread across nodes)
+  podAntiAffinity: true
+  tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+  # Environment variables for WAL-G (PITR)
+  env:
+  # AWS credentials from secret
+  - name: AWS_ACCESS_KEY_ID
+    valueFrom:
+      secretKeyRef:
+        name: postgres-backup-credentials
+        key: AWS_ACCESS_KEY_ID
+  - name: AWS_SECRET_ACCESS_KEY
+    valueFrom:
+      secretKeyRef:
+        name: postgres-backup-credentials
+        key: AWS_SECRET_ACCESS_KEY
+  - name: AWS_REGION
+    valueFrom:
+      secretKeyRef:
+        name: postgres-backup-credentials
+        key: AWS_REGION
+
+  # WAL-G configuration from ConfigMap
+  envFrom:
+  - configMapRef:
+      name: postgres-backup-config
+
+  # Patroni configuration for HA
+  patroni:
+    initdb:
+      encoding: "UTF8"
+      locale: "en_US.UTF-8"
+      data-checksums: "true"
+    pg_hba:
+    # Allow connections from pods
+    - local     all all trust
+    - hostssl   all +zalandos    127.0.0.1/32 pam
+    - host      all all         10.0.0.0/8   md5
+    - hostssl   all +zalandos    ::1/128      pam
+    - hostssl   all all         ::/0         md5
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    synchronous_mode: false  # Async replication for performance
+    synchronous_mode_strict: false
+
+  # Monitoring
+  enableShmVolume: true  # Required for pg_stat_statements
+
+  # Sidecars for monitoring (optional)
+  sidecars:
+  - name: exporter
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    ports:
+    - name: exporter
+      containerPort: 9187
+      protocol: TCP
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+    env:
+    - name: DATA_SOURCE_URI
+      value: "localhost:5432/postgres?sslmode=disable"
+    - name: DATA_SOURCE_USER
+      value: "postgres"
+    - name: DATA_SOURCE_PASS
+      valueFrom:
+        secretKeyRef:
+          name: postgres.platform-db.credentials.postgresql.acid.zalan.do
+          key: password
+
+  # Additional annotations
+  annotations:
+    backup-enabled: "true"
+    backup-type: "snapshot-and-pitr"
+    backup-destination: "s3://pn-platform-db-backups"
+    backup-schedule: "daily-2am-snapshots-continuous-wal"

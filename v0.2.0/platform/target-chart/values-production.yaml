@@ -243,6 +243,33 @@ applications:
     - .status
     - .spec.template.spec.containers[0].image
 
+- name: postgres-operator-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "310"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/apps/postgres-operator-config
+  destinationNamespaceOverwrite: postgres-operator
+
+- name: platform-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "320"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/databases/platform
+  destinationNamespaceOverwrite: postgres-operator
+  ignoreDifferences:
+  - group: acid.zalan.do
+    kind: postgresql
+    jqPathExpressions:
+    - .status
+    - .metadata.annotations
+    - .spec.patroni
+  syncOptions:
+  - CreateNamespace=false
+
 # # Security Platform (commented out for initial deployment)
 # - name: vault
 #   annotations:

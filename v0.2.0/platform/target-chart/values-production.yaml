@@ -243,7 +243,7 @@ applications:
     - .status
     - .spec.template.spec.containers[0].image
 
-- name: postgres-operator-configinfisical-helm-charts
+- name: postgres-operator-config
   annotations:
     argocd.argoproj.io/sync-wave: "310"
   sources:
@@ -268,7 +268,7 @@ applications:
   sources:
   - repoURL: https://ot-container-kit.github.io/helm-charts/
     chart: redis-operator
-    targetRevision: "1.4.1"
+    targetRevision: "v0.22.2"
     helm:
       releaseName: ot-helm
       valueFiles:

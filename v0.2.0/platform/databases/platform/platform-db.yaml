@@ -2,8 +2,14 @@
 apiVersion: "acid.zalan.do/v1"
 kind: postgresql
 metadata:
-  name: platform-db
+  name: platform-db-cluster
   namespace: platform-db-pg
+  # Additional annotations
+  annotations:
+    backup-enabled: "true"
+    backup-type: "snapshot-and-pitr"
+    backup-destination: "s3://pn-platform-db-backups"
+    backup-schedule: "daily-2am-snapshots-continuous-wal"
   labels:
     app.kubernetes.io/name: platform-db
     app.kubernetes.io/component: database
@@ -147,10 +153,6 @@ spec:
       secretKeyRef:
         name: postgres-backup-credentials
         key: AWS_REGION
-  # WAL-G configuration from ConfigMap
-  envFrom:
-  - configMapRef:
-      name: postgres-backup-config
   # Patroni configuration for HA
   patroni:
     initdb:
@@ -198,9 +200,3 @@ spec:
         secretKeyRef:
           name: postgres.platform-db.credentials.postgresql.acid.zalan.do
           key: password
-  # Additional annotations
-  annotations:
-    backup-enabled: "true"
-    backup-type: "snapshot-and-pitr"
-    backup-destination: "s3://pn-platform-db-backups"
-    backup-schedule: "daily-2am-snapshots-continuous-wal"

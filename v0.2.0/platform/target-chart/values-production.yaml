@@ -243,7 +243,7 @@ applications:
     - .status
     - .spec.template.spec.containers[0].image
 
-- name: postgres-operator-config
+- name: postgres-operator-configinfisical-helm-charts
   annotations:
     argocd.argoproj.io/sync-wave: "310"
   sources:
@@ -262,6 +262,37 @@ applications:
   destinationNamespaceOverwrite: platform-db-pg
   syncOptions:
   - CreateNamespace=true
+- name: redis-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "330"
+  sources:
+  - repoURL: https://ot-container-kit.github.io/helm-charts/
+    chart: redis-operator
+    targetRevision: "1.4.1"
+    helm:
+      releaseName: ot-helm
+      valueFiles:
+      - $values/v0.2.0/platform/charts/redis-operator/values.yaml
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    ref: values
+  destinationNamespaceOverwrite: redis-operator
+
+# - name: infisical-operator
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "330"
+#   sources:
+#   - repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
+#     chart: secrets-operator
+#     targetRevision: 0.10.2
+#     helm:
+#       releaseName: secrets-operator
+#       valueFiles:
+#       - $values/v0.2.0/platform/charts/infisical/values.yaml
+#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#     targetRevision: main
+#     ref: values
+#   destinationNamespaceOverwrite: infisical
 
 # # Security Platform (commented out for initial deployment)
 # - name: vault

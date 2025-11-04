@@ -205,20 +205,6 @@ ingress:
     - secretName: ceph-dashboard-tls
       hosts:
       - ceph.pnats.cloud
-  rgw:
-    enabled: true
-    host:
-      name: s3.pnats.cloud
-    ingressClassName: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-production
-      nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
-      nginx.ingress.kubernetes.io/proxy-buffering: "off"
-    tls:
-    - secretName: ceph-rgw-s3-tls
-      hosts:
-      - s3.pnats.cloud
 
 # CephBlockPool for RBD
 cephBlockPools:
@@ -355,6 +341,28 @@ cephObjectStores:
           memory: "1Gi"
     zone:
       name: ap-south-2a
+  storageClass:
+    enabled: true
+    name: ceph-bucket
+    reclaimPolicy: Delete
+    volumeBindingMode: "Immediate"
+    parameters:
+      region: ap-south-2
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    host:
+      name: s3.pnats.cloud
+      path: /
+      pathType: Prefix
+    tls:
+    - hosts:
+      - s3.pnats.cloud
+      secretName: ceph-rgw-s3-tls
 
 # CephObjectStoreUser for StackGres backups
 cephObjectStoreUsers:

@@ -18,7 +18,7 @@ spec:
 
   # Kubernetes Configuration
   kubernetesConfig:
-    image: quay.io/opstree/redis:7.0.15
+    image: quay.io/opstree/redis
     imagePullPolicy: IfNotPresent
 
     # Resource allocation for platform workloads
@@ -69,7 +69,7 @@ spec:
   # Redis Exporter for Monitoring
   redisExporter:
     enabled: true
-    image: quay.io/opstree/redis-exporter:v1.58.0
+    image: quay.io/opstree/redis-exporter
     imagePullPolicy: IfNotPresent
     resources:
       requests:
@@ -110,7 +110,7 @@ spec:
     capabilities:
       drop:
       - ALL
-    readOnlyRootFilesystem: false  # Redis needs write for RDB/AOF
+    readOnlyRootFilesystem: false # Redis needs write for RDB/AOF
     runAsNonRoot: true
 
   # Tolerations for control-plane scheduling

@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redis-crd-patch
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: crd-patcher
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/sh
+        - -c
+        - |
+          kubectl patch crd redis.redis.redis.opstreelabs.in -p '{"metadata":{"annotations":{"cert-manager.io/inject-ca-from":"redis-operator/serving-cert"}}}' && \
+          kubectl patch crd redisclusters.redis.redis.opstreelabs.in -p '{"metadata":{"annotations":{"cert-manager.io/inject-ca-from":"redis-operator/serving-cert"}}}' && \
+          kubectl patch crd redisreplications.redis.redis.opstreelabs.in -p '{"metadata":{"annotations":{"cert-manager.io/inject-ca-from":"redis-operator/serving-cert"}}}' && \
+          kubectl patch crd redissentinels.redis.redis.opstreelabs.in -p '{"metadata":{"annotations":{"cert-manager.io/inject-ca-from":"redis-operator/serving-cert"}}}'

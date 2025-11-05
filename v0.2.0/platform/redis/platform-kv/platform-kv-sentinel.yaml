@@ -18,7 +18,7 @@ spec:
 
   # Kubernetes Configuration
   kubernetesConfig:
-    image: quay.io/opstree/redis-sentinel:7.0.15
+    image: quay.io/opstree/redis-sentinel
     imagePullPolicy: IfNotPresent
 
     # Resource allocation for sentinel nodes

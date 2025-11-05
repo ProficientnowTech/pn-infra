@@ -40,33 +40,6 @@ spec:
         external-dns.alpha.kubernetes.io/hostname: platform-kv.pnats.cloud
         external-dns.alpha.kubernetes.io/ttl: "300"
 
-  # Redis Configuration
-  redisConfig:
-    additionalRedisConfig: |
-      # Memory and eviction policies
-      maxmemory 896mb
-      maxmemory-policy allkeys-lru
-
-      # Persistence settings (RDB snapshots)
-      save 900 1        # After 900 sec (15 min) if at least 1 key changed
-      save 300 10       # After 300 sec (5 min) if at least 10 keys changed
-      save 60 10000     # After 60 sec if at least 10000 keys changed
-
-      # Replication settings
-      repl-diskless-sync yes
-      repl-diskless-sync-delay 5
-
-      # Performance tuning
-      tcp-keepalive 300
-      timeout 0
-
-      # Logging
-      loglevel notice
-
-      # Append-Only File (AOF) for durability
-      appendonly yes
-      appendfsync everysec
-
   # Persistent Storage - Ceph Block (RBD)
   storage:
     volumeClaimTemplate:

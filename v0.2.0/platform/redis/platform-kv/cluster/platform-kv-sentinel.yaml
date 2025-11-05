@@ -58,19 +58,19 @@ spec:
     parallelSyncs: "1"
 
   # Additional sentinel configuration
-  externalConfig:
-    enabled: true
-    data: |
-      # Sentinel logging
-      loglevel notice
+  # externalConfig:
+  #   enabled: true
+  #   data: |
+  #     # Sentinel logging
+  #     loglevel notice
 
-      # Announce hostnames for better service discovery
-      sentinel announce-hostnames yes
-      sentinel resolve-hostnames yes
+  #     # Announce hostnames for better service discovery
+  #     sentinel announce-hostnames yes
+  #     sentinel resolve-hostnames yes
 
   # Service configuration
   externalService:
-    enabled: false
+    enabled: true
     serviceType: ClusterIP
     port: 26379
 

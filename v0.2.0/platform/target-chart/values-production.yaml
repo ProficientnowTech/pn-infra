@@ -316,6 +316,8 @@ applications:
     targetRevision: main
     path: v0.2.0/platform/charts/external-secrets
   destinationNamespaceOverwrite: external-secrets-operator
+  syncOptions:
+  - ServerSideApply=true
 
 # - name: infisical-operator
 #   annotations:

@@ -324,11 +324,11 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: "360"
   sources:
-  - repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/infisical-helm-charts
-    chart: secrets-operator
-    targetRevision: 0.10.11
+  - repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
+    chart: infisical
+    targetRevision: 0.4.2
     helm:
-      releaseName: secrets-operator
+      releaseName: infisical
       valueFiles:
       - $values/v0.2.0/platform/charts/infisical/values.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git

@@ -1,0 +1,111 @@
+---
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisSentinel
+metadata:
+  name: platform-kv-sentinel
+  namespace: platform-kv-redis-cluster
+  labels:
+    app.kubernetes.io/name: platform-kv-sentinel
+    app.kubernetes.io/component: redis-sentinel
+    app.kubernetes.io/part-of: platform-infrastructure
+    criticality: high
+  annotations:
+    description: "Sentinel cluster for monitoring and automatic failover of platform-kv Redis"
+spec:
+  # Sentinel Cluster Configuration
+  # 3 sentinels with quorum of 2 for consensus
+  clusterSize: 3
+
+  # Kubernetes Configuration
+  kubernetesConfig:
+    image: quay.io/opstree/redis-sentinel:7.0.15
+    imagePullPolicy: IfNotPresent
+
+    # Resource allocation for sentinel nodes
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+
+    # Service configuration
+    service:
+      type: ClusterIP
+
+  # Sentinel Configuration
+  redisSentinelConfig:
+    # Reference to the RedisReplication cluster to monitor
+    redisReplicationName: platform-kv
+
+    # Master group name for sentinel configuration
+    masterGroupName: platform-kv-master
+
+    # Redis connection port
+    redisPort: "6379"
+
+    # Quorum: Number of sentinels that need to agree for failover
+    # With 3 sentinels, quorum of 2 provides fault tolerance
+    quorum: "2"
+
+    # Failover timeout in milliseconds (10 seconds)
+    # Time to wait before considering failover failed
+    failoverTimeout: "10000"
+
+    # Down-after-milliseconds (5 seconds)
+    # Time after which sentinel considers master down
+    downAfterMilliseconds: "5000"
+
+    # Parallel syncs during failover
+    # Number of replicas that can sync with new master simultaneously
+    parallelSyncs: "1"
+
+    # Additional sentinel configuration
+    additionalSentinelConfig: |
+      # Sentinel logging
+      loglevel notice
+
+      # Announce hostnames for better service discovery
+      sentinel announce-hostnames yes
+      sentinel resolve-hostnames yes
+
+  # Pod Anti-Affinity for HA
+  # Ensure sentinel pods are spread across different nodes
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - platform-kv-sentinel
+          topologyKey: kubernetes.io/hostname
+
+  # Security Context
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: false  # Sentinel needs write for state
+    runAsNonRoot: true
+
+  # Tolerations for control-plane scheduling
+  tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+  # Pod Disruption Budget
+  pdb:
+    enabled: true
+    maxUnavailable: 1

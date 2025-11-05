@@ -1,0 +1,147 @@
+---
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisReplication
+metadata:
+  name: platform-kv
+  namespace: platform-kv-redis-cluster
+  labels:
+    app.kubernetes.io/name: platform-kv
+    app.kubernetes.io/component: redis-replication
+    app.kubernetes.io/part-of: platform-infrastructure
+    criticality: high
+  annotations:
+    description: "Redis replication cluster for platform services (Infisical, etc.)"
+spec:
+  # High Availability Configuration
+  # 1 master + 2 replicas for robust failover
+  clusterSize: 3
+
+  # Kubernetes Configuration
+  kubernetesConfig:
+    image: quay.io/opstree/redis:7.0.15
+    imagePullPolicy: IfNotPresent
+
+    # Resource allocation for platform workloads
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    # Service configuration
+    service:
+      type: LoadBalancer
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+        # External DNS configuration
+        external-dns.alpha.kubernetes.io/hostname: platform-kv.pnats.cloud
+        external-dns.alpha.kubernetes.io/ttl: "300"
+
+  # Redis Configuration
+  redisConfig:
+    additionalRedisConfig: |
+      # Memory and eviction policies
+      maxmemory 896mb
+      maxmemory-policy allkeys-lru
+
+      # Persistence settings (RDB snapshots)
+      save 900 1        # After 900 sec (15 min) if at least 1 key changed
+      save 300 10       # After 300 sec (5 min) if at least 10 keys changed
+      save 60 10000     # After 60 sec if at least 10000 keys changed
+
+      # Replication settings
+      repl-diskless-sync yes
+      repl-diskless-sync-delay 5
+
+      # Performance tuning
+      tcp-keepalive 300
+      timeout 0
+
+      # Logging
+      loglevel notice
+
+      # Append-Only File (AOF) for durability
+      appendonly yes
+      appendfsync everysec
+
+  # Persistent Storage - Ceph Block (RBD)
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        storageClassName: ceph-block
+        resources:
+          requests:
+            storage: 10Gi
+
+  # Pod Anti-Affinity for HA
+  # Ensure Redis pods are spread across different nodes
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - platform-kv
+          topologyKey: kubernetes.io/hostname
+
+  # Redis Exporter for Monitoring
+  redisExporter:
+    enabled: true
+    image: quay.io/opstree/redis-exporter:v1.58.0
+    imagePullPolicy: IfNotPresent
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
+  # Health Checks
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+
+  readinessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+    successThreshold: 1
+
+  # Pod Disruption Budget
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+
+  # Security Context
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: false  # Redis needs write for RDB/AOF
+    runAsNonRoot: true
+
+  # Tolerations for control-plane scheduling
+  tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule

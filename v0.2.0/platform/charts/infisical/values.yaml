@@ -1,0 +1,88 @@
+---
+# Global configuration
+global:
+  repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: security
+  managedBy: argocd
+
+# Infisical Configuration
+infisical:
+  enabled: true
+  name: infisical
+  fullnameOverride: "infisical"
+
+  # Auto-bootstrap disabled - we'll set up manually
+  autoBootstrap:
+    enabled: false
+
+  # Database migration job
+  databaseSchemaMigrationJob:
+    image:
+      repository: ghcr.io/groundnuty/k8s-wait-for
+      tag: no-root-v2.0
+      pullPolicy: IfNotPresent
+
+  serviceAccount:
+    create: true
+    annotations: {}
+    name: null
+
+  # Pod configuration
+  podAnnotations: {}
+  deploymentAnnotations: {}
+  replicaCount: 2
+
+  image:
+    repository: infisical/infisical
+    tag: "v0.151.0"
+    pullPolicy: IfNotPresent
+    imagePullSecrets: []
+
+  # Resource placement
+  affinity: {}
+  tolerations: []
+  nodeSelector: {}
+  topologySpreadConstraints: []
+
+  # Reference to Kubernetes secret containing environment variables
+  kubeSecretRef: "infisical-secrets"
+
+  # Service configuration - Changed to LoadBalancer as requested
+  service:
+    annotations: {}
+    type: ClusterIP
+    port: 8080
+
+  # Resource limits
+  resources:
+    limits:
+      memory: "1000Mi"
+    requests:
+      cpu: "350m"
+
+# Ingress configuration
+ingress:
+  enabled: true
+  hostName: "secrets.pnats.cloud"
+  ingressClassName: nginx
+  nginx:
+    enabled: true
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+  tls:
+  - secretName: infisical-tls
+    hosts:
+    - "secrets.pnats.cloud"
+
+# PostgreSQL configuration
+postgresql:
+  enabled: false
+
+# Redis configuration
+redis:
+  enabled: false

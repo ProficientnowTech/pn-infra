@@ -292,6 +292,7 @@ applications:
   syncOptions:
   - CreateNamespace=true
 
+# Security Platform
 - name: sealed-secrets
   annotations:
     argocd.argoproj.io/sync-wave: "350"
@@ -319,23 +320,25 @@ applications:
   syncOptions:
   - ServerSideApply=true
 
-# - name: infisical-operator
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "330"
-#   sources:
-#   - repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
-#     chart: secrets-operator
-#     targetRevision: 0.10.2
-#     helm:
-#       releaseName: secrets-operator
-#       valueFiles:
-#       - $values/v0.2.0/platform/charts/infisical/values.yaml
-#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-#     targetRevision: main
-#     ref: values
-#   destinationNamespaceOverwrite: infisical
+- name: infisical-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "360"
+  sources:
+  - repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts/infisical-helm-charts
+    chart: secrets-operator
+    targetRevision: 0.10.11
+    helm:
+      releaseName: secrets-operator
+      valueFiles:
+      - $values/v0.2.0/platform/charts/infisical/values.yaml
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    ref: values
+  destinationNamespaceOverwrite: infisical
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
 
-# # Security Platform (commented out for initial deployment)
 # - name: vault
 #   annotations:
 #     argocd.argoproj.io/sync-wave: "3"

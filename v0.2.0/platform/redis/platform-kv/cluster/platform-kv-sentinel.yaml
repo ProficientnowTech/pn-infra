@@ -69,15 +69,15 @@ spec:
   #     sentinel resolve-hostnames yes
 
   # Service configuration
-  externalService:
-    enabled: true
-    serviceType: ClusterIP
-    port: 26379
+  # externalService:
+  #   enabled: true
+  #   serviceType: ClusterIP
+  #   port: 26379
 
-  serviceMonitor:
-    enabled: true
-    interval: 30s
-    scrapeTimeout: 10s
+  # serviceMonitor:
+  #   enabled: true
+  #   interval: 30s
+  #   scrapeTimeout: 10s
 
   redisExporter:
     enabled: true

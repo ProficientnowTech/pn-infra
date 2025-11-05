@@ -1,57 +1,34 @@
 ---
-# Global configuration
-global:
-  repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
-  targetRevision: 'main'
+# Infisical Helm Chart Values
+# Chart: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
+# Version: 0.4.2
 
-# Labels configuration
-labels:
-  component: security
-  managedBy: argocd
-
-# Infisical Configuration
-infisical:
+## Backend configuration
+backend:
   enabled: true
-  name: infisical
-  fullnameOverride: "infisical"
-
-  # Auto-bootstrap disabled - we'll set up manually
-  autoBootstrap:
-    enabled: false
-
-  # Database migration job
-  databaseSchemaMigrationJob:
-    image:
-      repository: ghcr.io/groundnuty/k8s-wait-for
-      tag: no-root-v2.0
-      pullPolicy: IfNotPresent
-
-  serviceAccount:
-    create: true
-    annotations: {}
-    name: null
+  name: backend
+  fullnameOverride: "infisical-backend"
 
   # Pod configuration
   podAnnotations: {}
   deploymentAnnotations: {}
   replicaCount: 2
 
+  # Image configuration
   image:
     repository: infisical/infisical
     tag: "v0.151.0"
     pullPolicy: IfNotPresent
-    imagePullSecrets: []
 
   # Resource placement
   affinity: {}
   tolerations: []
   nodeSelector: {}
-  topologySpreadConstraints: []
 
   # Reference to Kubernetes secret containing environment variables
   kubeSecretRef: "infisical-secrets"
 
-  # Service configuration - Changed to LoadBalancer as requested
+  # Service configuration
   service:
     annotations: {}
     type: ClusterIP
@@ -63,6 +40,7 @@ infisical:
       memory: "1000Mi"
     requests:
       cpu: "350m"
+      memory: "512Mi"
 
 # Ingress configuration
 ingress:

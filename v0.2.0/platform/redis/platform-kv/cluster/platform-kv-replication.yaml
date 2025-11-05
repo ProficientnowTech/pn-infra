@@ -30,15 +30,10 @@ spec:
         cpu: 1000m
         memory: 1Gi
 
-    # Service configuration
-    service:
-      type: LoadBalancer
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9121"
-        # External DNS configuration
-        external-dns.alpha.kubernetes.io/hostname: platform-kv.pnats.cloud
-        external-dns.alpha.kubernetes.io/ttl: "300"
+  # Note: External LoadBalancer service defined separately in platform-kv-repl-svc.yaml
+  # Redis Configuration
+  redisConfig:
+    additionalRedisConfig: redis-external-config
 
   # Persistent Storage - Ceph Block (RBD)
   storage:
@@ -80,19 +75,18 @@ spec:
         memory: 128Mi
 
   # Health Checks
-  livenessProbe:
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-    successThreshold: 1
-
   readinessProbe:
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    timeoutSeconds: 3
-    failureThreshold: 3
+    failureThreshold: 5
+    initialDelaySeconds: 15
+    periodSeconds: 15
     successThreshold: 1
+    timeoutSeconds: 5
+  livenessProbe:
+    failureThreshold: 5
+    initialDelaySeconds: 15
+    periodSeconds: 15
+    successThreshold: 1
+    timeoutSeconds: 5
 
   # Pod Disruption Budget
   pdb:

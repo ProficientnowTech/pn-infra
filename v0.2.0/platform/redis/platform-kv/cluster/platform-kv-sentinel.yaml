@@ -30,10 +30,6 @@ spec:
         cpu: 500m
         memory: 256Mi
 
-    # Service configuration
-    service:
-      type: ClusterIP
-
   # Sentinel Configuration
   redisSentinelConfig:
     # Reference to the RedisReplication cluster to monitor
@@ -60,10 +56,36 @@ spec:
     # Parallel syncs during failover
     # Number of replicas that can sync with new master simultaneously
     parallelSyncs: "1"
-    # Additional sentinel configuration
 
-    # Pod Anti-Affinity for HA
-    # Ensure sentinel pods are spread across different nodes
+  # Additional sentinel configuration
+  externalConfig:
+    enabled: true
+    data: |
+      # Sentinel logging
+      loglevel notice
+
+      # Announce hostnames for better service discovery
+      sentinel announce-hostnames yes
+      sentinel resolve-hostnames yes
+
+  # Service configuration
+  externalService:
+    enabled: false
+    serviceType: ClusterIP
+    port: 26379
+
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+
+  redisExporter:
+    enabled: true
+    image: quay.io/opstree/redis-exporter
+    imagePullPolicy: IfNotPresent
+
+  # Pod Anti-Affinity for HA
+  # Ensure sentinel pods are spread across different nodes
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -90,6 +112,21 @@ spec:
       - ALL
     readOnlyRootFilesystem: false # Sentinel needs write for state
     runAsNonRoot: true
+
+  # health checks
+  livenessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 1
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 1
+
+  readinessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 1
+    periodSeconds: 10
+    successThreshold: 1
+    timeoutSeconds: 1
 
   # Tolerations for control-plane scheduling
   tolerations:

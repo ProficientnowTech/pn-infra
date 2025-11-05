@@ -287,7 +287,7 @@ applications:
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    path: v0.2.0/platform/redis/platform-kv
+    path: v0.2.0/platform/redis/platform-kv/cluster
   destinationNamespaceOverwrite: platform-kv-redis-cluster
   syncOptions:
   - CreateNamespace=true

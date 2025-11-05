@@ -49,6 +49,8 @@ terraform.tfstate
 terraform.tfstate.backup
 .terraform.lock.hcl
 
+# Secrets
+*.secret
 # Kubernetes
 kubeconfig
 *.kubeconfig

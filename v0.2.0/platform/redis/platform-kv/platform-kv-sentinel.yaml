@@ -60,18 +60,10 @@ spec:
     # Parallel syncs during failover
     # Number of replicas that can sync with new master simultaneously
     parallelSyncs: "1"
-
     # Additional sentinel configuration
-    additionalSentinelConfig: |
-      # Sentinel logging
-      loglevel notice
 
-      # Announce hostnames for better service discovery
-      sentinel announce-hostnames yes
-      sentinel resolve-hostnames yes
-
-  # Pod Anti-Affinity for HA
-  # Ensure sentinel pods are spread across different nodes
+    # Pod Anti-Affinity for HA
+    # Ensure sentinel pods are spread across different nodes
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:

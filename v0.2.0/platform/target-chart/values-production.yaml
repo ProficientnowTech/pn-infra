@@ -320,7 +320,7 @@ applications:
   syncOptions:
   - ServerSideApply=true
 
-- name: infisical-operator
+- name: infisical
   annotations:
     argocd.argoproj.io/sync-wave: "360"
   sources:
@@ -334,6 +334,9 @@ applications:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
     ref: values
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/infisical/secrets
   destinationNamespaceOverwrite: infisical
   syncOptions:
   - CreateNamespace=true

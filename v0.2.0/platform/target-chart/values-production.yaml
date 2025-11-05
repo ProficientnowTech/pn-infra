@@ -281,6 +281,17 @@ applications:
   - CreateNamespace=true
   - ServerSideApply=true
 
+- name: platform-kv
+  annotations:
+    argocd.argoproj.io/sync-wave: "340"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/redis/platform-kv
+  destinationNamespaceOverwrite: platform-kv-redis-cluster
+  syncOptions:
+  - CreateNamespace=true
+
 # - name: infisical-operator
 #   annotations:
 #     argocd.argoproj.io/sync-wave: "330"

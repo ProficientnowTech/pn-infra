@@ -298,7 +298,7 @@ applications:
   sources:
   - repoURL: https://bitnami-labs.github.io/sealed-secrets
     chart: sealed-secrets
-    targetRevision: "v2.5.19"
+    targetRevision: "v0.32.2"
     helm:
       releaseName: sealed-secrets
       valueFiles:

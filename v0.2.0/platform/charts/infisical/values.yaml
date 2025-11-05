@@ -48,7 +48,8 @@ ingress:
   hostName: "secrets.pnats.cloud"
   ingressClassName: nginx
   nginx:
-    enabled: true
+    # Disable bundled ingress-nginx (use existing cluster-wide ingress-nginx)
+    enabled: false
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-production
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"

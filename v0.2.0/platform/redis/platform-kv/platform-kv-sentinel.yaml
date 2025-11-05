@@ -96,7 +96,7 @@ spec:
     capabilities:
       drop:
       - ALL
-    readOnlyRootFilesystem: false  # Sentinel needs write for state
+    readOnlyRootFilesystem: false # Sentinel needs write for state
     runAsNonRoot: true
 
   # Tolerations for control-plane scheduling
@@ -104,7 +104,6 @@ spec:
   - key: node-role.kubernetes.io/control-plane
     operator: Exists
     effect: NoSchedule
-
   # Pod Disruption Budget
   pdb:
     enabled: true

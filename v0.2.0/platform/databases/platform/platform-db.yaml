@@ -31,6 +31,12 @@ spec:
   enableMasterPoolerLoadBalancer: true
   enableReplicaPoolerLoadBalancer: true
 
+  # Service annotations - explicitly empty to prevent external-dns
+  # Services use internal Kubernetes DNS only (*.svc.cluster.local)
+  serviceAnnotations: {}
+  masterServiceAnnotations: {}
+  replicaServiceAnnotations: {}
+
   # Enable logical backups (snapshots) - Daily at 2 AM via operator config
   enableLogicalBackup: true
 

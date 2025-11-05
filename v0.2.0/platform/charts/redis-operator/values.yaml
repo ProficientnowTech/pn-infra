@@ -66,12 +66,12 @@ certificate:
 issuer:
   # Whether to create the issuer or not. You might want to disable this if instead you
   # want to use a ClusterIssuer that you simply want to provide.
-  create: false
+  create: true
   # You can choose Issuer or ClusterIssuer here. The first one is namespaced, the second one
   # is available for global usage.
-  kind: ClusterIssuer
-  # type: selfSigned
-  name: letsencrypt-production
+  kind: Issuer
+  type: selfSigned
+  # name: letsencrypt-production  # Not needed for self-signed internal webhook certificates
   # email: shubham.gupta@opstree.com
   # server: https://acme-v02.api.letsencrypt.org/directory
   # privateKeySecretName: letsencrypt-prod

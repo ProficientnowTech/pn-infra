@@ -1,0 +1,17 @@
+apiVersion: v2
+name: sealed-secrets
+description: A Helm chart for sealed secrets management
+type: application
+version: 0.1.0
+appVersion: "0.32.2"
+
+keywords:
+- secrets
+- sealed-secrets
+- security
+- one-way-encryption
+
+annotations:
+  category: Security
+  platform.pn-infra.io/component: sealed-secrets
+  platform.pn-infra.io/sync-wave: "350"

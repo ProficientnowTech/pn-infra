@@ -292,6 +292,22 @@ applications:
   syncOptions:
   - CreateNamespace=true
 
+- name: sealed-secrets
+  annotations:
+    argocd.argoproj.io/sync-wave: "350"
+  sources:
+  - repoURL: https://bitnami-labs.github.io/sealed-secrets
+    chart: sealed-secrets
+    targetRevision: "v2.5.19"
+    helm:
+      releaseName: sealed-secrets
+      valueFiles:
+      - $values/v0.2.0/platform/charts/sealed-secrets/values.yaml
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    ref: values
+  destinationNamespaceOverwrite: sealed-secrets
+
 # - name: infisical-operator
 #   annotations:
 #     argocd.argoproj.io/sync-wave: "330"

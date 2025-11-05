@@ -79,10 +79,14 @@ ingress:
     hosts:
     - "secrets.pnats.cloud"
 
-# PostgreSQL configuration
+# MongoDB configuration - DISABLED (using external PostgreSQL instead)
+mongodb:
+  enabled: false
+
+# PostgreSQL configuration - DISABLED (using external platform-db-cluster)
 postgresql:
   enabled: false
 
-# Redis configuration
+# Redis configuration - DISABLED (using external platform-kv)
 redis:
   enabled: false

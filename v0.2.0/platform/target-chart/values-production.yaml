@@ -308,6 +308,15 @@ applications:
     ref: values
   destinationNamespaceOverwrite: sealed-secrets
 
+- name: external-secrets-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "350"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/external-secrets
+  destinationNamespaceOverwrite: external-secrets-operator
+
 # - name: infisical-operator
 #   annotations:
 #     argocd.argoproj.io/sync-wave: "330"

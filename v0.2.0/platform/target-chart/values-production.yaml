@@ -315,6 +315,11 @@ applications:
   destinationNamespaceOverwrite: external-secrets
   syncOptions:
   - ServerSideApply=true
+  ignoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: ValidatingWebhookConfiguration
+    jqPathExpressions:
+    - .webhooks[].clientConfig.caBundle
 
 - name: crossplane
   annotations:

@@ -337,6 +337,11 @@ applications:
   syncOptions:
   - ServerSideApply=true
   - CreateNamespace=true
+  ignoreDifferences:
+  - group: apps
+    kind: StatefulSet
+    jqPathExpressions:
+    - .spec.volumeClaimTemplates[]
 
 # # Monitoring Platform (commented out for initial deployment)
 # - name: prometheus

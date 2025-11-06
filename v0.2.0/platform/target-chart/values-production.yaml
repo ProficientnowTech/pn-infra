@@ -322,7 +322,7 @@ applications:
 
 - name: crossplane
   annotations:
-    argocd.argoproj.io/sync-wave: "360"
+    argocd.argoproj.io/sync-wave: "350"
 
 - name: vault
   annotations:

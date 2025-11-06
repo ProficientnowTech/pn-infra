@@ -1,30 +1,33 @@
 ---
-# Patch to add PostgreSQL CA certificate volume mount to Infisical backend
-# This enables NODE_EXTRA_CA_CERTS to trust the self-signed PostgreSQL certificate
+# Strategic Merge Patch for Infisical Backend Deployment
+# Adds PostgreSQL CA certificate volume mount and NODE_EXTRA_CA_CERTS environment variable
+# This enables the backend to trust the self-signed PostgreSQL certificate
 # See: https://infisical.com/docs/self-hosting/guides/custom-certificates
+#
+# Deployment order (controlled by sync-wave):
+# 1. sync-wave: -2 → ConfigMap placeholder and RBAC created
+# 2. sync-wave: -1 → cert-sync PreSync job runs and populates ConfigMap
+# 3. sync-wave:  0 → Backend deployment applies with volume mount
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: infisical-backend
   namespace: infisical
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   template:
     spec:
       containers:
-      - name: backend
+      - name: infisical-backend
         env:
-        # Add NODE_EXTRA_CA_CERTS to trust custom CA certificate
         - name: NODE_EXTRA_CA_CERTS
           value: /usr/local/share/ca-certificates/ca.crt
         volumeMounts:
-        # Mount PostgreSQL CA certificate
         - name: postgres-ca-cert
           mountPath: /usr/local/share/ca-certificates
           readOnly: true
       volumes:
-      # PostgreSQL CA certificate from ConfigMap
       - name: postgres-ca-cert
         configMap:
           name: postgres-ca-cert

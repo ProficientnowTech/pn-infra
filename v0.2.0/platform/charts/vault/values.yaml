@@ -274,10 +274,10 @@ vault:
 
   serverTelemetry:
     serviceMonitor:
-      enabled: true
+      enabled: false
 
   prometheusRules:
-    enabled: true
+    enabled: false
 
   ui:
     enabled: true

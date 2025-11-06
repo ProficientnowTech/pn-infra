@@ -320,43 +320,45 @@ applications:
   syncOptions:
   - ServerSideApply=true
 
-- name: infisical
+# - name: infisical
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "360"
+#   sources:
+#   - repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
+#     chart: infisical
+#     targetRevision: 0.4.2
+#     helm:
+#       releaseName: infisical
+#       valueFiles:
+#       - $values/v0.2.0/platform/charts/infisical/values.yaml
+#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#     targetRevision: main
+#     ref: values
+#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#     targetRevision: main
+#     path: v0.2.0/platform/charts/infisical/secrets
+#   destinationNamespaceOverwrite: infisical
+#   syncOptions:
+#   - CreateNamespace=true
+#   - ServerSideApply=true
+
+- name: vault
   annotations:
     argocd.argoproj.io/sync-wave: "360"
   sources:
-  - repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
-    chart: infisical
-    targetRevision: 0.4.2
+  - repoURL: https://helm.releases.hashicorp.com
+    chart: vault
+    targetRevision: "0.25.0"
     helm:
-      releaseName: infisical
+      releaseName: vault
       valueFiles:
-      - $values/v0.2.0/platform/charts/infisical/values.yaml
+      - $values/v0.2.0/platform/charts/vault/values.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
     ref: values
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/charts/infisical/secrets
-  destinationNamespaceOverwrite: infisical
+  destinationNamespaceOverwrite: vault
   syncOptions:
   - CreateNamespace=true
-  - ServerSideApply=true
-
-# - name: vault
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "3"
-#   sources:
-#     - repoURL: https://helm.releases.hashicorp.com
-#       chart: vault
-#       targetRevision: "0.25.0"
-#       helm:
-#         releaseName: vault
-#         valueFiles:
-#           - $values/v0.2.0/platform/charts/vault/values.yaml
-#     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-#       targetRevision: main
-#       ref: values
-#   destinationNamespaceOverwrite: vault
 
 # # Monitoring Platform (commented out for initial deployment)
 # - name: prometheus

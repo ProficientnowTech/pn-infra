@@ -320,28 +320,6 @@ applications:
   syncOptions:
   - ServerSideApply=true
 
-# - name: infisical
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "360"
-#   sources:
-#   - repoURL: https://dl.cloudsmith.io/public/infisical/helm-charts/helm/charts
-#     chart: infisical
-#     targetRevision: 0.4.2
-#     helm:
-#       releaseName: infisical
-#       valueFiles:
-#       - $values/v0.2.0/platform/charts/infisical/values.yaml
-#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-#     targetRevision: main
-#     ref: values
-#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-#     targetRevision: main
-#     path: v0.2.0/platform/charts/infisical/secrets
-#   destinationNamespaceOverwrite: infisical
-#   syncOptions:
-#   - CreateNamespace=true
-#   - ServerSideApply=true
-
 - name: vault
   annotations:
     argocd.argoproj.io/sync-wave: "360"

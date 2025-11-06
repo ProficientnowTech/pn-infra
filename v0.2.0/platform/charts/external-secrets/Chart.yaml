@@ -1,6 +1,7 @@
 apiVersion: v2
-name: pn-external-secrets
+name: external-secrets
 description: A Helm chart for ESO
+namespace: external-secrets
 
 # A chart can be either an 'application' or a 'library' chart.
 #

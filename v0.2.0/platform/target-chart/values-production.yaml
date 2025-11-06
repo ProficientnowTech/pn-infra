@@ -312,16 +312,19 @@ applications:
 - name: external-secrets
   annotations:
     argocd.argoproj.io/sync-wave: "350"
+  destinationNamespaceOverwrite: external-secrets
   syncOptions:
   - ServerSideApply=true
 
 - name: crossplane
   annotations:
     argocd.argoproj.io/sync-wave: "350"
+  destinationNamespaceOverwrite: crossplane
 
 - name: vault
   annotations:
     argocd.argoproj.io/sync-wave: "360"
+  destinationNamespaceOverwrite: vault
   syncOptions:
   - ServerSideApply=true
   - CreateNamespace=true

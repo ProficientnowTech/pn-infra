@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-ca-cert
+  namespace: infisical
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+data:
+  ca.crt: |
+    # This will be populated by the cert-sync job
+    # The job extracts the certificate from platform-db-cluster-0
+    # and updates this ConfigMap with the actual certificate content

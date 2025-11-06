@@ -25,27 +25,20 @@ spec:
 
           echo "Extracting PostgreSQL certificate from platform-db-cluster-0..."
 
-          # Extract certificate from PostgreSQL pod
-          CERT=$(kubectl exec platform-db-cluster-0 -n platform-db-pg -c postgres -- cat /run/certs/server.crt | base64 -w 0)
+          # Extract certificate from PostgreSQL pod (PEM format)
+          CERT_PEM=$(kubectl exec platform-db-cluster-0 -n platform-db-pg -c postgres -- cat /run/certs/server.crt)
 
-          if [ -z "$CERT" ]; then
+          if [ -z "$CERT_PEM" ]; then
             echo "ERROR: Failed to extract certificate"
             exit 1
           fi
 
-          echo "Certificate extracted successfully (${#CERT} bytes)"
+          echo "Certificate extracted successfully"
 
-          # Check if secret exists
-          if ! kubectl get secret infisical-secrets -n infisical >/dev/null 2>&1; then
-            echo "Secret infisical-secrets does not exist yet, skipping patch"
-            exit 0
-          fi
+          # Update ConfigMap with certificate file
+          echo "Updating ConfigMap postgres-ca-cert..."
+          kubectl create configmap postgres-ca-cert -n infisical \
+            --from-literal=ca.crt="$CERT_PEM" \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-          echo "Patching infisical-secrets with DB_ROOT_CERT..."
-
-          # Patch the secret with the certificate
-          kubectl patch secret infisical-secrets -n infisical \
-            --type='json' \
-            -p="[{\"op\":\"add\",\"path\":\"/data/DB_ROOT_CERT\",\"value\":\"$CERT\"}]"
-
-          echo "Certificate synced successfully!"
+          echo "Certificate synced to ConfigMap successfully!"

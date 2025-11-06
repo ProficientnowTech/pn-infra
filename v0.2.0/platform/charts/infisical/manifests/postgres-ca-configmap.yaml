@@ -6,6 +6,10 @@ metadata:
   namespace: infisical
   annotations:
     argocd.argoproj.io/sync-wave: "-2"
+    # Prevent ArgoCD from pruning this ConfigMap (dynamically managed by cert-sync job)
+    argocd.argoproj.io/sync-options: Prune=false
+    # Ignore differences in the data field (updated by cert-sync job)
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 data:
   ca.crt: |
     # This will be populated by the cert-sync job

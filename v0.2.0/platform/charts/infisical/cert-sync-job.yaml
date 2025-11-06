@@ -1,0 +1,112 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cert-sync-job
+  namespace: infisical
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-sync-job
+  namespace: infisical
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "patch"]
+- apiGroups: [""]
+  resources: ["pods", "pods/exec"]
+  resourceNames: ["platform-db-cluster-0"]
+  verbs: ["get", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-sync-job
+  namespace: infisical
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cert-sync-job
+subjects:
+- kind: ServiceAccount
+  name: cert-sync-job
+  namespace: infisical
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cert-sync-job-postgres
+  namespace: platform-db-pg
+rules:
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cert-sync-job
+  namespace: platform-db-pg
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: cert-sync-job-postgres
+subjects:
+- kind: ServiceAccount
+  name: cert-sync-job
+  namespace: infisical
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-cert-sync
+  namespace: infisical
+  annotations:
+    # Run on every sync to refresh certificate
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  template:
+    spec:
+      serviceAccountName: cert-sync-job
+      restartPolicy: OnFailure
+      containers:
+      - name: cert-sync
+        image: bitnami/kubectl:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+
+          echo "Extracting PostgreSQL certificate from platform-db-cluster-0..."
+
+          # Extract certificate from PostgreSQL pod
+          CERT=$(kubectl exec platform-db-cluster-0 -n platform-db-pg -c postgres -- cat /run/certs/server.crt | base64 -w 0)
+
+          if [ -z "$CERT" ]; then
+            echo "ERROR: Failed to extract certificate"
+            exit 1
+          fi
+
+          echo "Certificate extracted successfully (${#CERT} bytes)"
+
+          # Check if secret exists
+          if ! kubectl get secret infisical-secrets -n infisical >/dev/null 2>&1; then
+            echo "Secret infisical-secrets does not exist yet, skipping patch"
+            exit 0
+          fi
+
+          echo "Patching infisical-secrets with DB_ROOT_CERT..."
+
+          # Patch the secret with the certificate
+          kubectl patch secret infisical-secrets -n infisical \
+            --type='json' \
+            -p="[{\"op\":\"add\",\"path\":\"/data/DB_ROOT_CERT\",\"value\":\"$CERT\"}]"
+
+          echo "Certificate synced successfully!"

@@ -320,6 +320,10 @@ applications:
   syncOptions:
   - ServerSideApply=true
 
+- name: crossplane
+  annotations:
+    argocd.argoproj.io/sync-wave: "360"
+
 - name: vault
   annotations:
     argocd.argoproj.io/sync-wave: "360"

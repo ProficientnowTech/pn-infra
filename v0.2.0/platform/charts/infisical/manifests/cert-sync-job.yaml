@@ -16,7 +16,7 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: cert-sync
-        image: alpine/k8s:1.28.13
+        image: alpine/k8s:1.32.8
         command:
         - /bin/sh
         - -c

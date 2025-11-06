@@ -324,6 +324,7 @@ applications:
     argocd.argoproj.io/sync-wave: "360"
   syncOptions:
   - ServerSideApply=true
+  - CreateNamespace=true
 
 # # Monitoring Platform (commented out for initial deployment)
 # - name: prometheus

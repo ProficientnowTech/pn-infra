@@ -5,7 +5,7 @@
 
 global:
   enabled: true
-  tlsDisable: false
+  tlsDisable: true
 
 injector:
   enabled: false
@@ -16,7 +16,7 @@ server:
   # Image configuration
   image:
     repository: "hashicorp/vault"
-    tag: "1.15.6"
+    tag: "1.20.3"
     pullPolicy: IfNotPresent
 
   # Resources
@@ -51,6 +51,120 @@ server:
     size: 10Gi
     storageClass: ceph-block
 
+  # Environment variables
+  extraEnvironmentVars:
+    VAULT_ADDR: "http://127.0.0.1:8200"
+
+  # Init containers to download utilities
+  extraInitContainers:
+    - name: utility-downloader
+      image: alpine/curl:latest
+      command:
+        - /bin/sh
+        - -c
+        - |
+          cd /usr/local/libexec/vault
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x kubectl
+          curl -L -o jq https://github.com/stedolan/jq/releases/download/jq-1.8.1/jq-linux64
+          chmod +x jq
+      volumeMounts:
+        - name: plugins
+          mountPath: /usr/local/libexec/vault
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        privileged: false
+        runAsNonRoot: true
+
+  # Sidecar containers for auto-initialization and auto-unsealing
+  extraContainers:
+    # Auto-initializer: Initializes Vault and stores keys in Kubernetes secret
+    - name: auto-initializer
+      image: hashicorp/vault:1.20.3
+      env:
+        - name: VAULT_ADDR
+          value: "http://127.0.0.1:8200"
+      command:
+        - /bin/sh
+        - -c
+        - |
+          while true; do
+            sleep 10
+            while [ -z $UNSEAL_KEY ]; do
+              sleep 5
+              VAULT_STATUS=$(vault status)
+              if echo "$VAULT_STATUS" | grep -q "Initialized.*false" && [ $HOSTNAME = 'vault-0' ]; then
+                export INIT_RESPONSE=$(vault operator init -format=json -key-shares=1 -key-threshold=1)
+                echo "$INIT_RESPONSE"
+                export UNSEAL_KEY=$(echo "$INIT_RESPONSE" | /usr/local/libexec/vault/jq -r .unseal_keys_b64[0])
+                export ROOT_TOKEN=$(echo "$INIT_RESPONSE" | /usr/local/libexec/vault/jq -r .root_token)
+                echo "$UNSEAL_KEY"
+                echo "$ROOT_TOKEN"
+                /usr/local/libexec/vault/kubectl delete secret vault-init -n vault --ignore-not-found=true
+                /usr/local/libexec/vault/kubectl create secret generic vault-init -n vault --from-literal=unseal_key=${UNSEAL_KEY} --from-literal=root_token=${ROOT_TOKEN}
+              else
+                echo "Vault already initialized or not vault-0"
+              fi
+            done
+          done
+      volumeMounts:
+        - name: plugins
+          mountPath: /usr/local/libexec/vault
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        privileged: false
+        runAsNonRoot: true
+
+    # Auto-unsealer: Automatically unseals Vault using the stored key
+    - name: auto-unsealer
+      image: hashicorp/vault:1.20.3
+      env:
+        - name: VAULT_ADDR
+          value: "http://127.0.0.1:8200"
+      command:
+        - /bin/sh
+        - -c
+        - |
+          while true; do
+            sleep 10
+            VAULT_STATUS=$(vault status)
+            if echo "$VAULT_STATUS" | grep -q "Initialized.*false" && [ $HOSTNAME != 'vault-0' ]; then
+              echo "Joining raft cluster"
+              vault operator raft join http://vault-0.vault-internal:8200
+              sleep 5
+            fi
+            if echo "$VAULT_STATUS" | grep -q "Initialized.*true"; then
+              if echo "$VAULT_STATUS" | grep -q "Sealed.*true"; then
+                if [ -f /vault-root-token/unseal_key ]; then
+                  vault operator unseal $(cat /vault-root-token/unseal_key)
+                  sleep 5
+                else
+                  echo "Unseal key not initialized yet"
+                fi
+              else
+                echo "Vault already unsealed"
+              fi
+            else
+              echo "Vault not initialized yet"
+            fi
+          done
+      volumeMounts:
+        - name: vault-root-token
+          mountPath: /vault-root-token
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        privileged: false
+        runAsNonRoot: true
+
   # High Availability with Raft integrated storage
   ha:
     enabled: true
@@ -67,25 +181,39 @@ server:
           tls_disable = 1
           address = "[::]:8200"
           cluster_address = "[::]:8201"
+          telemetry {
+            unauthenticated_metrics_access = "true"
+          }
         }
 
         storage "raft" {
           path = "/vault/data"
+        }
 
-          retry_join {
-            leader_api_addr = "http://vault-0.vault-internal:8200"
-          }
+        disable_mlock = true
 
-          retry_join {
-            leader_api_addr = "http://vault-1.vault-internal:8200"
-          }
-
-          retry_join {
-            leader_api_addr = "http://vault-2.vault-internal:8200"
-          }
+        telemetry {
+          prometheus_retention_time = "30m"
+          disable_hostname = true
         }
 
         service_registration "kubernetes" {}
+        plugin_directory = "/usr/local/libexec/vault"
+
+  # Volumes
+  volumes:
+    - name: plugins
+      emptyDir: {}
+    - name: vault-root-token
+      secret:
+        secretName: vault-init
+        optional: true
+
+  # Volume mounts
+  volumeMounts:
+    - mountPath: /usr/local/libexec/vault
+      name: plugins
+      readOnly: false
 
   # Service configuration
   service:

@@ -1,0 +1,31 @@
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: vault-provider-config
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+          - name: package-runtime
+            # args: 
+            # - --poll=1m
+            # - --debug
+---
+# should move to crossplane ns, maybe? 
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-vault
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+spec:
+  package: xpkg.upbound.io/upbound/provider-vault:v2
+  runtimeConfigRef:
+    apiVersion: pkg.crossplane.io/v1beta1
+    kind: DeploymentRuntimeConfig
+    name: vault-provider-config

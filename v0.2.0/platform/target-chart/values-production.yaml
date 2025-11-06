@@ -309,14 +309,9 @@ applications:
     ref: values
   destinationNamespaceOverwrite: sealed-secrets
 
-- name: external-secrets-operator
+- name: external-secrets
   annotations:
     argocd.argoproj.io/sync-wave: "350"
-  sources:
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/charts/external-secrets
-  destinationNamespaceOverwrite: external-secrets-operator
   syncOptions:
   - ServerSideApply=true
 
@@ -327,20 +322,8 @@ applications:
 - name: vault
   annotations:
     argocd.argoproj.io/sync-wave: "360"
-  sources:
-  - repoURL: https://helm.releases.hashicorp.com
-    chart: vault
-    targetRevision: "0.25.0"
-    helm:
-      releaseName: vault
-      valueFiles:
-      - $values/v0.2.0/platform/charts/vault/values.yaml
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    ref: values
-  destinationNamespaceOverwrite: vault
   syncOptions:
-  - CreateNamespace=true
+  - ServerSideApply=true
 
 # # Monitoring Platform (commented out for initial deployment)
 # - name: prometheus

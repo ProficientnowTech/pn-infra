@@ -64,8 +64,8 @@ mongodb:
 
 # PostgreSQL configuration - DISABLED (using external platform-db-cluster)
 postgresql:
-  enabled: false
+  enabled: true
 
 # Redis configuration - DISABLED (using external platform-kv)
 redis:
-  enabled: false
+  enabled: true

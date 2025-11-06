@@ -57,7 +57,7 @@ vault:
       - name: VAULT_ADDR
         valueFrom:
           secretKeyRef:
-            name: pn-vault-env-vars
+            name: vault-env-vars
             key: VAULT_ADDR
       command:
       - /bin/sh
@@ -99,7 +99,7 @@ vault:
       - name: VAULT_ADDR
         valueFrom:
           secretKeyRef:
-            name: pn-vault-env-vars
+            name: vault-env-vars
             key: VAULT_ADDR
       command:
       - /bin/sh
@@ -144,7 +144,7 @@ vault:
       - name: VAULT_ADDR
         valueFrom:
           secretKeyRef:
-            name: pn-vault-env-vars
+            name: vault-env-vars
             key: VAULT_ADDR
       command:
       - /bin/sh

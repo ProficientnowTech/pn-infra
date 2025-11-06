@@ -321,13 +321,13 @@ applications:
     argocd.argoproj.io/sync-wave: "350"
   destinationNamespaceOverwrite: crossplane
 
-- name: vault
-  annotations:
-    argocd.argoproj.io/sync-wave: "360"
-  destinationNamespaceOverwrite: vault
-  syncOptions:
-  - ServerSideApply=true
-  - CreateNamespace=true
+# - name: vault
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "360"
+#   destinationNamespaceOverwrite: vault
+#   syncOptions:
+#   - ServerSideApply=true
+#   - CreateNamespace=true
 
 # # Monitoring Platform (commented out for initial deployment)
 # - name: prometheus

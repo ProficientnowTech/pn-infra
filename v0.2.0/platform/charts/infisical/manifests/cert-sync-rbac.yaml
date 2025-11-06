@@ -5,6 +5,7 @@ metadata:
   name: cert-sync-job
   namespace: infisical
   annotations:
+    argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/sync-wave: "-2"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -13,6 +14,7 @@ metadata:
   name: cert-sync-job
   namespace: infisical
   annotations:
+    argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/sync-wave: "-2"
 rules:
 - apiGroups: [""]
@@ -25,6 +27,7 @@ metadata:
   name: cert-sync-job
   namespace: infisical
   annotations:
+    argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/sync-wave: "-2"
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -41,6 +44,7 @@ metadata:
   name: cert-sync-job-postgres
   namespace: platform-db-pg
   annotations:
+    argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/sync-wave: "-2"
 rules:
 - apiGroups: [""]
@@ -56,6 +60,7 @@ metadata:
   name: cert-sync-job
   namespace: platform-db-pg
   annotations:
+    argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/sync-wave: "-2"
 roleRef:
   apiGroup: rbac.authorization.k8s.io

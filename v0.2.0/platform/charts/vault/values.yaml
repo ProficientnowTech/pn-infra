@@ -4,7 +4,7 @@
 # Version: 0.30.1
 
 eso:
-  providerUrl: "http://pn-vault-active.vault.svc.cluster.local:8200"
+  providerUrl: "http://vault-active.vault.svc.cluster.local:8200"
   backendName: vault-backend
   secretStore: pn-kv
 
@@ -68,7 +68,7 @@ vault:
           while [ -z $UNSEAL_KEY ]; do
             sleep 5
             VAULT_STATUS=$(vault status)
-            if echo "$VAULT_STATUS" | grep -q "Initialized.*false" && [ $HOSTNAME = 'pn-vault-0' ]; then
+            if echo "$VAULT_STATUS" | grep -q "Initialized.*false" && [ $HOSTNAME = 'vault-0' ]; then
               export INIT_RESPONSE=$(vault operator init -format=json -key-shares=1 -key-threshold=1)
               echo "$INIT_RESPONSE"
               export UNSEAL_KEY=$(echo "$INIT_RESPONSE" | /usr/local/libexec/vault/jq -r .unseal_keys_b64[0])
@@ -108,9 +108,9 @@ vault:
         while true; do
           sleep 10
           VAULT_STATUS=$(vault status)
-          if echo "$VAULT_STATUS" | grep -q "Initialized.*false" && [ $HOSTNAME != 'pn-vault-0' ]; then
+          if echo "$VAULT_STATUS" | grep -q "Initialized.*false" && [ $HOSTNAME != 'vault-0' ]; then
             echo joining raft cluster
-            vault operator raft join http://pn-vault-0.pn-vault-internal:8200
+            vault operator raft join http://vault-0.vault-internal:8200
             sleep 5
           fi 
           if echo "$VAULT_STATUS" | grep -q "Initialized.*true"; then

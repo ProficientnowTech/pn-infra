@@ -14,26 +14,8 @@ cost-analyzer:
       enabled: false
 
   kubecostProductConfigs:
-    # Set custom pricing for on-prem
     clusterName: "pn-infrastructure"
     currencyCode: "USD"
-    
-    # Configure cloud cost comparison
-    awsServiceKeyName: ""
-    awsServiceKeyPassword: ""
-    
-    # Set your actual hardware costs
-    defaultModelPricing: |-
-      {
-        "provider": "custom",
-        "description": "On-Premise Pricing",
-        "CPU": "0.03",
-        "RAM": "0.01",
-        "storage": "0.00005",
-        "zoneNetworkEgress": "0.0",
-        "regionNetworkEgress": "0.01",
-        "internetNetworkEgress": "0.05"
-      }
 
   ingress:
     enabled: true

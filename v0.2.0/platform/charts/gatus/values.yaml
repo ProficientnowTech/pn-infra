@@ -2,25 +2,22 @@
 gatus:
   ingress:
     enabled: true
-    ingressClassName: nginx
+    className: nginx
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-production
       external-dns.alpha.kubernetes.io/ttl: "60"
     hosts:
-      - host: status.pnats.cloud
-        paths:
-          - path: /
-            pathType: Prefix
+      - status.pnats.cloud
     tls:
       - secretName: gatus-tls
         hosts:
           - status.pnats.cloud
-  
+
   persistence:
     enabled: true
-    storageClass: ceph-block
+    storageClassName: ceph-block
     size: 5Gi
-  
+
   resources:
     requests:
       cpu: 50m
@@ -28,7 +25,7 @@ gatus:
     limits:
       cpu: 200m
       memory: 128Mi
-  
+
   config:
     endpoints:
       - name: PN Infrastructure

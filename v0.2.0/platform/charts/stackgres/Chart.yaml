@@ -1,0 +1,17 @@
+apiVersion: v2
+name: stackgres
+description: StackGres Chart for StackGres Operator
+type: application
+version: 0.1.0
+appVersion: "v1.17.3"
+
+keywords:
+- postgres
+- distributed-database
+- rdb
+- pg-ha-cluster
+
+annotations:
+  category: Storage
+  platform.pn-infra.io/component: stackgres-operator
+  platform.pn-infra.io/sync-wave: "150"

@@ -1,35 +1,30 @@
 ---
-gatus:
+uptime-kuma:
   ingress:
     enabled: true
-    ingressClassName: nginx
+    className: nginx
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-production
       external-dns.alpha.kubernetes.io/ttl: "60"
     hosts:
-      - status.pnats.cloud
+      - host: status.pnats.cloud
+        paths:
+          - path: /
+            pathType: Prefix
     tls:
-      - secretName: gatus-tls
+      - secretName: uptime-kuma-tls
         hosts:
           - status.pnats.cloud
 
-  persistence:
+  volume:
     enabled: true
     storageClassName: ceph-block
     size: 5Gi
 
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 128Mi
-
-  config:
-    endpoints:
-      - name: PN Infrastructure
-        url: "https://pnats.cloud"
-        interval: 30s
-        conditions:
-          - "[STATUS] == 200"
+    limits:
+      cpu: 500m
+      memory: 512Mi

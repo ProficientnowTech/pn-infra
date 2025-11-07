@@ -405,13 +405,13 @@ applications:
   syncOptions:
   - ServerSideApply=true
 
-- name: gatus
+- name: uptime-kuma
   annotations:
     argocd.argoproj.io/sync-wave: "450"
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    path: v0.2.0/platform/charts/gatus
+    path: v0.2.0/platform/charts/uptime-kuma
   destinationNamespaceOverwrite: monitoring
   syncOptions:
   - ServerSideApply=true

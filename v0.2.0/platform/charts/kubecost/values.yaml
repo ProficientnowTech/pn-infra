@@ -24,14 +24,13 @@ cost-analyzer:
       cert-manager.io/cluster-issuer: letsencrypt-production
       external-dns.alpha.kubernetes.io/ttl: "60"
     hosts:
-      - host: kubecost.pnats.cloud
-        paths:
-          - path: /
-            pathType: Prefix
+      - cost.pnats.cloud
+    paths:
+      - /
     tls:
       - secretName: kubecost-tls
         hosts:
-          - kubecost.pnats.cloud
+          - cost.pnats.cloud
 
   persistentVolume:
     enabled: true

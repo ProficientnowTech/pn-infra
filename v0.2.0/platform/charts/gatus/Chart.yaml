@@ -1,0 +1,11 @@
+apiVersion: v2
+name: pn-gatus
+description: Gatus status page monitoring for PN Infrastructure
+type: application
+version: 0.1.0
+appVersion: "5.0.0"
+
+dependencies:
+  - name: gatus
+    version: 3.4.3
+    repository: https://minicloudlabs.github.io/helm-charts

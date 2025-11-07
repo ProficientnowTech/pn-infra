@@ -1,163 +1,45 @@
 ---
-# Global configuration
-global:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
-  targetRevision: 'main'
-  rbac:
-    create: true
-    pspEnabled: false
-  hooks:
+# Prometheus values - simplified for initial deployment
+
+kube-prometheus-stack:
+  # Disable some components initially to keep it simple
+  kubeStateMetrics:
     enabled: true
-    validation:
-      infrastructure: true
-      storage: false
-    healthChecks:
-      monitoring: true
-    notifications:
-      syncFailure: true
-
-# Labels configuration
-labels:
-  component: monitoring
-  managed-by: argocd # Override default Helm with ArgoCD
-
-# Prometheus configuration
-prometheus:
-  enabled: true
-  prometheusSpec:
-    retention: 30d
-    retentionSize: 50GB
-
-    resources:
-      requests:
-        memory: 1Gi
-        cpu: 500m
-      limits:
-        memory: 2Gi
-        cpu: 1000m
-
-    storageSpec:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: rook-ceph-block
-          accessModes: ['ReadWriteOnce']
-          resources:
-            requests:
-              storage: 100Gi
-
-    additionalScrapeConfigs:
-      - job_name: 'kubernetes-apiservers'
-        kubernetes_sd_configs:
-          - role: endpoints
-        scheme: https
-        tls_config:
-          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
-        relabel_configs:
-          - source_labels:
-              [
-                __meta_kubernetes_namespace,
-                __meta_kubernetes_service_name,
-                __meta_kubernetes_endpoint_port_name,
-              ]
-            action: keep
-            regex: default;kubernetes;https
-
-    ruleSelector:
-      matchLabels:
-        prometheus: kube-prometheus
-        role: alert-rules
-
-    serviceMonitorSelector:
-      matchLabels:
-        team: platform
-
-# Alertmanager configuration
-alertmanager:
-  enabled: true
-  alertmanagerSpec:
-    resources:
-      requests:
-        memory: 128Mi
-        cpu: 100m
-      limits:
-        memory: 256Mi
-        cpu: 200m
-
-    storage:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: rook-ceph-block
-          accessModes: ['ReadWriteOnce']
-          resources:
-            requests:
-              storage: 10Gi
-
-# Grafana configuration
-grafana:
-  enabled: true
-  defaultDashboardsEnabled: true
-
-  persistence:
+  nodeExporter:
     enabled: true
-    storageClassName: rook-ceph-block
-    size: 10Gi
 
-  resources:
-    requests:
-      memory: 128Mi
-      cpu: 100m
-    limits:
-      memory: 256Mi
-      cpu: 200m
+  prometheus:
+    enabled: true
+    prometheusSpec:
+      retention: 30d
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: ceph-block
+            accessModes: [ "ReadWriteOnce" ]
+            resources:
+              requests:
+                storage: 50Gi
 
-  grafana.ini:
-    server:
-      root_url: https://grafana.platform.local
-    auth:
-      disable_login_form: false
-    auth.anonymous:
-      enabled: true
-      org_role: Viewer
+      resources:
+        requests:
+          cpu: 500m
+          memory: 2Gi
+        limits:
+          cpu: 2000m
+          memory: 4Gi
 
-  datasources:
-    datasources.yaml:
-      apiVersion: 1
-      datasources:
-        - name: Prometheus
-          type: prometheus
-          url: http://prometheus-kube-prometheus-prometheus:9090
-          access: proxy
-          isDefault: true
+  alertmanager:
+    enabled: true
+    alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            storageClassName: ceph-block
+            accessModes: [ "ReadWriteOnce" ]
+            resources:
+              requests:
+                storage: 10Gi
 
-# Node Exporter
-nodeExporter:
-  enabled: true
-
-# Kube State Metrics
-kubeStateMetrics:
-  enabled: true
-
-# Core DNS monitoring
-coreDns:
-  enabled: true
-
-# Kubelet monitoring
-kubelet:
-  enabled: true
-
-# Kube Controller Manager
-kubeControllerManager:
-  enabled: true
-
-# Kube Scheduler
-kubeScheduler:
-  enabled: true
-
-# Kube Proxy
-kubeProxy:
-  enabled: true
-
-# Etcd monitoring
-kubeEtcd:
-  enabled: true
+  grafana:
+    enabled: false # We'll deploy Grafana separately

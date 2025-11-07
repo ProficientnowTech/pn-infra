@@ -343,35 +343,15 @@ applications:
     jqPathExpressions:
     - .spec.volumeClaimTemplates[]
 
-# # Monitoring Platform (commented out for initial deployment)
-# - name: prometheus
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "4"
-#   sources:
-#     - repoURL: https://prometheus-community.github.io/helm-charts
-#       chart: kube-prometheus-stack
-#       targetRevision: "65.1.1"
-#       helm:
-#         releaseName: prometheus
-#         valueFiles:
-#           - $values/v0.2.0/platform/charts/prometheus/values.yaml
-#     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-#       targetRevision: main
-#       ref: values
-#   destinationNamespaceOverwrite: monitoring
-
-# - name: grafana
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "5"
-#   sources:
-#     - repoURL: https://grafana.github.io/helm-charts
-#       chart: grafana
-#       targetRevision: "8.5.2"
-#       helm:
-#         releaseName: grafana
-#         valueFiles:
-#           - $values/v0.2.0/platform/charts/grafana/values.yaml
-#     - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-#       targetRevision: main
-#       ref: values
-#   destinationNamespaceOverwrite: monitoring
+# Monitoring Platform
+- name: prometheus
+  annotations:
+    argocd.argoproj.io/sync-wave: "400"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/prometheus
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true

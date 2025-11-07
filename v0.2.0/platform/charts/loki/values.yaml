@@ -32,6 +32,9 @@ loki:
         cpu: 500m
         memory: 512Mi
 
+  gateway:
+    enabled: false
+
   backend:
     replicas: 0
   read:

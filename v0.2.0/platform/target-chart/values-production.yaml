@@ -415,3 +415,14 @@ applications:
   destinationNamespaceOverwrite: monitoring
   syncOptions:
   - ServerSideApply=true
+
+- name: kubecost
+  annotations:
+    argocd.argoproj.io/sync-wave: "460"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/kubecost
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true

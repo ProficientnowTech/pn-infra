@@ -1,0 +1,71 @@
+---
+cost-analyzer:
+  global:
+    prometheus:
+      enabled: false
+      fqdn: http://pn-prometheus-kube-prometheus-prometheus.monitoring:9090
+
+  prometheus:
+    server:
+      enabled: false
+    nodeExporter:
+      enabled: false
+    kubeStateMetrics:
+      enabled: false
+
+  kubecostProductConfigs:
+    # Set custom pricing for on-prem
+    clusterName: "pn-infrastructure"
+    currencyCode: "USD"
+    
+    # Configure cloud cost comparison
+    awsServiceKeyName: ""
+    awsServiceKeyPassword: ""
+    
+    # Set your actual hardware costs
+    defaultModelPricing: |-
+      {
+        "provider": "custom",
+        "description": "On-Premise Pricing",
+        "CPU": "0.03",
+        "RAM": "0.01",
+        "storage": "0.00005",
+        "zoneNetworkEgress": "0.0",
+        "regionNetworkEgress": "0.01",
+        "internetNetworkEgress": "0.05"
+      }
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      external-dns.alpha.kubernetes.io/ttl: "60"
+    hosts:
+      - host: kubecost.pnats.cloud
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: kubecost-tls
+        hosts:
+          - kubecost.pnats.cloud
+
+  persistentVolume:
+    enabled: true
+    storageClass: ceph-block
+    size: 50Gi
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  grafana:
+    enabled: false
+    sidecar:
+      dashboards:
+        enabled: true

@@ -1,0 +1,11 @@
+apiVersion: v2
+name: pn-kubecost
+description: Kubecost for cost monitoring and savings analysis
+type: application
+version: 0.1.0
+appVersion: "2.0"
+
+dependencies:
+  - name: cost-analyzer
+    version: 2.4.3
+    repository: https://kubecost.github.io/cost-analyzer

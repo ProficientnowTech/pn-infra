@@ -1,0 +1,11 @@
+apiVersion: v2
+name: pn-promtail
+description: Promtail log collector for PN Infrastructure
+type: application
+version: 0.1.0
+appVersion: "3.0.0"
+
+dependencies:
+  - name: promtail
+    version: 6.16.6
+    repository: https://grafana.github.io/helm-charts

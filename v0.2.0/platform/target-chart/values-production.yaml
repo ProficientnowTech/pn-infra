@@ -377,3 +377,14 @@ applications:
   destinationNamespaceOverwrite: monitoring
   syncOptions:
   - ServerSideApply=true
+
+- name: promtail
+  annotations:
+    argocd.argoproj.io/sync-wave: "430"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/promtail
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true

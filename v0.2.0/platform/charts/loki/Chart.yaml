@@ -1,0 +1,11 @@
+apiVersion: v2
+name: pn-loki
+description: Loki log aggregation for PN Infrastructure
+type: application
+version: 0.1.0
+appVersion: "3.0.0"
+
+dependencies:
+  - name: loki
+    version: 6.46.0
+    repository: https://grafana.github.io/helm-charts

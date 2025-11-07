@@ -366,3 +366,14 @@ applications:
   destinationNamespaceOverwrite: monitoring
   syncOptions:
   - ServerSideApply=true
+
+- name: tempo
+  annotations:
+    argocd.argoproj.io/sync-wave: "420"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/tempo
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true

@@ -22,3 +22,10 @@ loki:
       limits:
         cpu: 500m
         memory: 512Mi
+
+  backend:
+    replicas: 0
+  read:
+    replicas: 0
+  write:
+    replicas: 0

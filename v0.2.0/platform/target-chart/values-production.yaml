@@ -377,6 +377,11 @@ applications:
   destinationNamespaceOverwrite: monitoring
   syncOptions:
   - ServerSideApply=true
+  ignoreDifferences:
+  - group: apps
+    kind: StatefulSet
+    jqPathExpressions:
+    - .spec.volumeClaimTemplates[]
 
 - name: promtail
   annotations:

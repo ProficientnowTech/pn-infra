@@ -9,19 +9,16 @@ expose:
       notarySecretName: "harbor-tls"
   ingress:
     hosts:
-      core: harbor.pnats.cloud
+      core: registry.pnats.cloud
     controller: ingress-nginx
     className: "nginx"
     annotations:
       # Cert-Manager for TLS certificates
       cert-manager.io/cluster-issuer: "letsencrypt-production"
-      # ExternalDNS for DNS management - will create records for harbor.pnats.cloud and registry.pnats.cloud
-      external-dns.alpha.kubernetes.io/hostname: "harbor.pnats.cloud,registry.pnats.cloud"
-    extraHosts:
-    - name: registry.pnats.cloud
-      tls: true
+      # ExternalDNS for DNS management - will create records for registry.pnats.cloud
+      external-dns.alpha.kubernetes.io/hostname: "registry.pnats.cloud"
 
-externalURL: https://harbor.pnats.cloud
+externalURL: https://registry.pnats.cloud
 
 persistence:
   enabled: true

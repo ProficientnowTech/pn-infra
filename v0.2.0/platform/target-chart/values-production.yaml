@@ -431,7 +431,7 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: "470"
   sources:
-  - repoUrl: https://helm.goharbor.io
+  - repoURL: https://helm.goharbor.io
     chart: harbor
     targetRevision: v1.18.0
     helm:

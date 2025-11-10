@@ -5,7 +5,8 @@ expose:
     enabled: true
     certSource: secret
     secret:
-      secretName: "" # cert-manager will create this
+      secretName: "harbor-tls"
+      notarySecretName: "harbor-tls"
   ingress:
     hosts:
       core: harbor.pnats.cloud

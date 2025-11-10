@@ -81,7 +81,7 @@ updateStrategy:
 
 # Encryption key from SealedSecret
 existingSecretSecretKey: "harbor-core-secrets"
-existingSecretSecretKeyKey: "encryption-key"
+existingSecretSecretKeyKey: "secretKey"
 
 # Component configurations
 portal:
@@ -97,7 +97,7 @@ core:
   replicas: 2
   # Registry password from SealedSecret
   existingSecret: "harbor-core-secrets"
-  existingSecretKey: "registry-password"
+  existingSecretKey: "secret"
 
 jobservice:
   image:
@@ -125,7 +125,7 @@ registry:
     username: "admin"
     # Registry password from SealedSecret
     existingSecret: "harbor-core-secrets"
-    existingSecretPasswordKey: "registry-password"
+    existingSecretPasswordKey: "REGISTRY_PASSWD"
 
 database:
   type: internal

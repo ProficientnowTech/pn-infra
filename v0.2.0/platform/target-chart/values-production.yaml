@@ -426,3 +426,22 @@ applications:
   destinationNamespaceOverwrite: monitoring
   syncOptions:
   - ServerSideApply=true
+
+- name: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "470"
+  sources:
+  - repoUrl: https://helm.goharbor.io
+    chart: harbor
+    targetRevision: v1.18.0
+    helm:
+      releaseName: harbor
+      valueFiles:
+      - $values/v0.2.0/platform/charts/harbor/values.yaml
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    ref: values
+  destinationNamespaceOverwrite: harbor
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true

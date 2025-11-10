@@ -446,5 +446,4 @@ applications:
     path: v0.2.0/platform/charts/harbor/secrets
   destinationNamespaceOverwrite: harbor
   syncOptions:
-  - ServerSideApply=true
   - CreateNamespace=true

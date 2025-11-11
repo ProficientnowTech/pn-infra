@@ -452,9 +452,16 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: "480"
   sources:
+  - repoURL: https://charts.verdaccio.org
+    chart: verdaccio
+    targetRevision: 4.26.1
+    helm:
+      releaseName: verdaccio
+      valueFiles:
+      - $values/v0.2.0/platform/charts/verdaccio/values.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    path: v0.2.0/platform/charts/verdaccio
+    ref: values
   destinationNamespaceOverwrite: verdaccio
   syncOptions:
   - ServerSideApply=true

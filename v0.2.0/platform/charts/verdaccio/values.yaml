@@ -57,18 +57,18 @@ verdaccio:
 
   ## Define Probes
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
-  livenessProbe:
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    timeoutSeconds: 1
-    successThreshold: 1
-    failureThreshold: 3
-  readinessProbe:
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    timeoutSeconds: 1
-    successThreshold: 1
-    failureThreshold: 3
+  # livenessProbe:
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   timeoutSeconds: 1
+  #   successThreshold: 1
+  #   failureThreshold: 3
+  # readinessProbe:
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   timeoutSeconds: 1
+  #   successThreshold: 1
+  #   failureThreshold: 3
 
   resources:
     requests:

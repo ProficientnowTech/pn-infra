@@ -218,7 +218,7 @@ persistence:
   ##   GKE, AWS & OpenStack)
   ##
 
-  storageClass: "ceph-filesystem"
+  storageClassName: "ceph-filesystem"
   accessMode: ReadWriteOnce
   size: 8Gi
   annotations: {}

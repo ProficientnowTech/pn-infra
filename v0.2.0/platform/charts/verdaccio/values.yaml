@@ -57,18 +57,18 @@ verdaccio:
 
   ## Define Probes
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
-  # livenessProbe:
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   timeoutSeconds: 1
-  #   successThreshold: 1
-  #   failureThreshold: 3
-  # readinessProbe:
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   timeoutSeconds: 1
-  #   successThreshold: 1
-  #   failureThreshold: 3
+  livenessProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 1
+    successThreshold: 1
+    failureThreshold: 3
 
   resources:
     requests:
@@ -118,9 +118,9 @@ verdaccio:
   #        key: secret_key
   #  - name: REGULAR_VAR
   #    value: ABC
-  extraEnvVars:
-  - name: VERDACCIO_PORT
-    value: "4873"
+  # extraEnvVars:
+  # - name: VERDACCIO_PORT
+  #   value: "4873"
   ## Secret Environment Variables
   ## Use this to pass sensitive key:values to the container via k8s secret
   secretEnvVars: {}

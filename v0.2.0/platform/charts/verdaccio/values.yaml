@@ -112,7 +112,7 @@ serviceAccount:
 #    value: ABC
 extraEnvVars:
 - name: VERDACCIO_PORT
-  value: 4873
+  value: "4873"
 ## Secret Environment Variables
 ## Use this to pass sensitive key:values to the container via k8s secret
 secretEnvVars: {}

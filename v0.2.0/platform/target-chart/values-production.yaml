@@ -447,3 +447,15 @@ applications:
   destinationNamespaceOverwrite: harbor
   syncOptions:
   - CreateNamespace=true
+
+- name: verdaccio
+  annotations:
+    argocd.argoproj.io/sync-wave: "480"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/verdaccio
+  destinationNamespaceOverwrite: verdaccio
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true

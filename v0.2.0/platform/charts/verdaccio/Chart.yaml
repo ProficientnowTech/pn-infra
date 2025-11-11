@@ -1,0 +1,11 @@
+apiVersion: v2
+name: pn-verdaccio
+description: Verdaccio private javascript npm registry for PN Infrastructure
+type: application
+version: 0.1.0
+appVersion: "6.2.1"
+
+dependencies:
+- name: verdaccio
+  version: 6.2.1
+  repository: https://charts.verdaccio.org/verdaccio

@@ -26,7 +26,7 @@ grafana:
       datasources:
         - name: Prometheus
           type: prometheus
-          url: http://pn-prometheus-kube-prometheus-prometheus.monitoring:9090
+          url: http://prometheus-kube-prometheus-prometheus.monitoring:9090
           access: proxy
           isDefault: true
         - name: Loki
@@ -41,7 +41,7 @@ grafana:
                 url: "$${__value.raw}"
         - name: Tempo
           type: tempo
-          url: http://tempo.monitoring.svc.cluster.local:3100
+          url: http://tempo.monitoring.svc.cluster.local:3200
           access: proxy
           jsonData:
             tracesToLogsV2:

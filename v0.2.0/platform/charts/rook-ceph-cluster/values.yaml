@@ -123,6 +123,17 @@ cephClusterSpec:
     - name: "k8s-worker-02"
       devices:
       - name: "/dev/sdb"
+    - name: "k8s-worker-10"
+      devices:
+      - name: "/dev/sdb"
+      - name: "/dev/sdb"
+    - name: "k8s-worker-04"
+      devices:
+      - name: "/dev/sda"
+      - name: "/dev/sdb"
+      - name: "/dev/sdc"
+      - name: "/dev/sdd"
+      - name: "/dev/sde"
 
   # Remove OSDs that are not in the list above
   removeOSDsIfOutAndSafeToRemove: false
@@ -323,4 +334,3 @@ cephObjectStores:
     - hosts:
       - s3.pnats.cloud
       secretName: ceph-rgw-s3-tls
-

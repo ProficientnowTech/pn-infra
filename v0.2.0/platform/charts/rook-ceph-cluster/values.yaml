@@ -59,9 +59,7 @@ cephClusterSpec:
 
   # Monitoring configuration
   monitoring:
-    enabled: false
-    # createPrometheusRules: false # Not supported in v1.18.4 schema
-
+    enabled: true
     # Network configuration
   network:
     connections:

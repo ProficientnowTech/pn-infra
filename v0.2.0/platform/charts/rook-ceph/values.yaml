@@ -7,7 +7,7 @@ global:
 # Labels configuration
 labels:
   component: storage
-  managed-by: argocd  # Override default Helm with ArgoCD
+  managed-by: argocd # Override default Helm with ArgoCD
 
 # Comprehensive Rook-Ceph configuration
 # Based on official v1.18.3 with enhanced CSI, monitoring, and security
@@ -32,17 +32,16 @@ nodeSelector:
   kubernetes.io/os: linux
 
 tolerations:
-  - key: node-role.kubernetes.io/control-plane
-    operator: Equal
-    effect: NoSchedule
+- key: node-role.kubernetes.io/control-plane
+  operator: Equal
+  effect: NoSchedule
 
 crds:
   enabled: true
 
-
 # CSI configuration - CSI operator is now default in v1.18+
 csi:
-  disableCsiDriver: false  # Enable CSI driver (default behavior)
+  disableCsiDriver: false # Enable CSI driver (default behavior)
   enableRbdDriver: true
   enableCephfsDriver: true
   enableGrpcMetrics: true
@@ -60,7 +59,7 @@ csi:
   rbdLivenessMetricsPort: 8080
 
   serviceMonitor:
-    enabled: false
+    enabled: true
 
   nfs:
     enabled: false
@@ -80,8 +79,6 @@ enableDiscoveryDaemon: true
 # Use Host Network for Operator
 useOperatorHostNetwork: true
 
-
-
 # Monitoring configuration
 monitoring:
   enabled: true
@@ -92,7 +89,7 @@ containerSecurityContext:
   runAsUser: 2016
   runAsGroup: 2016
   capabilities:
-    drop: ["ALL"]
+    drop: [ "ALL" ]
 
 # Operator settings
 currentNamespaceOnly: false

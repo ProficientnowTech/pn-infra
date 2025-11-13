@@ -129,7 +129,7 @@ registry:
   credentials:
     username: "admin"
     password: "Harbor12345"
-    htpasswdString: "$apr1$wPJtOZ7W$B5jCmzgQYJqQ1JQ25VOhd0"
+    htpasswdString: "admin:$apr1$wPJtOZ7W$B5jCmzgQYJqQ1JQ25VOhd0"
 
 database:
   type: internal

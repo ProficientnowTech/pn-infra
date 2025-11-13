@@ -56,8 +56,8 @@ persistence:
       secure: true
       # Reference to SealedSecret for S3 credentials
       existingSecret: "harbor-s3-credentials"
-      existingSecretAccessKey: "accesskey"
-      existingSecretSecretKey: "secretkey"
+      existingSecretAccessKey: "REGISTRY_STORAGE_S3_ACCESSKEY"
+      existingSecretSecretKey: "REGISTRY_STORAGE_S3_SECRETKEY"
       v4auth: true
       forcepathstyle: true
 

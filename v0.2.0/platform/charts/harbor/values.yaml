@@ -128,9 +128,8 @@ registry:
   existingSecretKey: "registry-http-secret"
   credentials:
     username: "admin"
-    # Registry password from SealedSecret
-    existingSecret: "harbor-core-secrets"
-    existingSecretPasswordKey: "REGISTRY_PASSWD"
+    password: "Harbor12345"
+    htpasswdString: "$apr1$wPJtOZ7W$B5jCmzgQYJqQ1JQ25VOhd0"
 
 database:
   type: internal

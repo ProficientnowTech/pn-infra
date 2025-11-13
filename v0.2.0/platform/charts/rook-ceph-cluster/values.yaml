@@ -125,7 +125,7 @@ cephClusterSpec:
       devices:
       - name: "/dev/sdb"
       - name: "/dev/sdb"
-    - name: "k8s-worker-04"
+    - name: "k8s-master-04"
       devices:
       - name: "/dev/sda"
       - name: "/dev/sdb"

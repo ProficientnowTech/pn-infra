@@ -13,6 +13,10 @@ expose:
     controller: ingress-nginx
     className: "nginx"
     annotations:
+      ingress.kubernetes.io/ssl-redirect: "true"
+      ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
       # Cert-Manager for TLS certificates
       cert-manager.io/cluster-issuer: "letsencrypt-production"
       # ExternalDNS for DNS management - will create records for registry.pnats.cloud

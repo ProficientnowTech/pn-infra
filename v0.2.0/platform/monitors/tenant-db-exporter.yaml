@@ -43,7 +43,7 @@ metadata:
     app: tenant-db-exporter
     component: postgres-exporter
     # This label is important - it tells Prometheus to pick up this ServiceMonitor
-    release: prometheus-kube-prometheus
+    release: prometheus
 spec:
   selector:
     matchLabels:

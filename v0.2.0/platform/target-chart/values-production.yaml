@@ -546,6 +546,7 @@ applications:
     - .metadata.labels."operator.tekton.dev/operand-name"
     - .metadata.ownerReferences
     - .status
+    - .spec.preserveUnknownFields
   - group: apps
     kind: Deployment
     jqPathExpressions:

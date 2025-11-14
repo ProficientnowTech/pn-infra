@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tekton-dashboard
+description: Tekton Dashboard with ingress support and configurable read/write mode
+type: application
+version: 0.1.0
+appVersion: "latest"

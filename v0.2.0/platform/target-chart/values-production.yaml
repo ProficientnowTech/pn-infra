@@ -527,6 +527,17 @@ applications:
     jqPathExpressions:
     - '.spec.pipeline."enable-tekton-oci-bundles"'
 
+- name: tekton-dashboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "515"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/tekton-dashboard
+  destinationNamespaceOverwrite: tekton-dashboard
+  syncOptions:
+  - CreateNamespace=true
+
 - name: kargo
   annotations:
     argocd.argoproj.io/sync-wave: "520"

@@ -1,0 +1,19 @@
+# Tekton Dashboard configuration
+dashboard:
+  # Set to true for read/write mode (release-full.yaml)
+  # Set to false for read-only mode (release.yaml)
+  readWriteMode: true
+
+  # Dashboard version to install
+  version: "latest"
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: nginx
+  host: tekton.pnats.cloud
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    external-dns.alpha.kubernetes.io/ttl: "60"
+  tls:
+    enabled: true

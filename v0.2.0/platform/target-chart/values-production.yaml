@@ -485,7 +485,7 @@ applications:
   sources:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    path: v0.2.0/platform/operators/tekton-operator
+    path: v0.2.0/platform/operators/tekton-operator/application.yaml
   destinationNamespaceOverwrite: argocd
   syncOptions:
   - CreateNamespace=true

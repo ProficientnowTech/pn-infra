@@ -5,7 +5,7 @@ dashboard:
   readWriteMode: true
 
   # Dashboard version to install
-  version: "latest"
+  version: "v0.63.1"
 
 # Ingress configuration
 ingress:

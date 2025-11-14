@@ -479,6 +479,17 @@ applications:
   - CreateNamespace=true
 
 # CI/CD Platform
+- name: tekton-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "500"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/operators/tekton-operator
+  destinationNamespaceOverwrite: argocd
+  syncOptions:
+  - CreateNamespace=true
+
 - name: tekton
   annotations:
     argocd.argoproj.io/sync-wave: "510"

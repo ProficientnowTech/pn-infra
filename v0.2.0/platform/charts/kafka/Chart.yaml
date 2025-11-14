@@ -1,0 +1,11 @@
+apiVersion: v2
+name: pn-kafka-operator
+description: Strimzi Kafka Operator for PN Infrastructure
+type: application
+version: 0.1.0
+appVersion: "0.48.0"
+
+dependencies:
+- name: strimzi-kafka-operator
+  version: 0.48.0
+  repository: https://strimzi.io/charts/

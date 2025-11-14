@@ -1,0 +1,56 @@
+---
+# Endpoints for external postgres_exporter on 94.136.191.25:9188
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: tenant-db-exporter
+  namespace: monitoring
+  labels:
+    app: tenant-db-exporter
+    component: postgres-exporter
+subsets:
+  - addresses:
+      - ip: 94.136.191.25
+    ports:
+      - name: metrics
+        port: 9188
+        protocol: TCP
+---
+# Service without selector to reference the external endpoints
+apiVersion: v1
+kind: Service
+metadata:
+  name: tenant-db-exporter
+  namespace: monitoring
+  labels:
+    app: tenant-db-exporter
+    component: postgres-exporter
+spec:
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: 9188
+      targetPort: 9188
+      protocol: TCP
+---
+# ServiceMonitor to tell Prometheus to scrape this target
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: tenant-db-exporter
+  namespace: monitoring
+  labels:
+    app: tenant-db-exporter
+    component: postgres-exporter
+    # This label is important - it tells Prometheus to pick up this ServiceMonitor
+    release: prometheus-kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      app: tenant-db-exporter
+      component: postgres-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+      scheme: http

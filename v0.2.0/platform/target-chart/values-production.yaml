@@ -567,6 +567,7 @@ applications:
   syncOptions:
   - CreateNamespace=true
   - RespectIgnoreDifferences=true
+  - ServerSideApply=true
   ignoreDifferences:
   - group: apiextensions.k8s.io
     kind: CustomResourceDefinition
@@ -574,6 +575,7 @@ applications:
     - .status
     - .metadata.annotations
     - .metadata.generation
+    - .spec.preserveUnknownFields
 
 - name: kargo
   annotations:

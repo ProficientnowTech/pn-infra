@@ -527,6 +527,17 @@ applications:
     jqPathExpressions:
     - '.spec.pipeline."enable-tekton-oci-bundles"'
 
+- name: kargo
+  annotations:
+    argocd.argoproj.io/sync-wave: "520"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/kargo
+  destinationNamespaceOverwrite: kargo
+  syncOptions:
+  - CreateNamespace=true
+
 # Monitors
 - name: monitors
   annotations:

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    grafana_dashboard: "1"
+  name: kubevirt-grafana-dashboard
+  namespace: kubevirt
+data:
+  kubevirt-dashboard.json: |-
+{{ .Files.Get "dashboard-files/kubevirt-dashboard.json" | indent 4 }}

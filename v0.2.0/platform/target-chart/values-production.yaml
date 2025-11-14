@@ -603,3 +603,46 @@ applications:
   destinationNamespaceOverwrite: monitoring
   syncOptions:
   - CreateNamespace=true
+
+# Virtualization Platform
+- name: kubevirt
+  annotations:
+    argocd.argoproj.io/sync-wave: "600"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/kubevirt
+  destinationNamespaceOverwrite: kubevirt
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+  - RespectIgnoreDifferences=true
+  ignoreDifferences:
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    jqPathExpressions:
+    - .status
+    - .metadata.annotations
+    - .metadata.generation
+    - .spec.preserveUnknownFields
+
+- name: kubevirt-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: "610"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/kubevirt-manager
+  destinationNamespaceOverwrite: kubevirt-manager
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+  - RespectIgnoreDifferences=true
+  ignoreDifferences:
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    jqPathExpressions:
+    - .status
+    - .metadata.annotations
+    - .metadata.generation
+    - .spec.preserveUnknownFields

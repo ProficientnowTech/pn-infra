@@ -542,7 +542,7 @@ applications:
   - group: apiextensions.k8s.io
     kind: CustomResourceDefinition
     jqPathExpressions:
-    - .metadata.annotations."operator.tekton.dev/last-applied-hash"
+    - .metadata.annotations
     - .metadata.labels."operator.tekton.dev/operand-name"
     - .metadata.ownerReferences
     - .status
@@ -550,11 +550,12 @@ applications:
   - group: apps
     kind: Deployment
     jqPathExpressions:
-    - .metadata.annotations."deployment.kubernetes.io/revision"
+    - .metadata.annotations
     - .metadata.labels."operator.tekton.dev/operand-name"
     - .metadata.labels."app.kubernetes.io/version"
     - .metadata.labels.version
     - .metadata.labels."dashboard.tekton.dev/release"
+    - .spec.template.spec.containers
 
 - name: argo-rollouts
   annotations:

@@ -521,6 +521,11 @@ applications:
   destinationNamespaceOverwrite: tekton-pipelines
   syncOptions:
   - CreateNamespace=true
+  ignoreDifferences:
+  - group: ''
+    kind: TektonConfig
+    jqPathExpressions:
+    - .spec.pipeline.enable-tekton-oci-bundles
 
 # Monitors
 - name: monitors

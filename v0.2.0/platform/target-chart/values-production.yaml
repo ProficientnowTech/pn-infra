@@ -534,6 +534,9 @@ applications:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
     path: v0.2.0/platform/charts/kargo
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/kargo/secrets
   destinationNamespaceOverwrite: kargo
   syncOptions:
   - CreateNamespace=true

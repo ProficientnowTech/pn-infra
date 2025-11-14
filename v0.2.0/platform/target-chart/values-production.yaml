@@ -478,6 +478,18 @@ applications:
   syncOptions:
   - CreateNamespace=true
 
+# CI/CD Platform
+- name: tekton
+  annotations:
+    argocd.argoproj.io/sync-wave: "510"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/tekton
+  destinationNamespaceOverwrite: tekton-pipelines
+  syncOptions:
+  - CreateNamespace=true
+
 # Monitors
 - name: monitors
   annotations:

@@ -1,0 +1,20 @@
+apiVersion: operator.tekton.dev/v1alpha1
+kind: TektonConfig
+metadata:
+  name: config
+spec:
+  profile: all
+  targetNamespace: tekton-pipelines
+  pipeline:
+    enable-api-fields: stable
+    enable-tekton-oci-bundles: true
+  trigger:
+    enable-api-fields: stable
+  pruner:
+    resources:
+    - pipelinerun
+    - taskrun
+    keep: 100
+    schedule: "0 8 * * *"
+  result:
+    disabled: false

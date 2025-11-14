@@ -477,3 +477,15 @@ applications:
   destinationNamespaceOverwrite: strimzi-kafka-operator
   syncOptions:
   - CreateNamespace=true
+
+# Monitors
+- name: monitors
+  annotations:
+    argocd.argoproj.io/sync-wave: "800"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/monitors
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - CreateNamespace=true

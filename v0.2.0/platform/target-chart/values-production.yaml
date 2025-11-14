@@ -477,6 +477,18 @@ applications:
   destinationNamespaceOverwrite: strimzi-kafka-operator
   syncOptions:
   - CreateNamespace=true
+  ignoreDifferences:
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    jsonPointers:
+    - /status
+    - /metadata/annotations
+    - /metadata/labels
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    managedFieldsManagers:
+    - helm
+    - argocd-controller
 
 # CI/CD Platform
 - name: tekton-operator
@@ -489,6 +501,19 @@ applications:
   destinationNamespaceOverwrite: tekton-operator
   syncOptions:
   - CreateNamespace=true
+  - ServerSideApply=true
+  ignoreDifferences:
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    jsonPointers:
+    - /status
+    - /metadata/annotations
+    - /metadata/labels
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    managedFieldsManagers:
+    - kubectl
+    - argocd-controller
 
 - name: tekton
   annotations:

@@ -522,10 +522,10 @@ applications:
   syncOptions:
   - CreateNamespace=true
   ignoreDifferences:
-  - group: ''
+  - group: operator.tekton.dev
     kind: TektonConfig
     jqPathExpressions:
-    - .spec.pipeline.enable-tekton-oci-bundles
+    - '.spec.pipeline."enable-tekton-oci-bundles"'
 
 # Monitors
 - name: monitors

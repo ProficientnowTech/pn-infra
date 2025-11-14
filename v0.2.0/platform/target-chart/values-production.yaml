@@ -484,7 +484,10 @@ applications:
     kind: CustomResourceDefinition
     jqPathExpressions:
     - .status
-    - .metadata.annotations."kubectl.kubernetes.io/last-applied-configuration"
+    - .metadata.annotations
+    - .metadata.generation
+    - .spec.versions[].deprecated
+    - .spec.preserveUnknownFields
 
 # CI/CD Platform
 - name: tekton-operator
@@ -504,7 +507,9 @@ applications:
     kind: CustomResourceDefinition
     jqPathExpressions:
     - .status
-    - .metadata.annotations."kubectl.kubernetes.io/last-applied-configuration"
+    - .metadata.annotations
+    - .metadata.generation
+    - .spec.preserveUnknownFields
 
 - name: tekton
   annotations:

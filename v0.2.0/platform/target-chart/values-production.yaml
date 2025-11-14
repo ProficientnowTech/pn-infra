@@ -538,6 +538,17 @@ applications:
   syncOptions:
   - CreateNamespace=true
 
+- name: argo-rollouts
+  annotations:
+    argocd.argoproj.io/sync-wave: "518"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/argo-rollouts
+  destinationNamespaceOverwrite: argo-rollouts
+  syncOptions:
+  - CreateNamespace=true
+
 - name: kargo
   annotations:
     argocd.argoproj.io/sync-wave: "520"

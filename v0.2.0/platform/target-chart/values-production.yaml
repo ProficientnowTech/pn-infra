@@ -328,28 +328,28 @@ applications:
   - CreateNamespace=true
   - ServerSideApply=true
 
-- name: kube-ovn
-  annotations:
-    argocd.argoproj.io/sync-wave: "330"
-  sources:
-  - repoURL: https://kubeovn.github.io/kube-ovn
-    chart: kube-ovn
-    targetRevision: 1.13.0
-    helm:
-      releaseName: kube-ovn
-      valueFiles:
-      - $values/v0.2.0/platform/charts/kube-ovn/values.yaml
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    ref: values
-  destinationNamespaceOverwrite: kube-system
-  syncOptions:
-  - ServerSideApply=true
-  ignoreDifferences:
-  - group: apps
-    kind: DaemonSet
-    jqPathExpressions:
-    - .status
+# - name: kube-ovn
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "330"
+#   sources:
+#   - repoURL: https://kubeovn.github.io/kube-ovn
+#     chart: kube-ovn
+#     targetRevision: 1.13.0
+#     helm:
+#       releaseName: kube-ovn
+#       valueFiles:
+#       - $values/v0.2.0/platform/charts/kube-ovn/values.yaml
+#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#     targetRevision: main
+#     ref: values
+#   destinationNamespaceOverwrite: kube-system
+#   syncOptions:
+#   - ServerSideApply=true
+#   ignoreDifferences:
+#   - group: apps
+#     kind: DaemonSet
+#     jqPathExpressions:
+#     - .status
 
 - name: external-secrets
   annotations:

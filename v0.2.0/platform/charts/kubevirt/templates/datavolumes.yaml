@@ -15,6 +15,7 @@ spec:
     http:
       url: "{{ $sources.url }}"
   pvc:
+    storageClassName: {{ $.Values.datasources.storageClassName }}
     accessModes:
       - ReadWriteOnce
     resources:

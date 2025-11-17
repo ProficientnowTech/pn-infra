@@ -252,16 +252,16 @@ applications:
     path: v0.2.0/platform/apps/postgres-operator-config
   destinationNamespaceOverwrite: postgres-operator
 
-- name: platform-db
-  annotations:
-    argocd.argoproj.io/sync-wave: "320"
-  sources:
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/databases/platform
-  destinationNamespaceOverwrite: platform-db-pg
-  syncOptions:
-  - CreateNamespace=true
+# - name: platform-db
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "320"
+#   sources:
+#   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+#     targetRevision: main
+#     path: v0.2.0/platform/databases/platform
+#   destinationNamespaceOverwrite: platform-db-pg
+#   syncOptions:
+#   - CreateNamespace=true
 - name: redis-operator
   annotations:
     argocd.argoproj.io/sync-wave: "330"

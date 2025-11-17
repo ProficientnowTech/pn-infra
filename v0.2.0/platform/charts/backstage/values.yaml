@@ -3,36 +3,17 @@
 # Self-service infrastructure provisioning via software templates
 
 backstage:
-  # Image settings
-  image:
-    registry: ghcr.io
-    repository: backstage/backstage
-    tag: latest
-    pullPolicy: IfNotPresent
+  backstage:
+    # Image settings
+    image:
+      registry: ghcr.io
+      repository: backstage/backstage
+      tag: latest
+      pullPolicy: IfNotPresent
 
-  # Deployment settings
-  replicas: 2
+    # Deployment settings
     # Single replica for PoC
-    # Environment variables (secrets)
-  extraEnvVars:
-  - name: KEYCLOAK_CLIENT_SECRET
-    valueFrom:
-      secretKeyRef:
-        name: backstage-secrets
-        key: keycloak-client-secret
-  - name: GITHUB_TOKEN
-    valueFrom:
-      secretKeyRef:
-        name: backstage-secrets
-        key: github-token
-      # Resources
-      resources:
-        requests:
-          cpu: 200m
-          memory: 512Mi
-        limits:
-          cpu: 1000m
-          memory: 1Gi
+    replicas: 2
     # Backstage app configuration
     appConfig:
       app:
@@ -150,6 +131,28 @@ backstage:
           runIn: local
         publisher:
           type: local
+
+    # Environment variables (secrets)
+    extraEnvVars:
+    - name: KEYCLOAK_CLIENT_SECRET
+      valueFrom:
+        secretKeyRef:
+          name: backstage-secrets
+          key: keycloak-client-secret
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: backstage-secrets
+          key: github-token
+        # Resources
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
   # Ingress
   ingress:
     enabled: true

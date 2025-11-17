@@ -1,0 +1,100 @@
+---
+# Keycloak Custom Configuration for PN Platform
+# Simplified for PoC - SSO for ArgoCD, Backstage, Kargo
+
+keycloak:
+  # Production mode
+  production: true
+  
+  # Admin credentials (will be stored in secret)
+  auth:
+    adminUser: admin
+    adminPassword: ""  # Will be auto-generated or from existing secret
+    existingSecret: ""  # Can reference vault-synced secret
+  
+  # HTTP-only for now (TLS termination at ingress)
+  tls:
+    enabled: false
+  
+  # HTTP mode (behind ingress TLS)
+  httpEnabled: true
+  
+  # Proxy headers from ingress
+  proxyHeaders: "xforwarded"
+  
+  # Single replica for PoC
+  replicaCount: 1
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  
+  # Ingress configuration
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: keycloak.pnats.cloud
+    path: /
+    pathType: Prefix
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      external-dns.alpha.kubernetes.io/ttl: "60"
+      nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    tls: true
+  
+  # Use embedded PostgreSQL for PoC
+  postgresql:
+    enabled: true
+    auth:
+      postgresPassword: ""  # Auto-generated
+      username: bn_keycloak
+      password: ""  # Auto-generated
+      database: bitnami_keycloak
+    architecture: standalone
+    primary:
+      persistence:
+        enabled: true
+        size: 8Gi
+        storageClass: ceph-block
+      resources:
+        requests:
+          cpu: 250m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+  
+  # Cache for single replica
+  cache:
+    enabled: false  # Disable distributed cache for single replica
+  
+  # Logging
+  logging:
+    output: default
+    level: INFO
+  
+  # Service
+  service:
+    type: ClusterIP
+    ports:
+      http: 80
+      https: 443
+  
+  # Network policy
+  networkPolicy:
+    enabled: true
+    allowExternal: true
+  
+  # Service account
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: true
+  
+  # Metrics
+  metrics:
+    enabled: false  # Can enable later

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: pn-kubevirt-ccm
+description: KubeVirt Cloud Controller Manager for LoadBalancer support in workload clusters
+type: application
+version: 0.1.0
+appVersion: "0.6.0"
+
+# Note: No official Helm chart exists for kubevirt-ccm
+# This chart deploys manifests directly

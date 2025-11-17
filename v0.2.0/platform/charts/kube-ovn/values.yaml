@@ -1,0 +1,128 @@
+---
+# Kube-OVN CNI Configuration for PN Platform
+# Provides advanced networking with live migration support for KubeVirt VMs
+
+kube-ovn:
+  # Global settings
+  NETWORK_TYPE: "geneve"  # Use geneve for better performance with live migration
+  POD_CIDR: "10.16.0.0/16"  # Pod network CIDR
+  POD_GATEWAY: "10.16.0.1"  # Pod gateway
+  SVC_CIDR: "10.96.0.0/12"  # Service CIDR (must match cluster service CIDR)
+
+  # Enable DPDK for high performance (optional, can be disabled for PoC)
+  ENABLE_DPDK: false
+
+  # Enable live migration support
+  ENABLE_LB: true
+  ENABLE_NP: true  # Network policy support
+  ENABLE_EIP_SNAT: true  # Enable EIP and SNAT for VMs
+
+  # IPAM settings
+  DEFAULT_SUBNET: "ovn-default"
+  DEFAULT_VPC: "ovn-cluster"
+
+  # Image settings
+  image:
+    repository: kubeovn/kube-ovn
+    tag: v1.13.0
+    pullPolicy: IfNotPresent
+
+  # OVN database settings
+  ovn:
+    nb:
+      # North-bound database - stores logical network config
+      replicas: 3  # HA for production
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+    sb:
+      # South-bound database - stores physical network state
+      replicas: 3  # HA for production
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+  # CNI plugin settings
+  cni:
+    # Networking configuration
+    conf:
+      CNI_CONFIG_PRIORITY: "10"  # Priority in CNI chain
+      ENABLE_MIRROR: false  # Traffic mirroring (for debugging)
+
+    # Resource settings for CNI daemon
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # Controller settings
+  controller:
+    replicas: 3  # HA deployment
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    # Leader election
+    leaderElection:
+      enabled: true
+      leaseDuration: "15s"
+      renewDeadline: "10s"
+      retryPeriod: "2s"
+
+  # Daemon settings (runs on every node)
+  daemon:
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    # Tolerations for running on all nodes
+    tolerations:
+    - operator: Exists
+      effect: NoSchedule
+    - operator: Exists
+      effect: NoExecute
+
+  # Network policy
+  networkPolicy:
+    enabled: true
+
+  # Service account
+  serviceAccount:
+    create: true
+
+  # RBAC
+  rbac:
+    create: true
+
+  # Node selector (optional - for specific nodes)
+  nodeSelector: {}
+
+  # Enable IPv6 (optional)
+  ENABLE_IPV6: false
+
+  # Log verbosity
+  LOG_LEVEL: "info"
+
+  # Metrics
+  metrics:
+    enabled: false  # Can enable later for monitoring

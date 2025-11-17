@@ -1,0 +1,174 @@
+---
+# KubeVirt Cloud Controller Manager Configuration
+# Enables LoadBalancer services in KubeVirt-based workload clusters
+# Deployed TO workload clusters (not management cluster)
+
+# Image settings
+image:
+  repository: quay.io/kubevirt/cloud-provider-kubevirt
+  tag: v0.6.0
+  pullPolicy: IfNotPresent
+
+# Deployment settings
+replicaCount: 1  # Single replica (leader election enabled)
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Service account
+serviceAccount:
+  create: true
+  name: cloud-controller-manager
+  annotations: {}
+
+# RBAC
+rbac:
+  create: true
+
+# Cloud provider configuration
+cloudProvider:
+  # Namespace where VMs are running (in management cluster)
+  namespace: ""  # Will be set per workload cluster
+
+  # LoadBalancer configuration
+  loadBalancer:
+    # Use primary cluster's LoadBalancer (via kubeconfig secret)
+    enabled: true
+    # Service type for created LB services in management cluster
+    creationPollInterval: 2s
+
+  # Instance metadata
+  instancesV2:
+    enabled: true
+    zoneAndRegion: false
+
+# Kubeconfig secret for accessing management cluster
+# This secret must be created in workload cluster
+kubeconfigSecret:
+  name: cloud-config
+  namespace: kube-system
+  key: cloud-config
+
+# Leader election
+leaderElection:
+  enabled: true
+  leaseDuration: 15s
+  renewDeadline: 10s
+  retryPeriod: 2s
+
+# Logging
+log:
+  level: 2  # 0=panic, 1=error, 2=warning, 3=info, 4=debug
+
+# Node controller settings
+nodeController:
+  # Sync period for node status
+  syncPeriod: 30s
+  # Monitor period for node health
+  monitorPeriod: 5s
+
+# Service controller settings
+serviceController:
+  # Concurrent service syncs
+  concurrentServiceSyncs: 1
+
+# Tolerations (runs on control plane)
+tolerations:
+- key: node-role.kubernetes.io/control-plane
+  operator: Exists
+  effect: NoSchedule
+- key: node-role.kubernetes.io/master
+  operator: Exists
+  effect: NoSchedule
+
+# Node selector (control plane nodes)
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+
+# Affinity
+affinity: {}
+
+# Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+
+# Health probes
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 10258
+    scheme: HTTPS
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: 10258
+    scheme: HTTPS
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+
+# Command line arguments
+extraArgs:
+  - --v=2
+  - --cloud-provider=kubevirt
+  - --cloud-config=/etc/cloud/cloud-config
+  - --use-service-account-credentials=true
+  - --bind-address=0.0.0.0
+  - --secure-port=10258
+
+# Volume mounts
+volumeMounts:
+- name: cloud-config
+  mountPath: /etc/cloud
+  readOnly: true
+
+# Volumes
+volumes:
+- name: cloud-config
+  secret:
+    secretName: cloud-config
+
+# Pod annotations
+podAnnotations: {}
+
+# Pod labels
+podLabels: {}
+
+# Priority class
+priorityClassName: system-cluster-critical
+
+# Deployment strategy
+strategy:
+  type: Recreate
+
+# Enable network policy
+networkPolicy:
+  enabled: false  # Enable if needed
+
+# Metrics
+metrics:
+  enabled: false  # Can enable later
+  port: 10259

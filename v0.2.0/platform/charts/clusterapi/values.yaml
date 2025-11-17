@@ -1,0 +1,125 @@
+---
+# Cluster API Operator Configuration for PN Platform
+# Enables declarative cluster lifecycle management with KubeVirt provider
+
+cluster-api-operator:
+  # Operator settings
+  operator:
+    image:
+      repository: registry.k8s.io/capi-operator/cluster-api-operator
+      tag: v0.14.0
+      pullPolicy: IfNotPresent
+
+    replicas: 1  # Single replica for PoC
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    # Leader election
+    leaderElection:
+      enabled: true
+
+  # Enable core CAPI components
+  core:
+    enabled: true
+    namespace: capi-system
+    version: v1.8.7
+
+  # Bootstrap providers
+  bootstrap:
+    kubeadm:
+      enabled: true
+      namespace: capi-kubeadm-bootstrap-system
+      version: v1.8.7
+
+  # Control plane providers
+  controlPlane:
+    kubeadm:
+      enabled: true
+      namespace: capi-kubeadm-control-plane-system
+      version: v1.8.7
+
+  # Infrastructure providers
+  infrastructure:
+    kubevirt:
+      enabled: true
+      namespace: capk-system
+      version: v0.2.0  # KubeVirt provider version
+      # Provider configuration
+      fetchConfig:
+        url: https://github.com/kubernetes-sigs/cluster-api-provider-kubevirt/releases/download/v0.2.0/infrastructure-components.yaml
+
+  # RBAC
+  rbac:
+    create: true
+
+  # Service account
+  serviceAccount:
+    create: true
+    name: cluster-api-operator
+
+  # Webhook configuration
+  webhook:
+    enabled: true
+    port: 9443
+    certManager:
+      enabled: true  # Requires cert-manager (already deployed)
+
+  # Metrics
+  metrics:
+    enabled: false  # Can enable later
+
+  # Feature gates
+  featureGates:
+    # ClusterTopology enables declarative cluster management
+    ClusterTopology: true
+    # ClusterResourceSet enables applying resources to workload clusters
+    ClusterResourceSet: true
+
+  # Manager settings
+  manager:
+    # Concurrent reconciles
+    maxConcurrentReconciles: 10
+
+    # Sync period
+    syncPeriod: 10m
+
+    # Health probe bind address
+    healthProbeBindAddress: ":8081"
+
+    # Metrics bind address
+    metricsBindAddress: "127.0.0.1:8080"
+
+  # Node selector
+  nodeSelector: {}
+
+  # Tolerations
+  tolerations: []
+
+  # Affinity
+  affinity: {}
+
+# Additional provider configuration (applied separately via ConfigMap)
+providerConfig:
+  # KubeVirt provider specific settings
+  kubevirt:
+    # Default VM settings for provisioned clusters
+    defaultVM:
+      cores: 2
+      memory: 4Gi
+      disk: 20Gi
+
+    # Storage class for VM disks
+    storageClass: ceph-block
+
+    # Network settings
+    network:
+      cni: kube-ovn  # Use Kube-OVN for live migration
+
+    # SSH key for cluster access (will be created separately)
+    sshKeySecret: cluster-api-ssh-key

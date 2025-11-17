@@ -2,6 +2,8 @@
 # Simplified for PoC - SSO for ArgoCD, Backstage, Kargo
 
 keycloak:
+  global:
+    defaultStorageClass: "ceph-block"
   # Production mode
   production: true
   replicaCount: 2

@@ -17,6 +17,14 @@ loki:
           index:
             prefix: index_
             period: 24h
+    limits_config:
+      retention_period: 168h  # 7 days
+    compactor:
+      working_directory: /var/loki/compactor
+      compaction_interval: 10m
+      retention_enabled: true
+      retention_delete_delay: 2h
+      retention_delete_worker_count: 150
 
   singleBinary:
     replicas: 1
@@ -31,6 +39,27 @@ loki:
       limits:
         cpu: 500m
         memory: 512Mi
+    extraInitContainers:
+      - name: cleanup-corrupted-indexes
+        image: busybox:latest
+        command:
+          - sh
+          - -c
+          - |
+            echo "Checking for corrupted index directories..."
+            # Remove the specific corrupted index
+            if [ -d "/var/loki/data/tsdb-shipper-active/index_20406" ]; then
+              echo "Removing corrupted index_20406..."
+              rm -rf /var/loki/data/tsdb-shipper-active/index_20406
+            fi
+            if [ -d "/var/loki/data/tsdb-shipper-cache/index_20406" ]; then
+              echo "Removing cached index_20406..."
+              rm -rf /var/loki/data/tsdb-shipper-cache/index_20406
+            fi
+            echo "Cleanup complete"
+        volumeMounts:
+          - name: storage
+            mountPath: /var/loki/data
 
   gateway:
     enabled: false

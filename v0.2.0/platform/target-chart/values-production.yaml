@@ -534,28 +534,9 @@ applications:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
     path: v0.2.0/platform/charts/tekton-dashboard
-  destinationNamespaceOverwrite: tekton-dashboard
+  destinationNamespaceOverwrite: tekton-pipelines
   syncOptions:
   - CreateNamespace=true
-  - RespectIgnoreDifferences=true
-  ignoreDifferences:
-  - group: apiextensions.k8s.io
-    kind: CustomResourceDefinition
-    jqPathExpressions:
-    - .metadata.annotations
-    - .metadata.labels."operator.tekton.dev/operand-name"
-    - .metadata.ownerReferences
-    - .status
-    - .spec.preserveUnknownFields
-  - group: apps
-    kind: Deployment
-    jqPathExpressions:
-    - .metadata.annotations
-    - .metadata.labels."operator.tekton.dev/operand-name"
-    - .metadata.labels."app.kubernetes.io/version"
-    - .metadata.labels.version
-    - .metadata.labels."dashboard.tekton.dev/release"
-    - .spec.template.spec.containers
 
 - name: argo-rollouts
   annotations:

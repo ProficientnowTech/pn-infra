@@ -1,11 +1,6 @@
-# Tekton Dashboard configuration
-dashboard:
-  # Set to true for read/write mode (release-full.yaml)
-  # Set to false for read-only mode (release.yaml)
-  readWriteMode: true
-
-  # Dashboard version to install
-  version: "v0.63.1"
+# Tekton Dashboard Ingress-only configuration
+# Note: The dashboard deployment itself is managed by the Tekton Operator via TektonConfig CR
+# This chart only provides the Ingress resource for external access
 
 # Ingress configuration
 ingress:

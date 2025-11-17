@@ -1,8 +1,9 @@
 ---
 # Backstage Developer Portal Configuration for PN Platform
-# Self-service infrastructure provisioning via software templates
 
-# backstage:
+global:
+  imageRegistry: ""
+
 backstage:
   # Image settings
   image:
@@ -10,10 +11,33 @@ backstage:
     repository: backstage/backstage
     tag: latest
     pullPolicy: IfNotPresent
+    pullSecrets: []
 
   # Deployment settings
-  # Single replica for PoC
   replicas: 2
+
+  # Resources
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Environment variables from Secrets (CORRECTED)
+  extraEnvVarsSecrets:
+  - name: KEYCLOAK_CLIENT_SECRET
+    valueFrom:
+      secretKeyRef:
+        name: backstage-secrets
+        key: keycloak-client-secret
+  - name: GITHUB_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: backstage-secrets
+        key: github-token
+
   # Backstage app configuration
   appConfig:
     app:
@@ -24,94 +48,67 @@ backstage:
       name: ProficientNow Technologies
 
     backend:
-      # Backend URL
       baseUrl: https://backstage.pnats.cloud
       listen:
         port: 7007
         host: 0.0.0.0
-
-      # CORS settings
       cors:
         origin: https://backstage.pnats.cloud
         methods: [ GET, HEAD, PATCH, POST, PUT, DELETE ]
         credentials: true
-
-      # Database (SQLite for PoC, PostgreSQL for production)
       database:
         client: better-sqlite3
         connection: ':memory:'
-
-      # CSP settings
       csp:
         connect-src: [ "'self'", 'http:', 'https:' ]
-
-      # Reading configuration files
       reading:
         allow:
         - host: github.com
         - host: '*.github.com'
 
-    # Authentication
     auth:
       environment: production
       providers:
-        # Keycloak OIDC authentication
         oidc:
           production:
             metadataUrl: https://keycloak.pnats.cloud/realms/platform/.well-known/openid-configuration
             clientId: backstage
-            clientSecret: ${KEYCLOAK_CLIENT_SECRET} # From secret
+            clientSecret: ${KEYCLOAK_CLIENT_SECRET}
             prompt: auto
             signIn:
               resolvers:
               - resolver: preferredUsernameMatchingUserEntityName
 
-        # Guest authentication (for demo/testing)
-        guest:
-          dangerouslyAllowOutsideDevelopment: true
-
-    # Catalog
     catalog:
-      # Import existing infrastructure as entities
       import:
         entityFilename: catalog-info.yaml
         pullRequestBranchName: backstage-integration
-
-      # Catalog rules
       rules:
       - allow: [ Component, System, API, Resource, Location, Template ]
-      # Default locations
       locations:
-      # Backstage templates for infrastructure provisioning
       - type: url
         target: https://github.com/pnats-cloud/pn-infra/blob/main/backstage/templates/cluster-template.yaml
         rules:
         - allow: [ Template ]
-
       - type: url
         target: https://github.com/pnats-cloud/pn-infra/blob/main/backstage/templates/database-template.yaml
         rules:
         - allow: [ Template ]
-
-      # Crossplane-based infrastructure catalog
       - type: url
         target: https://github.com/pnats-cloud/pn-infra/blob/main/backstage/catalog/infrastructure.yaml
         rules:
         - allow: [ Resource ]
 
-    # Integrations
     integrations:
       github:
       - host: github.com
-        token: ${GITHUB_TOKEN} # From secret
+        token: ${GITHUB_TOKEN}
 
-    # Scaffolder (software templates)
     scaffolder:
       defaultAuthor:
         name: Backstage
         email: backstage@pnats.cloud
 
-    # Kubernetes plugin (for viewing cluster resources)
     kubernetes:
       serviceLocatorMethod:
         type: multiTenant
@@ -124,7 +121,6 @@ backstage:
           skipTLSVerify: false
           skipMetricsLookup: true
 
-    # Techdocs (documentation)
     techdocs:
       builder: local
       generator:
@@ -132,18 +128,21 @@ backstage:
       publisher:
         type: local
 
-  # Environment variables (secrets)
-  extraEnvVarsSecrets:
-  - name: KEYCLOAK_CLIENT_SECRET
-    valueFrom:
-      secretKeyRef:
-        name: backstage-secrets
-        key: keycloak-client-secret
-  - name: GITHUB_TOKEN
-    valueFrom:
-      secretKeyRef:
-        name: backstage-secrets
-        key: github-token
+  # Container configuration
+  containerPorts:
+    backend: 7007
+
+  # Probes (using defaults from reference)
+  readinessProbe:
+    httpGet:
+      path: /.backstage/health/v1/readiness
+      port: 7007
+      scheme: HTTP
+  livenessProbe:
+    httpGet:
+      path: /.backstage/health/v1/liveness
+      port: 7007
+      scheme: HTTP
 
 # Ingress
 ingress:
@@ -167,55 +166,21 @@ service:
     backend: 7007
     name: http-backend
     targetPort: backend
+
 # Service account
 serviceAccount:
   create: true
   automountServiceAccountToken: true
 
-#   # RBAC (for Kubernetes plugin)
-#   rbac:
-#     create: true
-
-#   # PostgreSQL (disabled for PoC - using SQLite)
+# PostgreSQL
 postgresql:
   enabled: false
+
 # Network policy
 networkPolicy:
-  enabled: false # Can enable later
+  enabled: false
+
 # Metrics
 metrics:
   serviceMonitor:
     enabled: false
-
-# # Additional Backstage plugins to enable
-# plugins:
-# # Kubernetes plugin - view cluster resources
-# - name: kubernetes
-#   enabled: true
-
-# # Crossplane plugin - view infrastructure claims
-# - name: crossplane
-#   enabled: true
-
-# # ArgoCD plugin - view deployments
-# - name: argocd
-#   enabled: true
-#   config:
-#     baseUrl: https://argocd.pnats.cloud
-#     # Token from secret
-
-#     # GitHub plugin - PR/repo integration
-# - name: github
-#   enabled: true
-
-# # Techdocs plugin - documentation
-# - name: techdocs
-#   enabled: true
-
-# # Catalog plugin - entity management
-# - name: catalog
-#   enabled: true
-
-# # Scaffolder plugin - software templates
-# - name: scaffolder
-#   enabled: true

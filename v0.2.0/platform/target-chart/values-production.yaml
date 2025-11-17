@@ -410,43 +410,6 @@ applications:
     jqPathExpressions:
     - .spec.volumeClaimTemplates[]
 
-# Progressive Delivery Platform
-- name: kargo
-  annotations:
-    argocd.argoproj.io/sync-wave: "370"
-  sources:
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/charts/kargo
-  destinationNamespaceOverwrite: kargo
-  syncOptions:
-  - CreateNamespace=true
-  - ServerSideApply=true
-  ignoreDifferences:
-  - group: apiextensions.k8s.io
-    kind: CustomResourceDefinition
-    jqPathExpressions:
-    - .status
-    - .metadata.annotations
-
-- name: argo-rollouts
-  annotations:
-    argocd.argoproj.io/sync-wave: "380"
-  sources:
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/charts/argo-rollouts
-  destinationNamespaceOverwrite: argo-rollouts
-  syncOptions:
-  - CreateNamespace=true
-  - ServerSideApply=true
-  ignoreDifferences:
-  - group: apiextensions.k8s.io
-    kind: CustomResourceDefinition
-    jqPathExpressions:
-    - .status
-    - .metadata.annotations
-
 # Developer Portal
 - name: backstage
   annotations:

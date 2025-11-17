@@ -32,4 +32,4 @@ spec:
               service:
                 name: {{ include "temporal.componentname" (list . "frontend") }}
                 port:
-                  number: {{ .Values.temporal.frontend.service.port }}
+                  number: 7233

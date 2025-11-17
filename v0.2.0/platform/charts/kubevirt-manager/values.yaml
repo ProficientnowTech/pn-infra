@@ -11,7 +11,7 @@ deployment:
   ingress:
     host: kubevirt.pnats.cloud
     annotations:
-      cert-manager.io/cluster-issuer: default-issuer
+      cert-manager.io/cluster-issuer: letsencrypt-production
       external-dns.alpha.kubernetes.io/ttl: "60"
   service:
     name: kubevirt-manager

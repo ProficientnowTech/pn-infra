@@ -592,6 +592,21 @@ applications:
   syncOptions:
   - CreateNamespace=true
 
+- name: temporal
+  annotations:
+    argocd.argoproj.io/sync-wave: "525"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/temporal
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/temporal/secrets
+  destinationNamespaceOverride: temporal
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+
 # Monitors
 - name: monitors
   annotations:

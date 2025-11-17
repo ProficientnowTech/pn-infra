@@ -1,0 +1,100 @@
+graph TB
+    subgraph "Kargo Warehouse"
+        KW[Kargo Warehouse<br/>Tracks Harbor & Verdaccio]
+        SUB1[Subscription: Harbor Images]
+        SUB2[Subscription: Verdaccio Packages]
+    end
+    
+    subgraph "Development Stage"
+        KS_DEV[Kargo Stage: Development]
+        PROM_DEV[Auto Promotion Policy]
+        DEV_NS[Dev Namespace]
+        PREVIEW_NS[Preview Namespaces<br/>pr-{number}]
+        DEV_TESTS[Automated Tests:<br/>- Smoke Tests<br/>- Integration Tests]
+    end
+    
+    subgraph "Staging Stage"
+        KS_STAGE[Kargo Stage: Staging]
+        PROM_STAGE[Auto Promotion Policy<br/>After Tests Pass]
+        STAGE_NS[Staging Namespace]
+        STAGE_TESTS[Automated Tests:<br/>- E2E Tests<br/>- Performance Tests<br/>- Load Tests]
+        STAGE_VERIFY[Verification Job]
+    end
+    
+    subgraph "UAT Stage"
+        KS_UAT[Kargo Stage: UAT]
+        PROM_UAT[Manual Gate<br/>After UAT Sign-off]
+        UAT_NS[UAT Namespace]
+        UAT_MANUAL[Manual Testing:<br/>- User Acceptance<br/>- Business Validation]
+    end
+    
+    subgraph "Pre-Production Stage"
+        KS_PREPROD[Kargo Stage: Pre-Production]
+        PROM_PREPROD[Manual Gate<br/>After Canary Success]
+        PREPROD_NS[Pre-Prod Namespace]
+        CANARY[Argo Rollouts:<br/>Canary Deployment<br/>10% → 25% → 50% → 100%]
+        PREPROD_MONITOR[Monitoring:<br/>- Metrics Analysis<br/>- Error Rates<br/>- Latency]
+    end
+    
+    subgraph "Production Stage"
+        KS_PROD[Kargo Stage: Production]
+        PROD_NS[Production Namespace]
+        BLUEGREEN[Argo Rollouts:<br/>Blue-Green Deployment]
+        PROD_MONITOR[Production Monitoring:<br/>- SLO Tracking<br/>- Alert Manager]
+    end
+    
+    subgraph "Sandbox Stage"
+        SAND_CRON[CronJob: Daily Sync<br/>Replicates Production]
+        SAND_NS[Sandbox Namespace]
+        SAND_DB[Sandbox Database<br/>Test Data]
+        SAND_TTL[TTL: 24h<br/>Then Re-sync]
+    end
+    
+    KW --> SUB1
+    KW --> SUB2
+    SUB1 --> KS_DEV
+    SUB2 --> KS_DEV
+    
+    KS_DEV --> DEV_NS
+    KS_DEV --> PREVIEW_NS
+    KS_DEV --> DEV_TESTS
+    DEV_TESTS -->|Pass| PROM_DEV
+    PROM_DEV --> KS_STAGE
+    
+    KS_STAGE --> STAGE_NS
+    KS_STAGE --> STAGE_TESTS
+    STAGE_TESTS --> STAGE_VERIFY
+    STAGE_VERIFY -->|Pass| PROM_STAGE
+    PROM_STAGE --> KS_UAT
+    
+    KS_UAT --> UAT_NS
+    KS_UAT --> UAT_MANUAL
+    UAT_MANUAL -->|Approved| PROM_UAT
+    PROM_UAT --> KS_PREPROD
+    
+    KS_PREPROD --> PREPROD_NS
+    PREPROD_NS --> CANARY
+    CANARY --> PREPROD_MONITOR
+    PREPROD_MONITOR -->|Success| PROM_PREPROD
+    PROM_PREPROD --> KS_PROD
+    
+    KS_PROD --> PROD_NS
+    PROD_NS --> BLUEGREEN
+    BLUEGREEN --> PROD_MONITOR
+    
+    PROD_NS -.->|Daily Replication| SAND_CRON
+    SAND_CRON --> SAND_NS
+    SAND_NS --> SAND_DB
+    SAND_NS --> SAND_TTL
+    SAND_TTL -.->|Reset| SAND_CRON
+    
+    style KS_DEV fill:#e3f2fd
+    style KS_STAGE fill:#fff3e0
+    style KS_UAT fill:#f3e5f5
+    style KS_PREPROD fill:#ffe0b2
+    style KS_PROD fill:#c8e6c9
+    style SAND_NS fill:#fff9c4
+    style PROM_DEV fill:#4caf50
+    style PROM_STAGE fill:#4caf50
+    style PROM_UAT fill:#ff9800
+    style PROM_PREPROD fill:#ff9800

@@ -142,6 +142,9 @@ EOF
 		return 1
 	fi
 
+	# Wait for secret to propagate
+	sleep 2
+
 	# Verify secret was created
 	log_info "Verifying secret creation..."
 	if kubectl get secret postgres-backup-credentials -n postgres-operator >/dev/null 2>&1; then
@@ -419,6 +422,25 @@ deploy_platform_applications_old() {
 		log_error "Bootstrap application not found"
 		return 1
 	fi
+}
+
+# Wait for ArgoCD to be ready
+wait_for_argocd_ready() {
+	log_info "Waiting for ArgoCD to be ready..."
+	local max_wait=120
+	local waited=0
+
+	while [[ $waited -lt $max_wait ]]; do
+		if kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=10s >/dev/null 2>&1; then
+			log_success "ArgoCD is ready"
+			return 0
+		fi
+		waited=$((waited + 10))
+		log_info "Waiting for ArgoCD... (${waited}s/${max_wait}s)"
+	done
+
+	log_warning "ArgoCD not ready within ${max_wait}s, continuing anyway"
+	return 0
 }
 
 # Deploy platform applications

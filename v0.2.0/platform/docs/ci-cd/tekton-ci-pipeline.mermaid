@@ -1,0 +1,92 @@
+graph TB
+    subgraph "GitHub Webhook Events"
+        PRO[PR Opened]
+        PRS[PR Synchronized]
+        PRM[PR Merged to develop]
+        RTC[Release Tag Created]
+    end
+    
+    subgraph "Tekton EventListener"
+        EL[EventListener]
+        CEL[CEL Interceptor<br/>Filter & Transform]
+    end
+    
+    subgraph "Tekton Pipeline: PR Validation"
+        PR_START[Pipeline Start]
+        PR_CLONE[Task: Git Clone]
+        PR_DETECT[Task: Detect Changes<br/>Monorepo Path Detection]
+        PR_LINT[Task: Lint Code<br/>ESLint/Pylint]
+        PR_UNIT[Task: Unit Tests<br/>Jest/Pytest]
+        PR_BUILD[Task: Build Images<br/>Kaniko/Buildah]
+        PR_PUSH[Task: Push to Harbor<br/>Tag: pr-{number}-{sha}]
+        PR_SCAN[Task: Trivy Scan]
+        PR_DEPLOY[Task: Deploy Preview<br/>Create ArgoCD App]
+        PR_COMMENT[Task: Comment PR<br/>With Preview URL]
+        PR_VULN[Task: Report Vulnerabilities<br/>Request Changes]
+    end
+    
+    subgraph "Tekton Pipeline: Develop Merge"
+        DEV_START[Pipeline Start]
+        DEV_CLONE[Task: Git Clone]
+        DEV_VERSION[Task: Auto Version<br/>Alpha: v1.2.3-alpha.{timestamp}]
+        DEV_BUILD[Task: Build Images & Packages]
+        DEV_PUSH[Task: Push Artifacts]
+        DEV_SCAN[Task: Security Scan]
+        DEV_TAG[Task: Git Tag]
+        DEV_UPDATE[Task: Update Config Repo<br/>Kargo Warehouse]
+    end
+    
+    subgraph "Tekton Pipeline: Release"
+        REL_START[Pipeline Start]
+        REL_CLONE[Task: Git Clone]
+        REL_VERSION[Task: Version Bump<br/>Beta/Stable]
+        REL_BUILD[Task: Build Final Images]
+        REL_PUSH[Task: Push with Tags]
+        REL_SIGN[Task: Sign Images<br/>Cosign]
+        REL_SBOM[Task: Generate SBOM]
+        REL_UPDATE[Task: Update Config Repo]
+    end
+    
+    PRO --> EL
+    PRS --> EL
+    PRM --> EL
+    RTC --> EL
+    
+    EL --> CEL
+    
+    CEL -->|PR Event| PR_START
+    CEL -->|Merge to develop| DEV_START
+    CEL -->|Release Tag| REL_START
+    
+    PR_START --> PR_CLONE
+    PR_CLONE --> PR_DETECT
+    PR_DETECT --> PR_LINT
+    PR_LINT --> PR_UNIT
+    PR_UNIT --> PR_BUILD
+    PR_BUILD --> PR_PUSH
+    PR_PUSH --> PR_SCAN
+    PR_SCAN -->|Clean| PR_DEPLOY
+    PR_SCAN -->|Vulnerabilities| PR_VULN
+    PR_DEPLOY --> PR_COMMENT
+    PR_VULN --> PR_COMMENT
+    
+    DEV_START --> DEV_CLONE
+    DEV_CLONE --> DEV_VERSION
+    DEV_VERSION --> DEV_BUILD
+    DEV_BUILD --> DEV_PUSH
+    DEV_PUSH --> DEV_SCAN
+    DEV_SCAN --> DEV_TAG
+    DEV_TAG --> DEV_UPDATE
+    
+    REL_START --> REL_CLONE
+    REL_CLONE --> REL_VERSION
+    REL_VERSION --> REL_BUILD
+    REL_BUILD --> REL_PUSH
+    REL_PUSH --> REL_SIGN
+    REL_SIGN --> REL_SBOM
+    REL_SBOM --> REL_UPDATE
+    
+    style PR_SCAN fill:#ff6b6b
+    style DEV_SCAN fill:#ff6b6b
+    style PR_DEPLOY fill:#4ecdc4
+    style DEV_UPDATE fill:#95e1d3

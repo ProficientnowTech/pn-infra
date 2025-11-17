@@ -1,0 +1,97 @@
+graph TB
+    subgraph "Source Control"
+        GH[GitHub Repository<br/>Monorepo]
+        PR[Pull Request]
+    end
+    
+    subgraph "CI Pipeline - Tekton"
+        TE[Tekton EventListener]
+        TT1[Tekton Task: Lint & Test]
+        TT2[Tekton Task: Build Images]
+        TT3[Tekton Task: Scan Images]
+        TT4[Tekton Task: Build Packages]
+        TT5[Tekton Task: Publish]
+    end
+    
+    subgraph "Artifact Repositories"
+        HR[Harbor Registry<br/>Container Images]
+        VD[Verdaccio<br/>NPM Packages]
+        SCAN[Trivy Scanner<br/>in Harbor]
+    end
+    
+    subgraph "GitOps Config Repo"
+        CONFIG[Config Repository]
+        KUSTOMIZE[Kustomize Overlays]
+    end
+    
+    subgraph "CD Pipeline - Kargo"
+        KW[Kargo Warehouse<br/>Image Tracking]
+        KS1[Kargo Stage: Dev]
+        KS2[Kargo Stage: Staging]
+        KS3[Kargo Stage: Pre-Prod]
+        KS4[Kargo Stage: Production]
+        KP[Kargo Promotion]
+    end
+    
+    subgraph "Kubernetes Clusters"
+        subgraph "Staging Cluster"
+            DEV[Dev Namespace]
+            STAGING[Staging Namespace]
+            UAT[UAT Namespace]
+            PREVIEW[Preview Environments]
+        end
+        
+        subgraph "Production Cluster - HA"
+            PREPROD[Pre-Prod Namespace]
+            PROD[Production Namespace]
+            SANDBOX[Sandbox Namespace]
+        end
+    end
+    
+    subgraph "ArgoCD"
+        ARGO[ArgoCD Applications]
+        ROLLOUTS[Argo Rollouts<br/>Progressive Delivery]
+    end
+    
+    GH -->|Webhook| TE
+    PR -->|Webhook| TE
+    TE --> TT1
+    TT1 -->|Pass| TT2
+    TT2 --> HR
+    TT2 --> TT4
+    TT4 --> VD
+    HR --> SCAN
+    SCAN -->|Vulnerabilities Found| GH
+    SCAN -->|Clean| TT5
+    TT5 --> CONFIG
+    
+    HR --> KW
+    VD --> KW
+    KW --> KS1
+    KS1 -->|Auto Promote| KS2
+    KS2 -->|Manual Gate| KS3
+    KS3 -->|Manual Gate| KS4
+    
+    CONFIG --> ARGO
+    KUSTOMIZE --> ARGO
+    
+    KS1 --> DEV
+    KS1 --> PREVIEW
+    KS2 --> STAGING
+    KS2 --> UAT
+    KS3 --> PREPROD
+    KS4 --> PROD
+    
+    ARGO --> ROLLOUTS
+    ROLLOUTS --> PREPROD
+    ROLLOUTS --> PROD
+    
+    PROD -.->|Daily Replication| SANDBOX
+    
+    style HR fill:#326ce5
+    style VD fill:#cb3837
+    style ARGO fill:#ef7b4d
+    style ROLLOUTS fill:#ef7b4d
+    style KW fill:#00d9ff
+    style PROD fill:#00ff00
+    style SANDBOX fill:#ffff00

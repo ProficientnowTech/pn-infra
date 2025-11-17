@@ -1,0 +1,313 @@
+---
+# Temporal HA Deployment with PostgreSQL
+
+# Chart dependency - using upstream Temporal chart
+temporal:
+  # Server configuration
+  server:
+    enabled: true
+    image:
+      repository: temporalio/server
+      tag: "1.29.1"
+      pullPolicy: IfNotPresent
+
+    # IMMUTABLE: Do not change after initial deployment
+    numHistoryShards: 512
+
+    # Replica configuration for HA
+    replicaCount: 3
+
+    # Service configuration
+    frontend:
+      service:
+        type: ClusterIP
+        port: 7233
+        annotations: {}
+
+    # Resource allocation per pod
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 2000m
+        memory: 2Gi
+
+    # Metrics configuration
+    metrics:
+      annotations:
+        enabled: true
+      serviceMonitor:
+        enabled: true
+        interval: 30s
+      prometheus:
+        timerType: histogram
+
+    # Database configuration - PostgreSQL
+    config:
+      persistence:
+        default:
+          driver: "sql"
+
+          sql:
+            driver: "postgres12"
+            host: "{{ include \"temporal.postgresql.fullname\" . }}"
+            port: 5432
+            database: "temporal"
+            user: "temporal"
+            existingSecret: "temporal-postgres-secret"
+            secretName: "temporal-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+
+        visibility:
+          driver: "sql"
+
+          sql:
+            driver: "postgres12"
+            host: "{{ include \"temporal.postgresql.fullname\" . }}"
+            port: 5432
+            database: "temporal_visibility"
+            user: "temporal"
+            existingSecret: "temporal-postgres-secret"
+            secretName: "temporal-postgres-secret"
+            secretKey: "password"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+
+  # Individual service replicas for HA
+  frontend:
+    replicaCount: 3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    service:
+      type: ClusterIP
+      port: 7233
+
+  history:
+    replicaCount: 3
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+  matching:
+    replicaCount: 3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+  worker:
+    replicaCount: 5
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+  # Web UI
+  web:
+    enabled: true
+    replicaCount: 2
+    image:
+      repository: temporalio/ui
+      tag: "2.36.1"
+      pullPolicy: IfNotPresent
+
+    service:
+      type: ClusterIP
+      port: 8080
+      annotations: {}
+
+    ingress:
+      enabled: true
+      className: "nginx"
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+        external-dns.alpha.kubernetes.io/ttl: "60"
+      hosts:
+      - host: temporal-ui.pnats.cloud
+        paths:
+        - path: /
+          pathType: Prefix
+      tls:
+      - secretName: temporal-ui-tls
+        hosts:
+        - temporal-ui.pnats.cloud
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # Admin tools
+  admintools:
+    enabled: true
+    image:
+      repository: temporalio/admin-tools
+      tag: "1.29.1"
+      pullPolicy: IfNotPresent
+    service:
+      type: ClusterIP
+      port: 22
+
+  # Schema setup and updates
+  schema:
+    setup:
+      enabled: true
+      backoffLimit: 100
+    update:
+      enabled: true
+
+  # PostgreSQL - Bundled with chart
+  postgresql:
+    enabled: true
+    auth:
+      username: temporal
+      password: "" # Will use existingSecret
+      database: temporal
+      existingSecret: "temporal-postgres-secret"
+      secretKeys:
+        adminPasswordKey: postgres-password
+        userPasswordKey: password
+
+    # PostgreSQL HA configuration
+    architecture: replication
+    replication:
+      enabled: true
+      numSynchronousReplicas: 1
+      synchronousCommit: "on"
+
+    primary:
+      persistence:
+        enabled: true
+        storageClass: "ceph-block"
+        size: 50Gi
+
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+
+      # Initialize both databases
+      initdb:
+        scripts:
+          init_temporal.sql: |
+            CREATE DATABASE temporal_visibility;
+            GRANT ALL PRIVILEGES ON DATABASE temporal TO temporal;
+            GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO temporal;
+
+    readReplicas:
+      replicaCount: 2
+      persistence:
+        enabled: true
+        storageClass: "ceph-block"
+        size: 50Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+
+    metrics:
+      enabled: true
+      serviceMonitor:
+        enabled: true
+
+  # Disable Cassandra (using PostgreSQL)
+  cassandra:
+    enabled: false
+
+  # Disable MySQL
+  mysql:
+    enabled: false
+
+  # Disable Elasticsearch (using PostgreSQL for visibility)
+  elasticsearch:
+    enabled: false
+
+  # Use cluster Prometheus
+  prometheus:
+    enabled: false
+
+  # Grafana dashboards only (using cluster Grafana instance)
+  grafana:
+    enabled: true
+    replicas: 0 # Don't deploy Grafana pods, just create dashboard ConfigMaps
+    testFramework:
+      enabled: false
+    rbac:
+      create: false
+      pspEnabled: false
+      namespaced: true
+    dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+        - name: "temporal"
+          orgId: 1
+          folder: "Temporal"
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/temporal
+    datasources:
+      datasources.yaml:
+        apiVersion: 1
+        datasources:
+        - name: TemporalMetrics
+          type: prometheus
+          url: http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090
+          access: proxy
+          isDefault: false
+    dashboards:
+      default:
+        server-general-github:
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/server/server-general.json
+          datasource: TemporalMetrics
+        sdk-general-github:
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/sdk/sdk-general.json
+          datasource: TemporalMetrics
+        misc-advanced-visibility-specific-github:
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/advanced-visibility-specific.json
+          datasource: TemporalMetrics
+        misc-clustermonitoring-kubernetes-github:
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/clustermonitoring-kubernetes.json
+          datasource: TemporalMetrics
+        misc-frontend-service-specific-github:
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/frontend-service-specific.json
+          datasource: TemporalMetrics
+        misc-history-service-specific-github:
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/history-service-specific.json
+          datasource: TemporalMetrics
+        misc-matching-service-specific-github:
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/matching-service-specific.json
+          datasource: TemporalMetrics
+        misc-worker-service-specific-github:
+          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/worker-service-specific.json
+          datasource: TemporalMetrics

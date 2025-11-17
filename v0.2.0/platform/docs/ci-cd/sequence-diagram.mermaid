@@ -1,0 +1,79 @@
+sequenceDiagram
+    participant Dev as Developer
+    participant GH as GitHub
+    participant Tekton as Tekton Pipeline
+    participant Harbor as Harbor Registry
+    participant Trivy as Trivy Scanner
+    participant Kargo as Kargo
+    participant ArgoCD as ArgoCD
+    participant K8s as Kubernetes
+    
+    Dev->>GH: Create PR on develop branch
+    GH->>Tekton: Webhook: PR opened
+    
+    Tekton->>Tekton: Run lint & unit tests
+    Tekton->>Tekton: Build container image
+    Tekton->>Harbor: Push image (tag: pr-123-abc123)
+    
+    Harbor->>Trivy: Trigger vulnerability scan
+    Trivy->>Trivy: Scan for CVEs
+    
+    alt Critical/High vulnerabilities found
+        Trivy->>GH: Comment on PR with vulnerabilities
+        Trivy->>GH: Request changes on PR
+        Dev->>GH: Fix vulnerabilities & push
+        GH->>Tekton: Webhook: PR synchronized
+        Note over Tekton,Trivy: Repeat CI pipeline
+    else No critical vulnerabilities
+        Trivy->>Tekton: Scan passed
+        Tekton->>ArgoCD: Create preview environment
+        ArgoCD->>K8s: Deploy to preview namespace
+        Tekton->>GH: Comment with preview URL
+        Dev->>K8s: Test preview environment
+    end
+    
+    Dev->>GH: Approve & merge PR to develop
+    GH->>Tekton: Webhook: Push to develop
+    
+    Tekton->>Tekton: Auto-version (alpha.{timestamp})
+    Tekton->>Tekton: Build images & packages
+    Tekton->>Harbor: Push image (tag: v1.2.3-alpha.20241114)
+    Tekton->>Harbor: Tag as: alpha, latest-alpha
+    Tekton->>GH: Create git tag
+    Tekton->>Kargo: Update warehouse
+    
+    Kargo->>Kargo: Detect new alpha version
+    Kargo->>ArgoCD: Auto-promote to dev stage
+    ArgoCD->>K8s: Deploy to dev namespace
+    
+    K8s->>K8s: Run integration tests
+    
+    alt Tests pass
+        Kargo->>ArgoCD: Auto-promote to staging
+        ArgoCD->>K8s: Deploy to staging namespace
+        K8s->>K8s: Run E2E & performance tests
+    end
+    
+    alt Tests pass
+        Kargo->>ArgoCD: Auto-promote to UAT
+        ArgoCD->>K8s: Deploy to UAT namespace
+        Note over Dev,K8s: Manual UAT testing period
+        Dev->>Kargo: Approve UAT promotion
+    end
+    
+    Kargo->>ArgoCD: Promote to pre-prod
+    ArgoCD->>K8s: Deploy with canary strategy
+    K8s->>K8s: Gradual rollout (10% → 25% → 50%)
+    K8s->>K8s: Monitor metrics
+    
+    alt Canary successful
+        Dev->>Kargo: Approve production promotion
+        Kargo->>ArgoCD: Promote to production
+        ArgoCD->>K8s: Blue-green deployment
+        K8s->>K8s: Switch traffic to green
+        Note over K8s: Production running v1.2.3-alpha.20241114
+    end
+    
+    Note over K8s: Daily sandbox sync at midnight
+    K8s->>K8s: Clone production to sandbox
+    K8s->>K8s: Sandbox available for 24h

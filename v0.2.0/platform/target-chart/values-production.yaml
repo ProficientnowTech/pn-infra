@@ -425,6 +425,9 @@ applications:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
     ref: values
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/backstage/secrets
   destinationNamespaceOverwrite: backstage
   syncOptions:
   - CreateNamespace=true

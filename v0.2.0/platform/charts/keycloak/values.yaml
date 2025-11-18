@@ -5,7 +5,8 @@
 image:
   registry: docker.io
   repository: bitnamilegacy/keycloak
-  # Global PostgreSQL settings
+
+# Global PostgreSQL settings
 global:
   defaultStorageClass: "ceph-block"
   security:

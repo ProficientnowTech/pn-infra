@@ -1,151 +1,151 @@
 # Keycloak Custom Configuration for PN Platform
 # Simplified for PoC - SSO for ArgoCD, Backstage, Kargo
 
-# Keycloak image - using bitnamilegacy (free)
-image:
-  registry: docker.io
-  repository: bitnamilegacy/keycloak
-
-# Global PostgreSQL settings
-global:
-  defaultStorageClass: "ceph-block"
-  security:
-    allowInsecureImages: true
-  postgresql:
-    auth:
-      username: bn_keycloak
-      password: bn_keycloak
-      database: bitnami_keycloak
-
-# Keycloak Admin User Configuration
-auth:
-  adminUser: admin
-  adminPassword: admin
-
-# PostgreSQL Specific Configuration
-postgresql:
-  enabled: true
+keycloak:
+  # Keycloak image - using bitnamilegacy (free)
   image:
     registry: docker.io
-    repository: bitnamilegacy/postgresql
+    repository: bitnamilegacy/keycloak
+
+  # Global PostgreSQL settings
+  global:
+    defaultStorageClass: "ceph-block"
+    security:
+      allowInsecureImages: true
+    postgresql:
+      auth:
+        username: bn_keycloak
+        password: bn_keycloak
+        database: bitnami_keycloak
+
+  # Keycloak Admin User Configuration
   auth:
-    postgresPassword: "" # Auto-generated
-    username: bn_keycloak
-    password: "" # Auto-generated
-    database: bitnami_keycloak
-  architecture: standalone
-  primary:
-    persistence:
+    adminUser: admin
+    adminPassword: admin
+
+  # PostgreSQL Specific Configuration
+  postgresql:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/postgresql
+    auth:
+      postgresPassword: "" # Auto-generated
+      username: bn_keycloak
+      password: "" # Auto-generated
+      database: bitnami_keycloak
+    architecture: standalone
+    primary:
+      persistence:
+        enabled: true
+        storageClass: "ceph-block"
+        size: 8Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+  # Kubernetes Service Configuration
+  # Service
+  service:
+    type: ClusterIP
+    ports:
+      http: 80
+      https: 443
+
+  # Additional Keycloak Environment Variables
+  extraEnvVars:
+  # Enable production mode to prevent thread blocking
+  - name: KC_PRODUCTION
+    value: "true"
+
+  - name: KC_HOSTNAME_STRICT
+    value: "false"
+  - name: KC_HTTP_ENABLED
+    value: "true"
+
+  - name: VERTX_WORKER_POOL_SIZE
+    value: "20"
+  - name: VERTX_EVENT_LOOP_POOL_SIZE
+    value: "8"
+  # Production mode
+  production: true
+  replicaCount: 2
+
+  # HTTP-only for now (TLS termination at ingress)
+  tls:
+    enabled: true
+
+  # HTTP mode (behind ingress TLS)
+  httpEnabled: false
+
+  # Proxy headers from ingress
+  proxyHeaders: ""
+
+  # Cache
+  cache:
+    enabled: true
+
+  # Logging
+  logging:
+    output: default
+    level: INFO
+
+  # Ingress configuration
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: keycloak.pnats.cloud
+    path: "/"
+    pathType: Prefix
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      external-dns.alpha.kubernetes.io/ttl: "60"
+      nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    tls: true
+
+  # Network policy
+  networkPolicy:
+    enabled: true
+    allowExternal: true
+
+  # Service account
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: true
+
+  # PDB
+  pdb:
+    create: true
+    minAvailable: ""
+    maxUnavailable: ""
+
+  # Autoscaling
+  autoscaling:
+    hpa:
       enabled: true
-      storageClass: "ceph-block"
-      size: 8Gi
-    resources:
-      requests:
-        cpu: 250m
-        memory: 256Mi
-      limits:
-        cpu: 500m
-        memory: 512Mi
+      minReplicas: 1
+      maxReplicas: 5
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 120
+          selectPolicy: Max
+          policies: []
+        scaleDown:
+          stabilizationWindowSeconds: 300
+          selectPolicy: Max
+          policies:
+          - type: Pods
+            value: 1
+            periodSeconds: 300
 
-# Kubernetes Service Configuration
-# Service
-service:
-  type: ClusterIP
-  ports:
-    http: 80
-    https: 443
-
-# Additional Keycloak Environment Variables
-extraEnvVars:
-# Enable production mode to prevent thread blocking
-- name: KC_PRODUCTION
-  value: "true"
-
-- name: KC_HOSTNAME_STRICT
-  value: "false"
-- name: KC_HTTP_ENABLED
-  value: "true"
-
-- name: VERTX_WORKER_POOL_SIZE
-  value: "20"
-- name: VERTX_EVENT_LOOP_POOL_SIZE
-  value: "8"
-
-# Production mode
-production: true
-replicaCount: 2
-
-# HTTP-only for now (TLS termination at ingress)
-tls:
-  enabled: true
-
-# HTTP mode (behind ingress TLS)
-httpEnabled: false
-
-# Proxy headers from ingress
-proxyHeaders: ""
-
-# Cache
-cache:
-  enabled: true
-
-# Logging
-logging:
-  output: default
-  level: INFO
-
-# Ingress configuration
-ingress:
-  enabled: true
-  ingressClassName: nginx
-  hostname: keycloak.pnats.cloud
-  path: "/"
-  pathType: Prefix
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-production
-    external-dns.alpha.kubernetes.io/ttl: "60"
-    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
-  tls: true
-
-# Network policy
-networkPolicy:
-  enabled: true
-  allowExternal: true
-
-# Service account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-
-# PDB
-pdb:
-  create: true
-  minAvailable: ""
-  maxUnavailable: ""
-
-# Autoscaling
-autoscaling:
-  hpa:
+  # Metrics
+  metrics:
     enabled: true
-    minReplicas: 1
-    maxReplicas: 5
-    behavior:
-      scaleUp:
-        stabilizationWindowSeconds: 120
-        selectPolicy: Max
-        policies: []
-      scaleDown:
-        stabilizationWindowSeconds: 300
-        selectPolicy: Max
-        policies:
-        - type: Pods
-          value: 1
-          periodSeconds: 300
-
-# Metrics
-metrics:
-  enabled: true
-  serviceMonitor:
-    enabled: true
-  prometheusRule:
-    enabled: true
+    serviceMonitor:
+      enabled: true
+    prometheusRule:
+      enabled: true

@@ -1,8 +1,8 @@
 apiVersion: "acid.zalan.do/v1"
-kind: Postgresql
+kind: postgresql
 metadata:
   name: temporal-postgres
-  namespace: {{ .Release.Namespace }}
+  namespace: temporal
 spec:
   teamId: "temporal"
   volume:

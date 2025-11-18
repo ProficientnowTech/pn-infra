@@ -72,12 +72,12 @@ keycloak:
   - name: VERTX_EVENT_LOOP_POOL_SIZE
     value: "8"
   # Production mode
-  production: true
+  # production: true
   replicaCount: 2
 
   # HTTP-only for now (TLS termination at ingress)
-  tls:
-    enabled: false
+  # tls:
+  #   enabled: false
 
   # HTTP mode (behind ingress TLS)
   httpEnabled: false

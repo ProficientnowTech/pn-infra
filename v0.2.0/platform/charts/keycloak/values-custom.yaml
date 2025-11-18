@@ -54,6 +54,18 @@ keycloak:
       password: "" # Auto-generated
       database: bitnami_keycloak
     architecture: standalone
+    primary:
+      persistence:
+        enabled: true
+        storageClass: "ceph-block"
+        size: 8Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
 
   # Service
   service:

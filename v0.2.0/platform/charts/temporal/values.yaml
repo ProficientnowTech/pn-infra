@@ -161,7 +161,7 @@ temporal:
     enabled: true
     image:
       repository: temporalio/admin-tools
-      tag: "1.29.1"
+      tag: "1.25.0"
       pullPolicy: IfNotPresent
     service:
       type: ClusterIP
@@ -175,9 +175,20 @@ temporal:
     update:
       enabled: true
 
-  # PostgreSQL - Bundled with chart
+  # PostgreSQL - Bundled with chart using bitnamilegacy
   postgresql:
     enabled: true
+
+    # Use bitnamilegacy repository to avoid Docker Hub paywall
+    image:
+      registry: docker.io
+      repository: bitnamilegacy/postgresql
+
+    # Global settings
+    global:
+      security:
+        allowInsecureImages: true
+
     auth:
       username: temporal
       password: "" # Will use existingSecret

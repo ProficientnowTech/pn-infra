@@ -50,9 +50,7 @@ ingress:
 postgresql:
   enabled: true
   image:
-    registry: docker.io
     repository: bitnami/postgresql
-    tag: 16.4.0-debian-12-r14
   auth:
     postgresPassword: "" # Auto-generated
     username: bn_keycloak

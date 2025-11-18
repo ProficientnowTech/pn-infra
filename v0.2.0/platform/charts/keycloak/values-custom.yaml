@@ -1,116 +1,119 @@
 # Keycloak Custom Configuration for PN Platform
 # Simplified for PoC - SSO for ArgoCD, Backstage, Kargo
 
-keycloak:
-  global:
-    defaultStorageClass: "ceph-block"
-  # Production mode
-  production: true
-  replicaCount: 2
-  # Admin credentials (will be stored in secret)
+global:
+  defaultStorageClass: "ceph-block"
+
+# Production mode
+production: true
+replicaCount: 2
+
+# Admin credentials (will be stored in secret)
+auth:
+  adminUser: admin
+  adminPassword: "" # Will be auto-generated or from existing secret
+  existingSecret: "" # Can reference vault-synced secret
+
+# HTTP-only for now (TLS termination at ingress)
+tls:
+  enabled: true
+
+# HTTP mode (behind ingress TLS)
+httpEnabled: false
+
+# Proxy headers from ingress
+proxyHeaders: ""
+
+# Cache
+cache:
+  enabled: true
+
+# Logging
+logging:
+  output: default
+  level: INFO
+
+# Ingress configuration
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hostname: keycloak.pnats.cloud
+  path: "/"
+  pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    external-dns.alpha.kubernetes.io/ttl: "60"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+  tls: true
+
+# Use embedded PostgreSQL for PoC
+postgresql:
+  enabled: true
   auth:
-    adminUser: admin
-    adminPassword: "" # Will be auto-generated or from existing secret
-    existingSecret: "" # Can reference vault-synced secret
-
-  # HTTP-only for now (TLS termination at ingress)
-  tls:
-    enabled: true
-
-  # HTTP mode (behind ingress TLS)
-  httpEnabled: false
-
-  # Proxy headers from ingress
-  proxyHeaders: ""
-
-  # Cache for single replica
-  cache:
-    enabled: true # Disable distributed cache for single replica
-
-  # Logging
-  logging:
-    output: default
-    level: INFO
-
-  # Ingress configuration
-  ingress:
-    enabled: true
-    ingressClassName: nginx
-    hostname: keycloak.pnats.cloud
-    path: "/"
-    pathType: Prefix
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-production
-      external-dns.alpha.kubernetes.io/ttl: "60"
-      nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
-    tls: true
-
-  # Use embedded PostgreSQL for PoC
-  postgresql:
-    enabled: true
-    auth:
-      postgresPassword: "" # Auto-generated
-      username: bn_keycloak
-      password: "" # Auto-generated
-      database: bitnami_keycloak
-    architecture: standalone
-    primary:
-      persistence:
-        enabled: true
-        storageClass: "ceph-block"
-        size: 8Gi
-      resources:
-        requests:
-          cpu: 250m
-          memory: 256Mi
-        limits:
-          cpu: 500m
-          memory: 512Mi
-
-  # Service
-  service:
-    type: ClusterIP
-    ports:
-      http: 80
-      https: 443
-
-  # Network policy
-  networkPolicy:
-    enabled: true
-    allowExternal: true
-
-  # Service account
-  serviceAccount:
-    create: true
-    automountServiceAccountToken: true
-
-  pdb:
-    create: true
-    minAvailable: ""
-    maxUnavailable: ""
-
-  autoscaling:
-    hpa:
+    postgresPassword: "" # Auto-generated
+    username: bn_keycloak
+    password: "" # Auto-generated
+    database: bitnami_keycloak
+  architecture: standalone
+  primary:
+    persistence:
       enabled: true
-      minReplicas: 1
-      maxReplicas: 5
-      behavior:
-        scaleUp:
-          stabilizationWindowSeconds: 120
-          selectPolicy: Max
-          policies: []
-        scaleDown:
-          stabilizationWindowSeconds: 300
-          selectPolicy: Max
-          policies:
-          - type: Pods
-            value: 1
-            periodSeconds: 300
+      storageClass: "ceph-block"
+      size: 8Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
 
-  # Metrics
-  metrics:
+# Service
+service:
+  type: ClusterIP
+  ports:
+    http: 80
+    https: 443
+
+# Network policy
+networkPolicy:
+  enabled: true
+  allowExternal: true
+
+# Service account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+
+# PDB
+pdb:
+  create: true
+  minAvailable: ""
+  maxUnavailable: ""
+
+# Autoscaling
+autoscaling:
+  hpa:
     enabled: true
-    serviceMonitor:
-      enabled: true
-    prometheusRule:
-      enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    behavior:
+      scaleUp:
+        stabilizationWindowSeconds: 120
+        selectPolicy: Max
+        policies: []
+      scaleDown:
+        stabilizationWindowSeconds: 300
+        selectPolicy: Max
+        policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 300
+
+# Metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true

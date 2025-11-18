@@ -49,6 +49,10 @@ ingress:
 # Use embedded PostgreSQL for PoC
 postgresql:
   enabled: true
+  image:
+    registry: docker.io
+    repository: bitnami/postgresql
+    tag: 16.6.0-debian-12-r4
   auth:
     postgresPassword: "" # Auto-generated
     username: bn_keycloak

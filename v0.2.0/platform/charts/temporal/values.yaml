@@ -8,7 +8,7 @@ temporal:
     enabled: true
     image:
       repository: temporalio/server
-      tag: "1.29.1"
+      tag: "1.24.2"
       pullPolicy: IfNotPresent
 
     # IMMUTABLE: Do not change after initial deployment
@@ -51,12 +51,12 @@ temporal:
 
           sql:
             driver: "postgres12"
-            host: "temporal-postgresql"
+            host: "temporal-postgres"
             port: 5432
             database: "temporal"
             user: "temporal"
-            existingSecret: "temporal-postgres-secret"
-            secretName: "temporal-postgres-secret"
+            existingSecret: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
+            secretName: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
@@ -66,12 +66,12 @@ temporal:
 
           sql:
             driver: "postgres12"
-            host: "temporal-postgresql"
+            host: "temporal-postgres"
             port: 5432
             database: "temporal_visibility"
             user: "temporal"
-            existingSecret: "temporal-postgres-secret"
-            secretName: "temporal-postgres-secret"
+            existingSecret: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
+            secretName: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
             secretKey: "password"
             maxConns: 20
             maxIdleConns: 20
@@ -127,7 +127,7 @@ temporal:
     replicaCount: 2
     image:
       repository: temporalio/ui
-      tag: "2.36.1"
+      tag: "2.26.2"
       pullPolicy: IfNotPresent
 
     service:
@@ -175,76 +175,9 @@ temporal:
     update:
       enabled: true
 
-  # PostgreSQL - Bundled with chart using bitnamilegacy
+  # PostgreSQL - Using Zalando postgres-operator cluster
   postgresql:
-    enabled: true
-
-    # Use bitnamilegacy repository to avoid Docker Hub paywall
-    image:
-      registry: docker.io
-      repository: bitnamilegacy/postgresql
-
-    # Global settings
-    global:
-      security:
-        allowInsecureImages: true
-
-    auth:
-      username: temporal
-      password: "" # Will use existingSecret
-      database: temporal
-      existingSecret: "temporal-postgres-secret"
-      secretKeys:
-        adminPasswordKey: postgres-password
-        userPasswordKey: password
-
-    # PostgreSQL HA configuration
-    architecture: replication
-    replication:
-      enabled: true
-      numSynchronousReplicas: 1
-      synchronousCommit: "on"
-
-    primary:
-      persistence:
-        enabled: true
-        storageClass: "ceph-block"
-        size: 50Gi
-
-      resources:
-        requests:
-          cpu: 250m
-          memory: 512Mi
-        limits:
-          cpu: 1000m
-          memory: 2Gi
-
-      # Initialize both databases
-      initdb:
-        scripts:
-          init_temporal.sql: |
-            CREATE DATABASE temporal_visibility;
-            GRANT ALL PRIVILEGES ON DATABASE temporal TO temporal;
-            GRANT ALL PRIVILEGES ON DATABASE temporal_visibility TO temporal;
-
-    readReplicas:
-      replicaCount: 2
-      persistence:
-        enabled: true
-        storageClass: "ceph-block"
-        size: 50Gi
-      resources:
-        requests:
-          cpu: 250m
-          memory: 512Mi
-        limits:
-          cpu: 1000m
-          memory: 1Gi
-
-    metrics:
-      enabled: true
-      serviceMonitor:
-        enabled: true
+    enabled: false
 
   # Disable Cassandra (using PostgreSQL)
   cassandra:

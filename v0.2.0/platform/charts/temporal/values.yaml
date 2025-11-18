@@ -51,7 +51,7 @@ temporal:
 
           sql:
             driver: "postgres12"
-            host: "{{ include \"temporal.postgresql.fullname\" . }}"
+            host: "temporal-postgresql"
             port: 5432
             database: "temporal"
             user: "temporal"
@@ -66,7 +66,7 @@ temporal:
 
           sql:
             driver: "postgres12"
-            host: "{{ include \"temporal.postgresql.fullname\" . }}"
+            host: "temporal-postgresql"
             port: 5432
             database: "temporal_visibility"
             user: "temporal"

@@ -34,7 +34,6 @@ spec:
     - CreateNamespace=false
     - RespectIgnoreDifferences=true
     - PrunePropagationPolicy=foreground
-    - Replace=true
     retry:
       limit: 5
       backoff:
@@ -58,7 +57,7 @@ spec:
   # Application-level configuration
   info:
   - name: 'Description'
-    value: 'Template-driven root application that generates all platform infrastructure applications via target-chart'
+    value: 'Template-driven root application that generates all platform infrastructure applications'
   - name: 'Owner'
     value: 'Platform Team'
   - name: 'Managed-by'

@@ -161,7 +161,7 @@ temporal:
     enabled: true
     image:
       repository: temporalio/admin-tools
-      tag: "1.24.2"
+      tag: "latest"
       pullPolicy: IfNotPresent
     service:
       type: ClusterIP

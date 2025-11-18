@@ -313,16 +313,9 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: "320"
   sources:
-  - repoURL: https://charts.bitnami.com/bitnami
-    chart: keycloak
-    targetRevision: 25.2.0
-    helm:
-      releaseName: keycloak
-      valueFiles:
-      - $values/v0.2.0/platform/charts/keycloak/values-custom.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    ref: values
+    path: v0.2.0/platform/charts/keycloak
   destinationNamespaceOverwrite: keycloak
   syncOptions:
   - CreateNamespace=true

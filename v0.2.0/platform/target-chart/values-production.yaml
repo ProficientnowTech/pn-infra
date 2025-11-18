@@ -656,6 +656,17 @@ applications:
   syncOptions:
   - CreateNamespace=true
 
+- name: temporal-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "520"
+  sources:
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: v0.2.0/platform/charts/temporal-db
+  destinationNamespaceOverride: temporal
+  syncOptions:
+  - CreateNamespace=true
+
 - name: temporal
   annotations:
     argocd.argoproj.io/sync-wave: "525"

@@ -1,0 +1,44 @@
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: temporal-postgres
+  namespace: temporal
+spec:
+  teamId: "temporal"
+  volume:
+    size: 50Gi
+    storageClass: ceph-block
+  numberOfInstances: 3
+  users:
+    temporal:
+    - superuser
+    - createdb
+  preparedDatabases:
+    temporal:
+      defaultUsers: true
+    temporal_visibility:
+      defaultUsers: true
+  databases:
+    temporal: temporal
+    temporal_visibility: temporal
+  postgresql:
+    version: "17"
+    parameters:
+      shared_buffers: "512MB"
+      max_connections: "200"
+      work_mem: "16MB"
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  patroni:
+    initdb:
+      encoding: "UTF8"
+      locale: "en_US.UTF-8"
+      data-checksums: "true"
+    pg_hba:
+    - hostssl all all 0.0.0.0/0 md5
+    - host    all all 0.0.0.0/0 md5

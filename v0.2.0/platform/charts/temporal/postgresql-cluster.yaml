@@ -13,6 +13,11 @@ spec:
     temporal:
     - superuser
     - createdb
+  preparedDatabases:
+    temporal:
+      defaultUsers: true
+    temporal_visibility:
+      defaultUsers: true
   databases:
     temporal: temporal
     temporal_visibility: temporal

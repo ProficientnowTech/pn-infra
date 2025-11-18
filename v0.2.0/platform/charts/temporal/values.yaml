@@ -55,8 +55,7 @@ temporal:
             port: 5432
             database: "temporal"
             user: "temporal"
-            existingSecret: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
-            secretName: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
+            password: "temporal"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
@@ -70,9 +69,7 @@ temporal:
             port: 5432
             database: "temporal_visibility"
             user: "temporal"
-            existingSecret: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
-            secretName: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
-            secretKey: "password"
+            password: "temporal"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"

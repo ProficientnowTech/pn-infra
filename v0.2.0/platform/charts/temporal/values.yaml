@@ -180,10 +180,7 @@ temporal:
         cert-manager.io/cluster-issuer: letsencrypt-production
         external-dns.alpha.kubernetes.io/ttl: "60"
       hosts:
-      - host: temporal-ui.pnats.cloud
-        paths:
-        - path: /
-          pathType: Prefix
+      - "temporal-ui.pnats.cloud"
       tls:
       - secretName: temporal-ui-tls
         hosts:

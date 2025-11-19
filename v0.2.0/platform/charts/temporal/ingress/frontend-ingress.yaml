@@ -6,7 +6,6 @@ metadata:
   namespace: temporal
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-production
-    external-dns.alpha.kubernetes.io/ttl: "60"
     # gRPC specific annotations
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
     # SSL/TLS configuration

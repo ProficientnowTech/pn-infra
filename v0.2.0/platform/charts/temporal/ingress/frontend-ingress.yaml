@@ -9,10 +9,15 @@ metadata:
     external-dns.alpha.kubernetes.io/ttl: "60"
     # gRPC specific annotations
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
-    nginx.ingress.kubernetes.io/grpc-backend: "true"
     # SSL/TLS configuration
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # Timeout configurations for long-running gRPC connections
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # HTTP/2 support
+    nginx.ingress.kubernetes.io/http2-push-preload: "true"
 spec:
   ingressClassName: nginx
   tls:

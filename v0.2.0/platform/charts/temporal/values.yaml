@@ -26,7 +26,7 @@ temporal:
             port: 5432
             database: "temporal"
             user: "temporal"
-            existingSecret: "postgres.temporal-postgres.credentials.postgresql.acid.zalan.do"
+            existingSecret: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
@@ -38,7 +38,7 @@ temporal:
             port: 5432
             database: "temporal_visibility"
             user: "temporal"
-            existingSecret: "postgres.temporal-postgres.credentials.postgresql.acid.zalan.do"
+            existingSecret: "temporal.temporal-postgres.credentials.postgresql.acid.zalan.do"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
@@ -196,8 +196,6 @@ temporal:
 
     # Web UI configuration to connect to Temporal cluster
     additionalEnv:
-    - name: TEMPORAL_ADDRESS
-      value: "temporal-frontend:7233"
     - name: TEMPORAL_CORS_ORIGINS
       value: "https://temporal-ui.pnats.cloud"
 
@@ -206,7 +204,7 @@ temporal:
     enabled: true
     image:
       repository: temporalio/admin-tools
-      tag: "1.24.2-tctl-1.18.0" # Use specific version matching your server
+      tag: "1.24.2" # Use server version tag
       pullPolicy: IfNotPresent
     service:
       type: ClusterIP

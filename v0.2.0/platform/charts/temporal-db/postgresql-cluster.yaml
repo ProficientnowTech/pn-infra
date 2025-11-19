@@ -79,3 +79,29 @@ spec:
 
   # Monitoring
   enableShmVolume: true
+
+  # Postgres exporter sidecar for Prometheus metrics
+  sidecars:
+  - name: exporter
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    ports:
+    - containerPort: 9187
+      name: exporter
+      protocol: TCP
+    env:
+    - name: DATA_SOURCE_URI
+      value: localhost:5432/postgres?sslmode=disable
+    - name: DATA_SOURCE_USER
+      value: postgres
+    - name: DATA_SOURCE_PASS
+      valueFrom:
+        secretKeyRef:
+          name: postgres.temporal-postgres.credentials.postgresql.acid.zalan.do
+          key: password
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi

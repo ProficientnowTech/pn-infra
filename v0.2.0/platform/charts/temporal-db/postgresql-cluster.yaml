@@ -59,17 +59,6 @@ spec:
     temporal: temporal
     temporal_visibility: temporal
 
-  # Prepared databases with extensions
-  preparedDatabases:
-    temporal:
-      defaultUsers: true
-      extensions:
-        pg_stat_statements: public
-    temporal_visibility:
-      defaultUsers: true
-      extensions:
-        pg_stat_statements: public
-
   # Patroni configuration for HA
   patroni:
     initdb:

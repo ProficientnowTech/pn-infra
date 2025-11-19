@@ -315,33 +315,33 @@ setup_argocd_repository() {
 	fi
 }
 
-setup_argocd_projects() {
-	local argo_projects_file="${SCRIPT_DIR}/projects"
+# setup_argocd_projects() {
+# 	local argo_projects_file="${SCRIPT_DIR}/projects"
 
-	info "Setting up ArgoCD projects via Kustomization..."
+# 	info "Setting up ArgoCD projects via Kustomization..."
 
-	# Check if project already exists
-	if kubectl get AppProject -n argocd platform &>/dev/null; then
-		log "Argo Project already exists in ArgoCD"
-		return 0
-	fi
+# 	# Check if project already exists
+# 	if kubectl get AppProject -n argocd platform &>/dev/null; then
+# 		log "Argo Project already exists in ArgoCD"
+# 		return 0
+# 	fi
 
-	# Check if secret file exists
-	if [[ ! -f "$argo_projects_file/kustomization.yaml" ]]; then
-		error "Projects Kustomization file not found: $argo_projects_file"
-		return 1
-	fi
+# 	# Check if secret file exists
+# 	if [[ ! -f "$argo_projects_file/kustomization.yaml" ]]; then
+# 		error "Projects Kustomization file not found: $argo_projects_file"
+# 		return 1
+# 	fi
 
-	# Apply the repository secret
-	info "Applying Argo Project to ArgoCD..."
-	if kubectl apply -k "$argo_projects_file"; then
-		log "Argo Project successfully created in ArgoCD"
-		return 0
-	else
-		error "Failed to create Argo Project successfully"
-		return 1
-	fi
-}
+# 	# Apply the repository secret
+# 	info "Applying Argo Project to ArgoCD..."
+# 	if kubectl apply -k "$argo_projects_file"; then
+# 		log "Argo Project successfully created in ArgoCD"
+# 		return 0
+# 	else
+# 		error "Failed to create Argo Project successfully"
+# 		return 1
+# 	fi
+# }
 
 # Main
 main() {
@@ -351,7 +351,7 @@ main() {
 	install_argocd
 	wait_for_argocd
 	setup_argocd_repository
-	setup_argocd_projects
+	# setup_argocd_projects
 	print_argo_success
 
 	log "✅ ArgoCD installation and repository setup completed!"

@@ -73,6 +73,11 @@ temporal:
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
+      namespaces:
+      create: true
+      namespace:
+      - name: default
+        retention: 3d
 
   # Individual service replicas for HA
   frontend:

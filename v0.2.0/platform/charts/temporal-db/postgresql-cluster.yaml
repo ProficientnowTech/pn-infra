@@ -3,30 +3,43 @@ kind: postgresql
 metadata:
   name: temporal-postgres
   namespace: temporal
+  labels:
+    app.kubernetes.io/name: temporal-db
+    app.kubernetes.io/component: database
 spec:
   teamId: "temporal"
+
+  # High Availability Configuration
+  numberOfInstances: 3
+
+  # Enable load balancers
+  enableMasterLoadBalancer: false
+  enableReplicaLoadBalancer: false
+
+  # Storage configuration
   volume:
     size: 50Gi
     storageClass: ceph-block
-  numberOfInstances: 3
-  users:
-    temporal:
-    - superuser
-    - createdb
-  preparedDatabases:
-    temporal:
-      defaultUsers: true
-    temporal_visibility:
-      defaultUsers: true
-  databases:
-    temporal: temporal
-    temporal_visibility: temporal
+
+  # PostgreSQL version and parameters
   postgresql:
-    version: "17"
+    version: "16"
     parameters:
+      # Performance tuning
       shared_buffers: "512MB"
-      max_connections: "200"
+      effective_cache_size: "2GB"
+      maintenance_work_mem: "128MB"
       work_mem: "16MB"
+
+      # Connection settings
+      max_connections: "200"
+
+      # WAL settings for replication
+      wal_level: "replica"
+      max_wal_senders: "10"
+      wal_keep_size: "1GB"
+
+  # Resource allocation
   resources:
     requests:
       cpu: 250m
@@ -34,14 +47,46 @@ spec:
     limits:
       cpu: 1000m
       memory: 2Gi
+
+  # Users and their permissions
+  users:
+    temporal:
+    - superuser
+    - createdb
+
+  # Databases
+  databases:
+    temporal: temporal
+    temporal_visibility: temporal
+
+  # Prepared databases with extensions
+  preparedDatabases:
+    temporal:
+      defaultUsers: true
+      extensions:
+        pg_stat_statements: public
+    temporal_visibility:
+      defaultUsers: true
+      extensions:
+        pg_stat_statements: public
+
+  # Patroni configuration for HA
   patroni:
     initdb:
       encoding: "UTF8"
       locale: "en_US.UTF-8"
       data-checksums: "true"
     pg_hba:
-    - local   all all trust
-    - host    all all 0.0.0.0/0 md5
-    - hostssl all all 0.0.0.0/0 md5
-    - host    replication standby 0.0.0.0/0 md5
-    - hostssl replication standby 0.0.0.0/0 md5
+    - local     all all trust
+    - host      all all         10.0.0.0/8   md5
+    - hostssl   all all         0.0.0.0/0    md5
+    - host      replication standby 10.0.0.0/8 md5
+    - hostssl   replication standby 0.0.0.0/0  md5
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    synchronous_mode: false
+    synchronous_mode_strict: false
+
+  # Monitoring
+  enableShmVolume: true

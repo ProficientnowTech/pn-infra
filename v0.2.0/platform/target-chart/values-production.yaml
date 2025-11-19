@@ -676,9 +676,6 @@ applications:
     path: v0.2.0/platform/charts/temporal
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: main
-    path: v0.2.0/platform/charts/temporal/secrets
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
     path: v0.2.0/platform/charts/temporal/dashboards
   destinationNamespaceOverride: temporal
   syncOptions:

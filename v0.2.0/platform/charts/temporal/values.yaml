@@ -8,14 +8,58 @@ temporal:
     enabled: true
     image:
       repository: temporalio/server
-      tag: "1.24.2"
+      tag: "1.24.2" # Consider updating to 1.29.1 for latest features
       pullPolicy: IfNotPresent
 
     # IMMUTABLE: Do not change after initial deployment
-    numHistoryShards: 512
+    config:
+      # IMPORTANT: This must be at the config level, not server level
+      numHistoryShards: 512
+
+      # Database configuration - PostgreSQL
+      persistence:
+        default:
+          driver: "sql"
+          sql:
+            driver: "postgres12"
+            host: "temporal-postgres"
+            port: 5432
+            database: "temporal"
+            user: "temporal"
+            existingSecret: "postgres.temporal-postgres.credentials.postgresql.acid.zalan.do"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+        visibility:
+          driver: "sql"
+          sql:
+            driver: "postgres12"
+            host: "temporal-postgres"
+            port: 5432
+            database: "temporal_visibility"
+            user: "temporal"
+            existingSecret: "postgres.temporal-postgres.credentials.postgresql.acid.zalan.do"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+      # Namespace configuration - FIXED
+      namespaces:
+        create: true
+        namespace:
+        - name: "default"
+          retention: "72h" # 3 days in hours
+        - name: "pnats"
+          retention: "2160h" # 90 days in hours
+        - name: "pnats-staging"
+          retention: "1440h" # 60 days in hours
+        - name: "pnats-dev"
+          retention: "720h" # 30 days in hours
+
+      # Logging
+      logLevel: "info,warn"
 
     # Replica configuration for HA
-    replicaCount: 3
+    replicaCount: 3 # This is for the server container, individual services have their own replicas
 
     # Service configuration
     frontend:
@@ -26,23 +70,24 @@ temporal:
           external-dns.alpha.kubernetes.io/hostname: temporal.pnats.cloud
           external-dns.alpha.kubernetes.io/ttl: "60"
           metallb.universe.tf/ip-allocated-from-pool: public-pool
-      # ingress:
-      # enabled: true
-      # # className:
-      # annotations: {}
-      # # kubernetes.io/ingress.class: traefik
-      # # ingress.kubernetes.io/ssl-redirect: "false"
-      # # traefik.frontend.rule.type: PathPrefix
-      # hosts:
-      # - "/"
-      # # - "domain.com/xyz"
-      # # - "domain.com"
-      # tls: []
-      # #  - secretName: chart-example-tls
-      # #    hosts:
-      # #      - chart-example.local
 
-      # Resource allocation per pod
+      # Add ingress for frontend service
+      ingress:
+        enabled: false
+        className: "nginx"
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt-production
+          external-dns.alpha.kubernetes.io/ttl: "60"
+          nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+          nginx.ingress.kubernetes.io/grpc-backend: "true"
+        hosts:
+        - temporal-api.pnats.cloud
+        tls:
+        - secretName: temporal-api-tls
+          hosts:
+          - temporal-api.pnats.cloud
+
+    # Resource allocation per pod
     resources:
       requests:
         cpu: 200m
@@ -61,45 +106,13 @@ temporal:
       prometheus:
         timerType: histogram
 
-    # Database configuration - PostgreSQL
-    config:
-      persistence:
-        default:
-          driver: "sql"
-
-          sql:
-            driver: "postgres12"
-            host: "temporal-postgres"
-            port: 5432
-            database: "temporal"
-            user: "temporal"
-            password: "5KdmKW1wGHUFgFAwAAJyYe5H6QO0Y5rYMRQndZZbAMS7q8nngXNLminL9r96HR91"
-            maxConns: 20
-            maxIdleConns: 20
-            maxConnLifetime: "1h"
-
-        visibility:
-          driver: "sql"
-
-          sql:
-            driver: "postgres12"
-            host: "temporal-postgres"
-            port: 5432
-            database: "temporal_visibility"
-            user: "temporal"
-            password: "5KdmKW1wGHUFgFAwAAJyYe5H6QO0Y5rYMRQndZZbAMS7q8nngXNLminL9r96HR91"
-            maxConns: 20
-            maxIdleConns: 20
-            maxConnLifetime: "1h"
-      namespaces:
-        create: true
-        namespace:
-        - name: default
-          retention: 3d
-
   # Individual service replicas for HA
   frontend:
     replicaCount: 3
+    metrics:
+      serviceMonitor:
+        enabled: true
+        interval: 30s
     resources:
       requests:
         cpu: 200m
@@ -107,12 +120,13 @@ temporal:
       limits:
         cpu: 1000m
         memory: 1Gi
-    service:
-      type: ClusterIP
-      port: 7233
 
   history:
     replicaCount: 3
+    metrics:
+      serviceMonitor:
+        enabled: true
+        interval: 30s
     resources:
       requests:
         cpu: 500m
@@ -123,6 +137,10 @@ temporal:
 
   matching:
     replicaCount: 3
+    metrics:
+      serviceMonitor:
+        enabled: true
+        interval: 30s
     resources:
       requests:
         cpu: 200m
@@ -162,7 +180,10 @@ temporal:
         cert-manager.io/cluster-issuer: letsencrypt-production
         external-dns.alpha.kubernetes.io/ttl: "60"
       hosts:
-      - temporal-ui.pnats.cloud
+      - host: temporal-ui.pnats.cloud
+        paths:
+        - path: /
+          pathType: Prefix
       tls:
       - secretName: temporal-ui-tls
         hosts:
@@ -176,12 +197,19 @@ temporal:
         cpu: 500m
         memory: 512Mi
 
+    # Web UI configuration to connect to Temporal cluster
+    additionalEnv:
+    - name: TEMPORAL_ADDRESS
+      value: "temporal-frontend:7233"
+    - name: TEMPORAL_CORS_ORIGINS
+      value: "https://temporal-ui.pnats.cloud"
+
   # Admin tools
   admintools:
     enabled: true
     image:
       repository: temporalio/admin-tools
-      tag: "latest"
+      tag: "1.24.2-tctl-1.18.0" # Use specific version matching your server
       pullPolicy: IfNotPresent
     service:
       type: ClusterIP
@@ -194,6 +222,7 @@ temporal:
       backoffLimit: 100
     update:
       enabled: true
+      backoffLimit: 100
 
   # PostgreSQL - Using Zalando postgres-operator cluster
   postgresql:
@@ -233,7 +262,7 @@ temporal:
           orgId: 1
           folder: "Temporal"
           type: file
-          disableDeletion: false
+          disableDeletion: true
           editable: true
           options:
             path: /var/lib/grafana/dashboards/temporal

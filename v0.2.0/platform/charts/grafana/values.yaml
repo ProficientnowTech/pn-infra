@@ -82,3 +82,15 @@ grafana:
         gnetId: 16485
         revision: 2
         datasource: Tempo
+
+  # Enable sidecar for automatic dashboard discovery
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      folder: /tmp/dashboards
+      defaultFolderName: null
+      searchNamespace: ALL
+      provider:
+        foldersFromFilesStructure: true

@@ -20,11 +20,29 @@ temporal:
     # Service configuration
     frontend:
       service:
-        type: ClusterIP
+        type: LoadBalancer
         port: 7233
-        annotations: {}
+        annotations:
+          external-dns.alpha.kubernetes.io/hostname: temporal.pnats.cloud
+          external-dns.alpha.kubernetes.io/ttl: "60"
+          metallb.universe.tf/ip-allocated-from-pool: public-pool
+      # ingress:
+      # enabled: true
+      # # className:
+      # annotations: {}
+      # # kubernetes.io/ingress.class: traefik
+      # # ingress.kubernetes.io/ssl-redirect: "false"
+      # # traefik.frontend.rule.type: PathPrefix
+      # hosts:
+      # - "/"
+      # # - "domain.com/xyz"
+      # # - "domain.com"
+      # tls: []
+      # #  - secretName: chart-example-tls
+      # #    hosts:
+      # #      - chart-example.local
 
-    # Resource allocation per pod
+      # Resource allocation per pod
     resources:
       requests:
         cpu: 200m
@@ -74,10 +92,10 @@ temporal:
             maxIdleConns: 20
             maxConnLifetime: "1h"
       namespaces:
-      create: true
-      namespace:
-      - name: default
-        retention: 3d
+        create: true
+        namespace:
+        - name: default
+          retention: 3d
 
   # Individual service replicas for HA
   frontend:

@@ -1,0 +1,88 @@
+---
+# Let's Encrypt ClusterIssuer - Production
+clusterIssuerProduction:
+  enabled: true
+  name: letsencrypt-production
+
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: snoorullah@proficientnowtech.com
+    privateKeySecretName: letsencrypt-production
+
+  solver:
+    dns01:
+      cloudflare:
+        email: snoorullah@proficientnowtech.com
+        apiTokenSecretName: cloudflare-api-token
+        apiTokenSecretKey: api-token
+      dnsZones:
+        - pnats.cloud
+
+# Let's Encrypt ClusterIssuer - Staging (for testing)
+clusterIssuerStaging:
+  enabled: false
+  name: letsencrypt-staging
+
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: snoorullah@proficientnowtech.com
+    privateKeySecretName: letsencrypt-staging
+
+  solver:
+    dns01:
+      cloudflare:
+        email: snoorullah@proficientnowtech.com
+        apiTokenSecretName: cloudflare-api-token
+        apiTokenSecretKey: api-token
+      dnsZones:
+        - pnats.cloud
+
+# Cert-Manager subchart configuration
+cert-manager:
+  crds:
+    enabled: true
+    keep: true
+
+  replicaCount: 3
+
+  maxConcurrentChallenges: 60
+
+  global:
+    leaderElection:
+      namespace: cert-manager
+
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+
+  webhook:
+    replicaCount: 3
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 50m
+        memory: 64Mi
+
+  cainjector:
+    enabled: true
+    replicaCount: 3
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 50m
+        memory: 64Mi
+
+  prometheus:
+    enabled: true
+    servicemonitor:
+      enabled: true
+    podmonitor:
+      enabled: true

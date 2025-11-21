@@ -1,0 +1,28 @@
+apiVersion: v2
+name: pn-external-dns
+description: External-DNS for automatic DNS record management with Cloudflare
+type: application
+version: 0.1.0
+appVersion: "v0.19.0"
+
+keywords:
+- dns
+- cloudflare
+- external-dns
+- automation
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+labels:
+  platform.pn-infra.io/managed-by: platform-infra-chart
+  platform.pn-infra.io/part-of: platform-infrastructure
+  platform.pn-infra.io/platform-layer: networking
+  platform.pn-infra.io/component: external-dns
+  platform.pn-infra.io/category: dns-management
+
+dependencies:
+- name: external-dns
+  version: 1.19.0
+  repository: https://kubernetes-sigs.github.io/external-dns/

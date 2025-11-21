@@ -1,0 +1,28 @@
+apiVersion: v2
+name: pn-platform-security
+description: A Helm chart to deploy the core platform infrastructure
+type: application
+version: 0.1.0
+appVersion: '1.0.0'
+
+keywords:
+- platform-security
+- security
+- infrastructure
+- target-chart
+- platform
+
+annotations:
+  platform.pn-infra.io/component: security-chart
+  platform.pn-infra.io/maintainers: platform-team
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+labels:
+  platform.pn-infra.io/managed-by: platform-security-chart
+  platform.pn-infra.io/part-of: platform-security
+  platform.pn-infra.io/platform-layer: security
+  platform.pn-infra.io/component: security-chart
+  platform.pn-infra.io/category: platform-security

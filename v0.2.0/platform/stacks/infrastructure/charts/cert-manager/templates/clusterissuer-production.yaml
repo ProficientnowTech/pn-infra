@@ -1,0 +1,29 @@
+{{- if .Values.clusterIssuerProduction.enabled }}
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.clusterIssuerProduction.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.clusterIssuerProduction.name }}
+    app.kubernetes.io/component: clusterissuer
+    app.kubernetes.io/part-of: cert-manager
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  acme:
+    server: {{ .Values.clusterIssuerProduction.acme.server }}
+    email: {{ .Values.clusterIssuerProduction.acme.email }}
+    privateKeySecretRef:
+      name: {{ .Values.clusterIssuerProduction.acme.privateKeySecretName }}
+    solvers:
+      - dns01:
+          cloudflare:
+            email: {{ .Values.clusterIssuerProduction.solver.dns01.cloudflare.email }}
+            apiTokenSecretRef:
+              name: {{ .Values.clusterIssuerProduction.solver.dns01.cloudflare.apiTokenSecretName }}
+              key: {{ .Values.clusterIssuerProduction.solver.dns01.cloudflare.apiTokenSecretKey }}
+        selector:
+          dnsZones:
+            {{- toYaml .Values.clusterIssuerProduction.solver.dns01.dnsZones | nindent 12 }}
+{{- end }}

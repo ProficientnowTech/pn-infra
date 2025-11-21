@@ -1,0 +1,41 @@
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    external-dns.alpha.kubernetes.io/hostname: argocd.pnats.cloud
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/server-snippet: |
+      client_body_timeout 60;
+      client_header_timeout 60;
+      client_max_body_size 10m;
+  labels:
+    app.kubernetes.io/name: argocd-server-ingress
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - argocd.pnats.cloud
+      secretName: argocd.pnats.cloud-tls
+  rules:
+    - host: argocd.pnats.cloud
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
+{{- end }}

@@ -5,11 +5,11 @@ type: application
 version: 0.1.0
 appVersion: '1.0'
 keywords:
-  - argocd
-  - projects
-  - governance
-  - rbac
-home: git@github.com:pnow-devsupreme/pn-infra.git
+- argocd
+- projects
+- governance
+- rbac
+home: https://github.com/pnow-devsupreme/pn-infra.git
 maintainers:
-  - name: Platform Team
-    email: platform@proficientnow.tech
+- name: Platform Team
+  email: platform-admin@pnats.cloud

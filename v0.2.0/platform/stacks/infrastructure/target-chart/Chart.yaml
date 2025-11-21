@@ -1,0 +1,27 @@
+apiVersion: v2
+name: pn-platform-core
+description: A Helm chart to deploy the core platform infrastructure
+type: application
+version: 0.1.0
+appVersion: '1.0.0'
+
+keywords:
+- platform-core
+- infrastructure
+- target-chart
+- platform
+
+annotations:
+  platform.pn-infra.io/component: target-chart
+  platform.pn-infra.io/maintainers: platform-team
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+labels:
+  platform.pn-infra.io/managed-by: platform-infra-chart
+  platform.pn-infra.io/part-of: platform-core
+  platform.pn-infra.io/platform-layer: core
+  platform.pn-infra.io/component: target-chart
+  platform.pn-infra.io/category: platform-infrastructure

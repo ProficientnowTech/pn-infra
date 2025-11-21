@@ -1,0 +1,29 @@
+apiVersion: v2
+name: pn-sealed-secrets
+description: A Helm chart for sealed secrets management
+type: application
+version: 0.1.0
+appVersion: "0.33.1"
+
+keywords:
+- security
+- secrets
+- sealed-secrets
+- security
+- one-way-encryption
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+labels:
+  platform.pn-infra.io/managed-by: platform-infra-chart
+  platform.pn-infra.io/part-of: platform-infrastructure
+  platform.pn-infra.io/platform-layer: security
+  platform.pn-infra.io/component: sealed-secrets
+  platform.pn-infra.io/category: secret-management
+
+dependencies:
+- name: sealed-secrets
+  version: 2.17.9
+  repository: https://bitnami-labs.github.io/sealed-secrets

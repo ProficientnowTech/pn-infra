@@ -185,6 +185,123 @@ print_argo_success() {
 	echo
 }
 
+setup_argocd_notifications() {
+	info "Setting up ArgoCD notifications (Slack + Email)..."
+
+	# Check if notifications secret already exists
+	if kubectl get secret -n argocd argocd-notifications-secret &>/dev/null; then
+		log "ArgoCD notifications secret already exists"
+		return 0
+	fi
+
+	echo
+	info "📧 Setting up ArgoCD Notifications"
+	echo "   This will configure Slack and email notifications for ArgoCD"
+	echo
+
+	# Prompt for Slack token
+	local SLACK_TOKEN=""
+	while true; do
+		echo
+		info "🔔 Slack Bot Configuration"
+		echo "   1. Create Slack app at: https://api.slack.com/apps"
+		echo "   2. Add scopes: chat:write, chat:write.public, channels:read"
+		echo "   3. Install app to workspace"
+		echo "   4. Copy Bot User OAuth Token (xoxb-...)"
+		echo
+		read -r -s -p "Enter Slack Bot OAuth Token (or press Enter to skip): " SLACK_TOKEN
+		echo
+
+		if [[ -z "$SLACK_TOKEN" ]]; then
+			warn "Skipping Slack notifications setup"
+			break
+		fi
+
+		# Validate token format
+		if [[ "$SLACK_TOKEN" =~ ^xoxb- ]]; then
+			log "Slack token format validated"
+			break
+		else
+			error "Invalid Slack token format (should start with xoxb-)"
+			read -p "Try again? (Y/n): " -n 1 -r
+			echo
+			if [[ $REPLY =~ ^[Nn]$ ]]; then
+				warn "Skipping Slack notifications setup"
+				SLACK_TOKEN=""
+				break
+			fi
+		fi
+	done
+
+	# Prompt for email configuration
+	local EMAIL_PASSWORD=""
+	local EMAIL_USERNAME="platform-admin@pnats.cloud"
+	local EMAIL_HOST="mail.pnats.cloud"
+	local EMAIL_PORT="587"
+
+	while true; do
+		echo
+		info "📧 Email (SMTP) Configuration"
+		echo "   Email: $EMAIL_USERNAME"
+		echo "   SMTP Host: $EMAIL_HOST"
+		echo "   SMTP Port: $EMAIL_PORT"
+		echo
+		read -r -s -p "Enter email password for $EMAIL_USERNAME (or press Enter to skip): " EMAIL_PASSWORD
+		echo
+
+		if [[ -z "$EMAIL_PASSWORD" ]]; then
+			warn "Skipping email notifications setup"
+			break
+		fi
+
+		log "Email password captured"
+		break
+	done
+
+	# Check if at least one notification method is configured
+	if [[ -z "$SLACK_TOKEN" && -z "$EMAIL_PASSWORD" ]]; then
+		warn "No notification methods configured - skipping notifications secret creation"
+		return 0
+	fi
+
+	# Create the notifications secret
+	info "Creating ArgoCD notifications secret..."
+
+	local secret_data=""
+	if [[ -n "$SLACK_TOKEN" ]]; then
+		secret_data="$secret_data --from-literal=slack-token=$SLACK_TOKEN"
+	fi
+	if [[ -n "$EMAIL_PASSWORD" ]]; then
+		secret_data="$secret_data --from-literal=email-username=$EMAIL_USERNAME"
+		secret_data="$secret_data --from-literal=email-password=$EMAIL_PASSWORD"
+	fi
+
+	if kubectl create secret generic argocd-notifications-secret \
+		--namespace=argocd \
+		$secret_data; then
+		log "✓ ArgoCD notifications secret created successfully"
+
+		if [[ -n "$SLACK_TOKEN" ]]; then
+			log "  ✓ Slack notifications enabled"
+		fi
+		if [[ -n "$EMAIL_PASSWORD" ]]; then
+			log "  ✓ Email notifications enabled ($EMAIL_USERNAME)"
+		fi
+
+		echo
+		info "📝 Next steps for notifications:"
+		if [[ -n "$SLACK_TOKEN" ]]; then
+			echo "   1. Create Slack channel: #platform-alerts"
+			echo "   2. Invite bot: /invite @ArgoCD Notifications"
+		fi
+		echo "   3. Update values.yaml subscriptions if needed"
+		echo
+	else
+		error "Failed to create ArgoCD notifications secret"
+		return 1
+	fi
+}
+
 setup_argocd_repository() {
 	local repo_secret_file="${SCRIPT_DIR}/repositories/pn-infra.yaml"
 	local temp_secret_file=""
@@ -351,6 +468,7 @@ main() {
 	install_argocd
 	wait_for_argocd
 	setup_argocd_repository
+	setup_argocd_notifications
 	# setup_argocd_projects
 	print_argo_success
 

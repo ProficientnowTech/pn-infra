@@ -1,0 +1,546 @@
+# ArgoCD Helm chart values
+# Based on official ArgoCD Helm chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+---
+argo-cd:
+  global:
+    repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: 'main'
+
+    domain: argocd.pnats.cloud
+
+  crds:
+    # -- Install and upgrade CRDs
+    install: true
+    # -- Keep CRDs on chart uninstall
+    keep: true
+    # -- Annotations to be added to all CRDs
+    annotations: {}
+    # -- Additional labels to be added to all CRDs
+    additionalLabels: {}
+
+  configs:
+    cm:
+      create: true
+      exec.enabled: true
+      statusbadge.enabled: true
+      admin.enabled: true
+      timeout.reconciliation: 90s
+      timeout.hard.reconciliation: 0s
+      resource.customizations: |
+        argoproj.io/Application:
+          health.lua: |
+            hs = {}
+            hs.status = "Progressing"
+            hs.message = ""
+            if obj.status ~= nil then
+              if obj.status.health ~= nil then
+                hs.status = obj.status.health.status
+                if obj.status.health.message ~= nil then
+                  hs.message = obj.status.health.message
+                end
+              end
+            end
+            return hs
+      application.instanceLabelKey: argocd.argoproj.io/instance
+    params:
+      # Run server without TLS (nginx ingress terminates TLS)
+      server.insecure: "true"
+      server.grpc.web: "true"
+    rbac:
+      create: true
+    cmp:
+      create: false
+      plugins: {}
+    clusterCredentials: {}
+    credentialTemplates:
+      ssh-creds:
+        url: git@github.com:pnow-devsupreme/pn-infra.git
+        sshPrivateKey: |
+          -----BEGIN OPENSSH PRIVATE KEY-----
+          '''
+          -----END OPENSSH PRIVATE KEY-----
+    repositories:
+      pn-infra:
+        url: git@github.com:pnow-devsupreme/pn-infra.git
+    secret:
+      createSecret: true
+
+  extraObjects: []
+
+  controller:
+    name: application-controller
+
+    # Replicas
+    replicas: 2
+
+    # Resources
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+    # Metrics
+    metrics:
+      enabled: true
+      servicemonitor:
+        enabled: true
+      service:
+        annotations:
+          prometheus.io/scrape: 'true'
+          prometheus.io/port: '8082'
+          prometheus.io/path: '/metrics'
+        # Environment variables
+    env:
+    - name: ARGOCD_CONTROLLER_REPLICAS
+      value: '2'
+
+  dex:
+    enabled: true
+    metrics:
+      enabled: true
+      service:
+        annotations:
+          prometheus.io/scrape: 'true'
+          prometheus.io/port: '5558'
+          prometheus.io/path: '/metrics'
+      serviceMonitor:
+        enabled: true
+
+  redis:
+    enabled: true
+    name: redis
+
+    # Resources
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    # Metrics
+    metrics:
+      enabled: true
+      service:
+        annotations:
+          prometheus.io/scrape: 'true'
+          prometheus.io/port: '9121'
+          prometheus.io/path: '/metrics'
+      exporter:
+        enabled: true
+        image:
+          repository: ghcr.io/oliver006/redis_exporter
+          tag: v1.80.0
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 50m
+            memory: 64Mi
+
+  redis-ha:
+    enabled: false
+
+  server:
+    # Server configuration
+    name: server
+
+    # Replicas for HA
+    replicas: 3
+
+    # Autoscaling
+    autoscaling:
+      enabled: true
+      minReplicas: 3
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+
+    # Resources
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    # Service configuration
+    service:
+      type: ClusterIP
+      port: 80
+      portName: http
+
+    # Ingress configuration for external access
+    ingress:
+      enabled: false
+
+    metrics:
+      enabled: true
+      service:
+        annotations:
+          prometheus.io/scrape: 'true'
+          prometheus.io/port: '8083'
+          prometheus.io/path: '/metrics'
+      serviceMonitor:
+        enabled: true
+
+  repoServer:
+    name: repo-server
+
+    # Replicas
+    replicas: 2
+
+    # Resources
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    # Autoscaling
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+      targetMemoryUtilizationPercentage: 80
+
+    # Metrics
+    metrics:
+      enabled: true
+      service:
+        annotations:
+          prometheus.io/scrape: 'true'
+          prometheus.io/port: '8084'
+          prometheus.io/path: '/metrics'
+
+  applicationSet:
+    enabled: true
+    name: applicationset-controller
+
+    # Replicas
+    replicas: 2
+
+    # Resources
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+    # Metrics
+    metrics:
+      enabled: true
+      service:
+        annotations:
+          prometheus.io/scrape: 'true'
+          prometheus.io/port: '8080'
+          prometheus.io/path: '/metrics'
+
+  notifications:
+    enabled: true
+    name: notifications-controller
+    # Resources
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    cm:
+      create: true
+    # Notification services secret (use sealed-secrets or external-secrets)
+    secret:
+      create: true
+      # Secret items should be injected via sealed-secrets or vault
+      # Required secrets:
+      # - slack-token: Slack Bot OAuth token (xoxb-...)
+      # - email-username: SMTP username
+      # - email-password: SMTP password
+      items: {}
+        # slack-token: ""  # Will be injected by sealed-secrets
+        # email-username: ""
+        # email-password: ""
+
+    # Notification service providers
+    notifiers:
+      # Slack notification service
+      service.slack: |
+        token: $slack-token
+        username: ArgoCD Notifications
+        icon: :rocket:
+
+      # Email notification service (Mailcow)
+      service.email: |
+        username: $email-username
+        password: $email-password
+        host: mail.proficientnowtech.com
+        port: 587
+        from: platform-alerts@pnats.cloud
+        tls: true
+
+    # ArgoCD URL context for notifications
+    context:
+      argocdUrl: https://argocd.pnats.cloud
+
+    # -- Contains centrally managed global application subscriptions
+    ## For more information: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/subscriptions/
+    subscriptions:
+    # Send deployment notifications to Slack
+    - recipients:
+      - slack:platform-alerts
+      triggers:
+      - on-deployed
+      - on-sync-succeeded
+
+    # Send failure notifications to both Slack and email
+    - recipients:
+      - slack:platform-alerts
+      - email:platform-admin@pnats.cloud
+      triggers:
+      - on-health-degraded
+      - on-sync-failed
+
+    # Send all important events to Slack
+    - recipients:
+      - slack:platform-alerts
+      triggers:
+      - on-sync-running
+      - on-sync-status-unknown
+    # -- The notification template is used to generate the notification content
+    ## For more information: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/templates/
+    templates:
+      template.app-deployed: |
+        email:
+          subject: "✅ Application {{.app.metadata.name}} deployed successfully"
+        message: |
+          {{if eq .serviceType "slack"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} has been successfully deployed.
+
+          Sync Status: {{.app.status.sync.status}}
+          Health: {{.app.status.health.status}}
+          Revision: {{.app.status.sync.revision}}
+        slack:
+          attachments: |
+            [{
+              "title": "{{ .app.metadata.name}}",
+              "title_link":"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+              "color": "#18be52",
+              "fields": [
+              {
+                "title": "Sync Status",
+                "value": "{{.app.status.sync.status}}",
+                "short": true
+              },
+              {
+                "title": "Health",
+                "value": "{{.app.status.health.status}}",
+                "short": true
+              },
+              {
+                "title": "Revision",
+                "value": "{{.app.status.sync.revision}}",
+                "short": true
+              }
+              ]
+            }]
+
+      template.app-health-degraded: |
+        email:
+          subject: "⚠️ Application {{.app.metadata.name}} health degraded"
+        message: |
+          {{if eq .serviceType "slack"}}:exclamation:{{end}} Application {{.app.metadata.name}} health has degraded.
+          Application details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
+        slack:
+          attachments: |
+            [{
+              "title": "{{ .app.metadata.name}}",
+              "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+              "color": "#f4c030",
+              "fields": [
+              {
+                "title": "Health Status",
+                "value": "{{.app.status.health.status}}",
+                "short": true
+              },
+              {
+                "title": "Sync Status",
+                "value": "{{.app.status.sync.status}}",
+                "short": true
+              }
+              {{range $index, $c := .app.status.conditions}}
+              {{if not $index}},{{end}}
+              {{if $index}},{{end}}
+              {
+                "title": "{{$c.type}}",
+                "value": "{{$c.message}}",
+                "short": true
+              }
+              {{end}}
+              ]
+            }]
+
+      template.app-sync-failed: |
+        email:
+          subject: "❌ Failed to sync application {{.app.metadata.name}}"
+        message: |
+          {{if eq .serviceType "slack"}}:exclamation:{{end}} The sync operation of application {{.app.metadata.name}} has failed at {{.app.status.operationState.finishedAt}}
+
+          Error: {{.app.status.operationState.message}}
+          Details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true
+        slack:
+          attachments: |
+            [{
+              "title": "{{ .app.metadata.name}}",
+              "title_link":"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+              "color": "#E96D76",
+              "fields": [
+              {
+                "title": "Sync Status",
+                "value": "Failed",
+                "short": true
+              },
+              {
+                "title": "Error",
+                "value": "{{.app.status.operationState.message}}",
+                "short": false
+              }
+              ]
+            }]
+
+      template.app-sync-running: |
+        email:
+          subject: "🔄 Syncing application {{.app.metadata.name}}"
+        message: |
+          The sync operation of application {{.app.metadata.name}} has started at {{.app.status.operationState.startedAt}}
+          Details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true
+        slack:
+          attachments: |
+            [{
+              "title": "{{ .app.metadata.name}}",
+              "title_link":"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+              "color": "#0DADEA",
+              "fields": [
+              {
+                "title": "Status",
+                "value": "Syncing...",
+                "short": true
+              },
+              {
+                "title": "Started",
+                "value": "{{.app.status.operationState.startedAt}}",
+                "short": true
+              }
+              ]
+            }]
+
+      template.app-sync-status-unknown: |
+        email:
+          subject: "⚠️ Application {{.app.metadata.name}} sync status unknown"
+        message: |
+          {{if eq .serviceType "slack"}}:exclamation:{{end}} Application {{.app.metadata.name}} sync status is 'Unknown'
+          Details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}
+        slack:
+          attachments: |
+            [{
+              "title": "{{ .app.metadata.name}}",
+              "title_link":"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+              "color": "#E96D76",
+              "fields": [
+              {
+                "title": "Sync Status",
+                "value": "Unknown",
+                "short": true
+              }
+              ]
+            }]
+
+      template.app-sync-succeeded: |
+        email:
+          subject: "✅ Application {{.app.metadata.name}} synced successfully"
+        message: |
+          {{if eq .serviceType "slack"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} has been successfully synced at {{.app.status.operationState.finishedAt}}
+          Details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}?operation=true
+        slack:
+          attachments: |
+            [{
+              "title": "{{ .app.metadata.name}}",
+              "title_link":"{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+              "color": "#18be52",
+              "fields": [
+              {
+                "title": "Sync Status",
+                "value": "Succeeded",
+                "short": true
+              },
+              {
+                "title": "Revision",
+                "value": "{{.app.status.sync.revision}}",
+                "short": true
+              }
+              ]
+            }]
+
+    # -- The trigger defines the condition when the notification should be sent
+    ## For more information: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/triggers/
+    triggers:
+      trigger.on-deployed: |
+        - description: Application is synced and healthy. Triggered once per commit.
+          oncePer: app.status.operationState.syncResult.revision
+          send:
+          - app-deployed
+          when: app.status.operationState != nil and app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+
+      trigger.on-health-degraded: |
+        - description: Application has degraded
+          send:
+          - app-health-degraded
+          when: app.status.health.status == 'Degraded'
+
+      trigger.on-sync-failed: |
+        - description: Application syncing has failed
+          send:
+          - app-sync-failed
+          when: app.status.operationState != nil and app.status.operationState.phase in ['Error', 'Failed']
+
+      trigger.on-sync-running: |
+        - description: Application is being synced
+          oncePer: app.status.operationState.startedAt
+          send:
+          - app-sync-running
+          when: app.status.operationState != nil and app.status.operationState.phase in ['Running']
+
+      trigger.on-sync-status-unknown: |
+        - description: Application status is 'Unknown'
+          send:
+          - app-sync-status-unknown
+          when: app.status.sync.status == 'Unknown'
+
+      trigger.on-sync-succeeded: |
+        - description: Application syncing has succeeded
+          oncePer: app.status.operationState.finishedAt
+          send:
+          - app-sync-succeeded
+          when: app.status.operationState != nil and app.status.operationState.phase in ['Succeeded']
+      # For more information: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/triggers/#default-triggers
+      # defaultTriggers can be used to enable specific triggers for all apps by default
+      # defaultTriggers: |
+      #   - on-sync-status-unknown
+
+  commitServer:
+    enabled: false
+    name: commit-server
+
+# External Ingress for ArgoCD Server
+ingress:
+  enabled: true

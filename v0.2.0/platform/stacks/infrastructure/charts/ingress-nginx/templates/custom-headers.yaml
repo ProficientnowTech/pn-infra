@@ -1,0 +1,18 @@
+{{- if .Values.customHeaders.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.customHeaders.name }}
+  namespace: ingress-nginx
+  labels:
+    app.kubernetes.io/name: custom-headers
+    app.kubernetes.io/component: security-headers
+    app.kubernetes.io/part-of: ingress-nginx
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+data:
+  {{- range $key, $value := .Values.customHeaders.headers }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}

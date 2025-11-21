@@ -1,0 +1,21 @@
+apiVersion: v2
+name: pn-cert-manager
+description: Cert-Manager with TLS Certificate Management and ClusterIssuers
+type: application
+version: 0.1.0
+appVersion: "v1.19.1"
+
+keywords:
+  - cert-manager
+  - certificates
+  - letsencrypt
+  - tls
+
+maintainers:
+  - name: Platform Team
+    email: snoorullah@proficientnowtech.com
+
+dependencies:
+  - name: cert-manager
+    version: 1.19.1
+    repository: https://charts.jetstack.io

@@ -1,0 +1,49 @@
+---
+- name: Set system timezone
+  timezone:
+      name: "{{ base_setup.timezone | default('UTC') }}"
+  when: base_setup.timezone is defined
+
+- name: Configure system locale
+  locale_gen:
+      name: "{{ base_setup.locale | default('en_US') }}.UTF-8"
+      state: present
+  when: base_setup.locale is defined
+
+- name: Set system locale
+  shell: localectl set-locale LANG="{{ base_setup.locale | default('en_US') }}.UTF-8"
+  when: base_setup.locale is defined
+
+- name: Configure time synchronization
+  block:
+      - name: Install chrony
+        apt:
+            name: chrony
+            state: present
+
+      - name: Enable and start chrony service
+        systemd:
+            name: chrony
+            enabled: yes
+            state: started
+  when: base_setup.config_time_sync | default(false)
+
+- name: Configure system logging
+  block:
+      - name: Ensure rsyslog is installed
+        apt:
+            name: rsyslog
+            state: present
+
+      - name: Configure log rotation
+        lineinfile:
+            path: /etc/logrotate.conf
+            regexp: '^weekly'
+            line: 'daily'
+
+      - name: Enable and start rsyslog service
+        systemd:
+            name: rsyslog
+            enabled: yes
+            state: started
+  when: base_setup.config_logging | default(false)

@@ -1,0 +1,43 @@
+---
+# Cleanup Networking Configuration
+
+- name: Remove VLAN netplan configuration
+  file:
+    path: /etc/netplan/99-vlans.yaml
+    state: absent
+  notify: apply netplan
+
+- name: Restore default netplan configuration (if backup exists)
+  copy:
+    src: /etc/netplan/00-installer-config.yaml.bak
+    dest: /etc/netplan/00-installer-config.yaml
+    remote_src: true
+  ignore_errors: true
+  notify: apply netplan
+
+- name: Remove VLAN interfaces manually (if they exist)
+  shell: |
+    ip link show | grep -E '{{ item }}@' | awk '{print $2}' | sed 's/:$//' | xargs -I {} ip link delete {} || true
+  loop:
+    - management
+    - internal_traffic
+    - public_traffic
+    - storage_public
+    - storage_private
+    - nested_clusters
+    - high_speed_external
+    - nested_cluster_apps
+  ignore_errors: true
+
+- name: Flush IP addresses from VLAN interfaces
+  shell: ip addr flush dev {{ item }} || true
+  loop:
+    - management
+    - internal_traffic
+    - public_traffic
+    - storage_public
+    - storage_private
+    - nested_clusters
+    - high_speed_external
+    - nested_cluster_apps
+  ignore_errors: true

@@ -1,0 +1,19 @@
+# Pools Module - Development Environment Configuration
+# This file contains all settings needed for the pools module including credentials
+# This file should be gitignored for security
+
+pools:
+  environment: "development"
+  resource_prefix: "dev-pnow"
+
+  # Proxmox settings (replace with your actual credentials)
+  proxmox:
+    url: "https://your-proxmox-server:8006/api2/json"
+    api_token: "your-api-token"
+    node: "your-proxmox-node"
+    datastore: "local-lvm"
+
+  # Resource pools to create
+  pool_names:
+    - "k8s-platform"
+    - "development-vms"

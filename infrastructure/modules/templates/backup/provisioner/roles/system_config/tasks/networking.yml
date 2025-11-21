@@ -1,0 +1,73 @@
+---
+# Networking Tasks - Safe VLAN Configuration with Fallbacks
+
+- name: Check if network configuration will break connectivity
+  block:
+    - name: Verify current network interface exists
+      stat:
+        path: /sys/class/net/{{ ansible_default_ipv4.interface }}
+      register: current_interface
+
+    - name: Backup ALL existing netplan configs
+      shell: |
+        mkdir -p /etc/netplan/backup-$(date +%Y%m%d-%H%M%S)
+        cp /etc/netplan/*.yaml /etc/netplan/backup-$(date +%Y%m%d-%H%M%S)/ 2>/dev/null || true
+      changed_when: false
+
+    - name: Create fallback network script
+      copy:
+        content: |
+          #!/bin/bash
+          # Emergency network restore script
+          echo "Restoring network configuration..."
+          cp /etc/netplan/backup-*/00-installer-config.yaml /etc/netplan/ 2>/dev/null || true
+          netplan apply
+          systemctl restart systemd-networkd
+        dest: /tmp/restore_network.sh
+        mode: '0755'
+      when: network_vlans is defined and network_vlans | length > 0
+
+- name: Create netplan VLAN configuration safely
+  template:
+    src: netplan/vlans.yaml.j2
+    dest: /etc/netplan/99-vlans.yaml
+    mode: '0600'
+  when: network_vlans is defined and network_vlans | length > 0
+  notify:
+    - apply netplan
+
+- name: Test new network configuration before removing old one
+  block:
+    - name: Apply new netplan configuration with timeout
+      command: netplan try --timeout=30
+      async: 45
+      poll: 5
+      register: netplan_test
+
+    - name: Remove default netplan config only if new config works
+      file:
+        path: /etc/netplan/00-installer-config.yaml
+        state: absent
+      when:
+        - netplan_test is succeeded
+        - network_vlans is defined
+        - network_vlans | length > 0
+      notify:
+        - apply netplan
+  when: network_vlans is defined and network_vlans | length > 0
+
+- name: Verify network connectivity after changes
+  block:
+    - name: Test network connectivity
+      wait_for:
+        host: '{{ ansible_default_ipv4.gateway }}'
+        port: 22
+        timeout: 10
+      ignore_errors: true
+      register: network_test
+
+    - name: Restore network if connectivity lost
+      shell: /tmp/restore_network.sh
+      when: network_test is failed
+
+  when: network_vlans is defined and network_vlans | length > 0

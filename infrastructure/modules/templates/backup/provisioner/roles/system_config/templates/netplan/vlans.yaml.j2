@@ -1,0 +1,22 @@
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    {{ primary_interface | default('ens18') }}:
+      dhcp4: true
+  vlans:
+{% for vlan in network_vlans %}
+    {{ vlan.name }}:
+      id: {{ vlan.id }}
+      link: {{ primary_interface | default('ens18') }}
+      addresses:
+        - 192.168.{{ vlan.id }}.{{ ip_offset }}/24
+      routes:
+        - to: 192.168.{{ vlan.id }}.0/24
+          via: {{ vlan.gateway }}
+      nameservers:
+        addresses:
+          - {{ vlan.gateway }}
+          - 8.8.8.8
+          - 1.1.1.1
+{% endfor %}

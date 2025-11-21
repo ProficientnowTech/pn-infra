@@ -1,0 +1,53 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US
+  keyboard:
+    layout: us
+  ssh:
+    install-server: true
+    allow-pw: true
+    authorized-keys: []
+  packages:
+    - openssh-server
+    - curl
+    - wget
+    - git
+    - vim
+    - htop
+    - tree
+    - unzip
+    - tar
+    - ca-certificates
+    - gnupg
+    - lsb-release
+    - software-properties-common
+    - apt-transport-https
+    - net-tools
+    - iputils-ping
+    - dnsutils
+    - rsync
+    - jq
+    - python3
+    - python3-pip
+    - build-essential
+    - qemu-guest-agent
+  storage:
+    layout:
+      name: direct
+    swap:
+      size: 0
+  user-data:
+    disable_root: false
+    users:
+      - name: ubuntu
+        passwd: "$6$rounds=4096$aQ7U9y8O2C0$6P0.EzJgSZ1qaOUOmYg.DL8VJ5Jq8rZwOzJXfJG8lKzGhCj0YjFvT7NlBp.AyPvO6L6BcAkj9BoYjvHSKdMVg1"
+        shell: /bin/bash
+        sudo: ALL=(ALL) NOPASSWD:ALL
+        groups: [adm, sudo]
+        lock_passwd: false
+  late-commands:
+    - echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/ubuntu
+    - chmod 440 /target/etc/sudoers.d/ubuntu
+    - systemctl enable ssh
+    - systemctl enable qemu-guest-agent

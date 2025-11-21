@@ -1,0 +1,219 @@
+---
+# Phase 3: Apply system settings configuration changes
+- name: Configure kernel modules
+  block:
+      - name: Load kernel modules
+        modprobe:
+            name: '{{ item }}'
+            state: present
+        loop: '{{ system_settings.kernel_modules }}'
+        register: kernel_module_load
+
+      - name: Ensure kernel modules load at boot
+        lineinfile:
+            path: /etc/modules-load.d/ansible-system-settings.conf
+            line: '{{ item }}'
+            create: yes
+            mode: '0644'
+        loop: '{{ system_settings.kernel_modules }}'
+
+      - name: Log kernel module configuration
+        debug:
+            msg: 'Configured {{ system_settings.kernel_modules | length }} kernel modules'
+
+  when: system_settings is defined and system_settings.kernel_modules is defined
+  notify: reload systemd
+
+- name: Configure sysctl parameters
+  block:
+      - name: Apply sysctl parameters
+        sysctl:
+            name: '{{ item.name }}'
+            value: '{{ item.value }}'
+            state: present
+            reload: yes
+            sysctl_file: /etc/sysctl.d/99-ansible-system-settings.conf
+        loop: '{{ system_settings.sysctl }}'
+        register: sysctl_apply
+
+      - name: Verify sysctl parameters are applied
+        command: sysctl -n "{{ item.name }}"
+        register: sysctl_verify
+        changed_when: false
+        loop: '{{ system_settings.sysctl }}'
+
+      - name: Log sysctl configuration
+        debug:
+            msg: |
+                Configured {{ system_settings.sysctl | length }} sysctl parameters:
+                {% for item in system_settings.sysctl %}
+                - {{ item.name }}: {{ item.value }}
+                {% endfor %}
+
+  when: system_settings is defined and system_settings.sysctl is defined
+
+- name: Configure systemd services
+  block:
+      - name: Manage systemd services
+        systemd:
+            name: '{{ item.name }}'
+            enabled: '{{ item.enabled }}'
+            state: '{{ item.state }}'
+            daemon_reload: true
+        loop: '{{ system_settings.systemd_services }}'
+        register: systemd_service_config
+
+      - name: Log systemd service configuration
+        debug:
+            msg: |
+                Configured {{ system_settings.systemd_services | length }} systemd services:
+                {% for item in system_settings.systemd_services %}
+                - {{ item.name }}: enabled={{ item.enabled }}, state={{ item.state }}
+                {% endfor %}
+
+  when: system_settings is defined and system_settings.systemd_services is defined
+  notify: reload systemd
+
+- name: Apply network optimizations
+  block:
+      - name: Apply network performance optimizations
+        sysctl:
+            name: '{{ item.name }}'
+            value: '{{ item.value }}'
+            state: present
+            reload: yes
+            sysctl_file: /etc/sysctl.d/90-ansible-network-optimization.conf
+        loop:
+            - { name: 'net.core.rmem_max', value: '134217728' }
+            - { name: 'net.core.wmem_max', value: '134217728' }
+            - { name: 'net.ipv4.tcp_rmem', value: '4096 87380 134217728' }
+            - { name: 'net.ipv4.tcp_wmem', value: '4096 65536 134217728' }
+            - { name: 'net.core.netdev_max_backlog', value: '5000' }
+            - { name: 'net.ipv4.tcp_congestion_control', value: 'bbr' }
+        ignore_errors: true
+        register: network_optimization
+
+      - name: Log network optimization
+        debug:
+            msg: 'Applied network performance optimizations'
+
+  when: optimization is defined and optimization.enable_network_optimization | default(false)
+
+- name: Apply filesystem optimizations
+  block:
+      - name: Apply filesystem performance optimizations
+        sysctl:
+            name: '{{ item.name }}'
+            value: '{{ item.value }}'
+            state: present
+            reload: yes
+            sysctl_file: /etc/sysctl.d/90-ansible-fs-optimization.conf
+        loop:
+            - { name: 'vm.dirty_ratio', value: '15' }
+            - { name: 'vm.dirty_background_ratio', value: '5' }
+            - { name: 'vm.swappiness', value: '10' }
+            - { name: 'vm.vfs_cache_pressure', value: '50' }
+            - { name: 'kernel.sched_migration_cost_ns', value: '5000000' }
+        register: fs_optimization
+
+      - name: Optimize mount options for performance (read-only check)
+        shell: mount | grep -E "(ext[234]|xfs)" | grep -v noatime
+        register: non_optimized_mounts
+        changed_when: false
+        failed_when: false
+
+      - name: Log filesystem optimization
+        debug:
+            msg: |
+                Applied filesystem performance optimizations
+                {% if non_optimized_mounts.stdout_lines | length > 0 %}
+                Note: Consider adding 'noatime' mount option to these filesystems:
+                {% for mount in non_optimized_mounts.stdout_lines %}
+                - {{ mount }}
+                {% endfor %}
+                {% endif %}
+
+  when: optimization is defined and optimization.enable_fs_optimization | default(false)
+
+- name: Configure automatic updates
+  block:
+      - name: Configure unattended-upgrades (Debian)
+        block:
+            - name: Install unattended-upgrades
+              apt:
+                  name: unattended-upgrades
+                  state: present
+
+            - name: Configure unattended-upgrades
+              copy:
+                  content: |
+                      // Ansible managed - automatic updates configuration
+                      Unattended-Upgrade::Allowed-Origins {
+                          "${distro_id}:${distro_codename}-security";
+                          "${distro_id} ESMApps:${distro_codename}-apps-security";
+                          "${distro_id} ESM:${distro_codename}-infra-security";
+                      };
+                      Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+                      Unattended-Upgrade::MinimalSteps "true";
+                      Unattended-Upgrade::Remove-Unused-Dependencies "true";
+                      Unattended-Upgrade::Automatic-Reboot "false";
+                  dest: /etc/apt/apt.conf.d/50unattended-upgrades
+                  mode: '0644'
+
+            - name: Enable automatic updates
+              copy:
+                  content: |
+                      APT::Periodic::Update-Package-Lists "1";
+                      APT::Periodic::Download-Upgradeable-Packages "1";
+                      APT::Periodic::AutocleanInterval "7";
+                      APT::Periodic::Unattended-Upgrade "1";
+                  dest: /etc/apt/apt.conf.d/20auto-upgrades
+                  mode: '0644'
+
+        when: ansible_os_family == "Debian"
+
+      - name: Configure yum-cron (RedHat)
+        block:
+            - name: Install yum-cron
+              yum:
+                  name: yum-cron
+                  state: present
+
+            - name: Configure yum-cron
+              lineinfile:
+                  path: /etc/yum/yum-cron.conf
+                  regexp: '{{ item.regexp }}'
+                  line: '{{ item.line }}'
+                  backup: yes
+              loop:
+                  - { regexp: '^apply_updates', line: 'apply_updates = yes' }
+                  - {
+                        regexp: '^download_updates',
+                        line: 'download_updates = yes',
+                    }
+                  - { regexp: '^check_updates', line: 'check_updates = yes' }
+
+            - name: Enable and start yum-cron service
+              systemd:
+                  name: yum-cron
+                  enabled: yes
+                  state: started
+
+        when: ansible_os_family == "RedHat"
+
+      - name: Log automatic updates configuration
+        debug:
+            msg: 'Configured automatic updates for {{ ansible_os_family }} systems'
+
+  when: maintenance is defined and maintenance.enable_autoupdates | default(false)
+
+- name: Log system settings application completion
+  debug:
+      msg: |
+          System settings configuration applied:
+          - Kernel modules: {{ system_settings.kernel_modules | default([]) | length }}
+          - Sysctl parameters: {{ system_settings.sysctl | default([]) | length }}
+          - Systemd services: {{ system_settings.systemd_services | default([]) | length }}
+          - Network optimization: {{ 'enabled' if (optimization is defined and optimization.enable_network_optimization | default(false)) else 'disabled' }}
+          - FS optimization: {{ 'enabled' if (optimization is defined and optimization.enable_fs_optimization | default(false)) else 'disabled' }}
+          - Auto updates: {{ 'enabled' if (maintenance is defined and maintenance.enable_autoupdates | default(false)) else 'disabled' }}

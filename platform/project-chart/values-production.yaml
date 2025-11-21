@@ -1,0 +1,288 @@
+# Production ArgoCD Projects Configuration
+# Organized by platform layers with clear dependency chains
+# Less restrictive permissions for operational flexibility
+
+projects:
+# ============================================================================
+# LAYER 1: INFRASTRUCTURE FOUNDATION (Wave -100 to 10)
+# ============================================================================
+
+- name: infrastructure
+  stack: infrastructure
+  layer: foundation
+  projectType: platform
+  environment: production
+  syncWaveRange: "-100 to 10"
+  description: 'Core platform infrastructure - networking, ingress, certificates, DNS'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 2: STORAGE FOUNDATION (Wave 100-200)
+# ============================================================================
+
+- name: storage
+  stack: storage
+  layer: foundation
+  projectType: platform
+  environment: production
+  syncWaveRange: "100 to 200"
+  dependencies:
+  - infrastructure
+  description: 'Distributed storage, PostgreSQL and Redis operators, container registries'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 3: DATABASES (Wave 320-340)
+# ============================================================================
+
+- name: databases
+  stack: databases
+  layer: data
+  projectType: platform
+  environment: production
+  syncWaveRange: "320 to 340"
+  dependencies:
+  - storage
+  description: 'Platform databases - PostgreSQL clusters, Redis clusters, database instances'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 4: SECURITY & SECRETS (Wave 320-360)
+# ============================================================================
+
+- name: security
+  stack: security
+  layer: security
+  projectType: platform
+  environment: production
+  syncWaveRange: "320 to 360"
+  dependencies:
+  - infrastructure
+  - databases
+  description: 'Identity management, secret management, access control - Keycloak, Vault, External Secrets'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 5: MONITORING & OBSERVABILITY (Wave 400-460)
+# ============================================================================
+
+- name: monitoring
+  stack: monitoring
+  layer: observability
+  projectType: platform
+  environment: production
+  syncWaveRange: "400 to 800"
+  dependencies:
+  - storage
+  - databases
+  description: 'Observability platform - Prometheus, Grafana, Loki, Tempo, tracing and metrics'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 6: DEVELOPER PLATFORM (Wave 0-390)
+# ============================================================================
+
+- name: developer-platform
+  stack: developer-platform
+  layer: platform
+  projectType: platform
+  environment: production
+  syncWaveRange: "0 to 390"
+  dependencies:
+  - infrastructure
+  - storage
+  - databases
+  description: 'Developer platform - Backstage, KubeVirt, Cluster API, Tekton'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 7: DEVELOPMENT WORKLOADS (Wave 510-520)
+# ============================================================================
+
+- name: development-workloads
+  stack: development-workloads
+  layer: workloads
+  projectType: platform
+  environment: production
+  syncWaveRange: "510 to 520"
+  dependencies:
+  - developer-platform
+  - storage
+  description: 'CI/CD and progressive delivery - Tekton Pipelines, Argo Rollouts, Kargo'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'''
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 8: DATA STREAMING (Wave 500)
+# ============================================================================
+
+- name: data-streaming
+  stack: data-streaming
+  layer: data
+  projectType: platform
+  environment: production
+  syncWaveRange: "500 to 510"
+  dependencies:
+  - storage
+  - monitoring
+  description: 'Event streaming and message brokers - Kafka (Strimzi), RabbitMQ, Debezium CDC'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 9: ML INFRASTRUCTURE (Wave 6-8)
+# ============================================================================
+
+- name: ml-infra
+  stack: ml-infra
+  layer: compute
+  projectType: platform
+  environment: production
+  syncWaveRange: "6 to 8"
+  dependencies:
+  - infrastructure
+  - monitoring
+  description: 'Machine learning infrastructure - GPU operators, KubeRay, distributed computing'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 10: APPLICATION INFRASTRUCTURE (Wave 525)
+# ============================================================================
+
+- name: application-infra
+  stack: application-infra
+  layer: application
+  projectType: platform
+  environment: production
+  syncWaveRange: "525 to 530"
+  dependencies:
+  - databases
+  - storage
+  - monitoring
+  description: 'Application infrastructure services - Temporal workflow orchestration'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+
+# ============================================================================
+# LAYER 11: BACKUP & DISASTER RECOVERY (Wave 600+)
+# ============================================================================
+
+- name: backup-disaster-recovery
+  stack: backup-and-disaster-recovery
+  layer: operations
+  projectType: platform
+  environment: production
+  syncWaveRange: "600 to 700"
+  dependencies:
+  - storage
+  description: 'Backup and disaster recovery - Velero, backup policies, restore procedures'
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: '*'
+    server: https://kubernetes.default.svc
+  clusterResources:
+  - group: '*'
+    kind: '*'
+  namespaceResources:
+  - group: '*'
+    kind: '*'
+  orphanedResources:
+    warn: true

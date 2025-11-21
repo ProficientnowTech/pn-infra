@@ -1,0 +1,15 @@
+---
+- name: Load kernel modules
+  modprobe:
+      name: '{{ item }}'
+      state: present
+  loop: '{{ kernel_modules }}'
+  when: kernel_modules is defined
+
+- name: Persist kernel modules
+  lineinfile:
+      path: /etc/modules-load.d/custom.conf
+      line: '{{ item }}'
+      create: yes
+  loop: '{{ kernel_modules }}'
+  when: kernel_modules is defined

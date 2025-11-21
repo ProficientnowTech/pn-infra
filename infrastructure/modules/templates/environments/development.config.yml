@@ -1,0 +1,27 @@
+# Images Module - Development Environment Configuration
+# This file contains all settings needed for the images module including credentials
+# This file should be gitignored for security
+images:
+  environment: 'development'
+  domain: 'dev.cluster.local'
+  # Proxmox settings
+proxmox:
+  url: 'https://your-proxmox-server:8006/api2/json'
+  node: 'your-proxmox-node'
+  datastore: 'local-lvm'
+  username: 'your-username@pam'
+  api_token: 'your-api-token'
+# Build configuration
+build:
+  parallel_builds: 2
+  optimization: 'development'
+  workspace_path: './workspace'
+# Enabled roles for image building
+roles:
+  k8s-master: { os: ubuntu-22.04, vm_size: m }
+  k8s-worker: { os: ubuntu-22.04, vm_size: m }
+  ans-controller: { os: ubuntu-22.04, vm_size: s }
+  k8s-storage: { os: ubuntu-22.04, vm_size: m }
+# OS filter
+os_filter:
+  - ubuntu-22.04

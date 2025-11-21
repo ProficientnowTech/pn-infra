@@ -1,0 +1,75 @@
+[DEFAULT]
+bantime = {{ security.fail2ban.bantime_secs | default(3600) }}
+findtime = {{ security.fail2ban.findtime_secs | default(600) }}
+maxretry = {{ security.fail2ban.max_retries | default(3) }}
+backend = auto
+{% if security.fail2ban.destemail is defined %}
+destemail = {{ security.fail2ban.destemail }}
+sender = fail2ban@{{ ansible_hostname }}
+mta = sendmail
+action = %(action_mwl)s
+{% else %}
+action = %(action_)s
+{% endif %}
+
+[sshd]
+enabled = true
+port = ssh
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = {{ security.fail2ban.maxretry_attempts | default(6) }}
+
+[sshd-ddos]
+enabled = true
+port = ssh
+filter = sshd-ddos
+logpath = /var/log/auth.log
+maxretry = 2
+
+[apache-auth]
+enabled = false
+
+[apache-badbots]
+enabled = false
+
+[apache-noscript]
+enabled = false
+
+[apache-overflows]
+enabled = false
+
+[nginx-http-auth]
+enabled = false
+
+[nginx-limit-req]
+enabled = false
+
+[nginx-botsearch]
+enabled = false
+
+[php-url-fopen]
+enabled = false
+
+[suhosin]
+enabled = false
+
+[lighttpd-auth]
+enabled = false
+
+[roundcube-auth]
+enabled = false
+
+[openwebmail]
+enabled = false
+
+[horde]
+enabled = false
+
+[groupoffice]
+enabled = false
+
+[sogo-auth]
+enabled = false
+
+[tine20]
+enabled = false

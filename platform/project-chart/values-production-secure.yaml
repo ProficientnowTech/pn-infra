@@ -1,0 +1,476 @@
+# Production ArgoCD Projects Configuration
+# Organized by platform layers with clear dependency chains
+# Based on platform stacks analysis and sync-wave deployment order
+
+projects:
+  # ============================================================================
+  # LAYER 1: INFRASTRUCTURE FOUNDATION (Wave -100 to 10)
+  # ============================================================================
+
+  - name: infrastructure
+    stack: infrastructure
+    layer: foundation
+    projectType: platform
+    environment: production
+    syncWaveRange: "-100 to 10"
+    description: 'Core platform infrastructure - networking, ingress, certificates, DNS'
+
+    sourceRepos:
+      - '*'  # Allow all repositories for flexibility
+
+    destinations:
+      - namespace: argocd
+      - namespace: ingress-nginx
+      - namespace: cert-manager
+      - namespace: external-dns
+      - namespace: sealed-secrets
+      - namespace: metallb-system
+      - namespace: kube-ovn
+      - namespace: tekton-operator
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'cert-manager.io'
+        kind: 'ClusterIssuer'
+      - group: 'metallb.io'
+        kind: 'IPAddressPool'
+      - group: 'metallb.io'
+        kind: 'L2Advertisement'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'ValidatingWebhookConfiguration'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'MutatingWebhookConfiguration'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 2: STORAGE FOUNDATION (Wave 100-200)
+  # ============================================================================
+
+  - name: storage
+    stack: storage
+    layer: foundation
+    projectType: platform
+    environment: production
+    syncWaveRange: "100 to 200"
+    dependencies:
+      - infrastructure
+    description: 'Distributed storage, PostgreSQL and Redis operators, container registries'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+      - 'https://charts.rook.io/release'
+      - 'https://opensource.zalando.com/postgres-operator/charts/postgres-operator'
+      - 'https://ot-container-kit.github.io/helm-charts/'
+      - 'https://helm.goharbor.io'
+      - 'https://charts.verdaccio.org'
+
+    destinations:
+      - namespace: rook-ceph
+      - namespace: postgres-operator
+      - namespace: redis-operator
+      - namespace: harbor
+      - namespace: verdaccio
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'ValidatingWebhookConfiguration'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'MutatingWebhookConfiguration'
+      - group: 'ceph.rook.io'
+        kind: '*'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 3: DATABASES (Wave 320-340)
+  # ============================================================================
+
+  - name: databases
+    stack: databases
+    layer: data
+    projectType: platform
+    environment: production
+    syncWaveRange: "320 to 340"
+    dependencies:
+      - storage
+    description: 'Platform databases - PostgreSQL clusters, Redis clusters, database instances'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+
+    destinations:
+      - namespace: platform-db-pg
+      - namespace: platform-kv-redis-cluster
+      - namespace: temporal
+      - namespace: keycloak
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 4: SECURITY & SECRETS (Wave 320-360)
+  # ============================================================================
+
+  - name: security
+    stack: security
+    layer: security
+    projectType: platform
+    environment: production
+    syncWaveRange: "320 to 360"
+    dependencies:
+      - infrastructure
+      - databases
+    description: 'Identity management, secret management, access control - Keycloak, Vault, External Secrets'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+      - 'https://charts.bitnami.com/bitnami'
+      - 'https://helm.releases.hashicorp.com'
+      - 'https://charts.external-secrets.io'
+      - 'https://charts.crossplane.io/stable'
+
+    destinations:
+      - namespace: keycloak
+      - namespace: vault
+      - namespace: external-secrets
+      - namespace: crossplane
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'external-secrets.io'
+        kind: '*'
+      - group: 'pkg.crossplane.io'
+        kind: '*'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 5: MONITORING & OBSERVABILITY (Wave 400-460)
+  # ============================================================================
+
+  - name: monitoring
+    stack: monitoring
+    layer: observability
+    projectType: platform
+    environment: production
+    syncWaveRange: "400 to 800"
+    dependencies:
+      - storage
+      - databases
+    description: 'Observability platform - Prometheus, Grafana, Loki, Tempo, tracing and metrics'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+      - 'https://prometheus-community.github.io/helm-charts'
+      - 'https://grafana.github.io/helm-charts'
+      - 'https://dirsigler.github.io/uptime-kuma-helm'
+      - 'https://kubecost.github.io/cost-analyzer'
+
+    destinations:
+      - namespace: monitoring
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'monitoring.coreos.com'
+        kind: 'ServiceMonitor'
+      - group: 'monitoring.coreos.com'
+        kind: 'PodMonitor'
+      - group: 'monitoring.coreos.com'
+        kind: 'PrometheusRule'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 6: DEVELOPER PLATFORM (Wave 0-390)
+  # ============================================================================
+
+  - name: developer-platform
+    stack: developer-platform
+    layer: platform
+    projectType: platform
+    environment: production
+    syncWaveRange: "0 to 390"
+    dependencies:
+      - infrastructure
+      - storage
+      - databases
+    description: 'Developer platform - Backstage, KubeVirt, Cluster API, Tekton'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+      - 'https://backstage.github.io/charts'
+      - 'https://kubernetes-sigs.github.io/cluster-api-operator'
+
+    destinations:
+      - namespace: backstage
+      - namespace: capi-system
+      - namespace: kubevirt
+      - namespace: kubevirt-manager
+      - namespace: cdi
+      - namespace: tekton-pipelines
+      - namespace: tekton-operator
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'ValidatingWebhookConfiguration'
+      - group: 'admissionregistration.k8s.io'
+        kind: 'MutatingWebhookConfiguration'
+      - group: 'kubevirt.io'
+        kind: '*'
+      - group: 'cdi.kubevirt.io'
+        kind: '*'
+      - group: 'cluster.x-k8s.io'
+        kind: '*'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 7: DEVELOPMENT WORKLOADS (Wave 510-520)
+  # ============================================================================
+
+  - name: development-workloads
+    stack: development-workloads
+    layer: workloads
+    projectType: platform
+    environment: production
+    syncWaveRange: "510 to 520"
+    dependencies:
+      - developer-platform
+      - storage
+    description: 'CI/CD and progressive delivery - Tekton Pipelines, Argo Rollouts, Kargo'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+      - 'https://argoproj.github.io/argo-helm'
+      - 'oci://ghcr.io/akuity/kargo-charts'
+
+    destinations:
+      - namespace: tekton-pipelines
+      - namespace: argo-rollouts
+      - namespace: kargo
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'tekton.dev'
+        kind: '*'
+      - group: 'argoproj.io'
+        kind: 'Rollout'
+      - group: 'kargo.akuity.io'
+        kind: '*'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 8: DATA STREAMING (Wave 500)
+  # ============================================================================
+
+  - name: data-streaming
+    stack: data-streaming
+    layer: data
+    projectType: platform
+    environment: production
+    syncWaveRange: "500 to 510"
+    dependencies:
+      - storage
+      - monitoring
+    description: 'Event streaming and message brokers - Kafka (Strimzi), RabbitMQ, Debezium CDC'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+      - 'https://strimzi.io/charts/'
+
+    destinations:
+      - namespace: strimzi-kafka-operator
+      - namespace: kafka
+      - namespace: rabbitmq
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'kafka.strimzi.io'
+        kind: '*'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 9: ML INFRASTRUCTURE (Wave 6-8)
+  # ============================================================================
+
+  - name: ml-infra
+    stack: ml-infra
+    layer: compute
+    projectType: platform
+    environment: production
+    syncWaveRange: "6 to 8"
+    dependencies:
+      - infrastructure
+      - monitoring
+    description: 'Machine learning infrastructure - GPU operators, KubeRay, distributed computing'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+      - 'https://helm.ngc.nvidia.com/nvidia'
+
+    destinations:
+      - namespace: gpu-operator
+      - namespace: kuberay-system
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'ray.io'
+        kind: '*'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 10: APPLICATION INFRASTRUCTURE (Wave 525)
+  # ============================================================================
+
+  - name: application-infra
+    stack: application-infra
+    layer: application
+    projectType: platform
+    environment: production
+    syncWaveRange: "525 to 530"
+    dependencies:
+      - databases
+      - storage
+      - monitoring
+    description: 'Application infrastructure services - Temporal workflow orchestration'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+      - 'https://go.temporal.io/helm-charts'
+
+    destinations:
+      - namespace: temporal
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+  # ============================================================================
+  # LAYER 11: BACKUP & DISASTER RECOVERY (Wave 600+)
+  # ============================================================================
+
+  - name: backup-disaster-recovery
+    stack: backup-and-disaster-recovery
+    layer: operations
+    projectType: platform
+    environment: production
+    syncWaveRange: "600 to 700"
+    dependencies:
+      - storage
+    description: 'Backup and disaster recovery - Velero, backup policies, restore procedures'
+
+    sourceRepos:
+      - 'https://github.com/pnow-devsupreme/pn-infra.git'
+      - 'https://vmware-tanzu.github.io/helm-charts'
+
+    destinations:
+      - namespace: velero
+
+    clusterResources:
+      - group: ''
+        kind: 'Namespace'
+      - group: 'apiextensions.k8s.io'
+        kind: 'CustomResourceDefinition'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRole'
+      - group: 'rbac.authorization.k8s.io'
+        kind: 'ClusterRoleBinding'
+      - group: 'velero.io'
+        kind: '*'
+
+    namespaceResources:
+      - group: '*'
+        kind: '*'
+
+    orphanedResources:
+      warn: true
+      ignore:
+        - group: 'velero.io'
+          kind: 'Backup'
+        - group: 'velero.io'
+          kind: 'Restore'

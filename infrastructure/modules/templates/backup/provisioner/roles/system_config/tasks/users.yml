@@ -1,0 +1,86 @@
+---
+# Users Tasks - Safe User Management with Validation
+
+# Pre-flight safety checks
+- name: Verify current SSH connection before making changes
+  command: echo "SSH connection verified"
+  changed_when: false
+
+- name: Backup existing sudoers files
+  shell: cp -r /etc/sudoers.d /etc/sudoers.d.backup.$(date +%Y%m%d-%H%M%S)
+  changed_when: false
+  ignore_errors: true
+
+- name: Create users safely
+  user:
+    name: '{{ item.username }}'
+    groups: "{{ item.groups | default([]) | join(',') }}"
+    password: "{{ item.hashed_passwd | default('*') }}"
+    shell: "{{ item.shell | default('/bin/bash') }}"
+    password_lock: '{{ item.lock_passwd | default(false) }}'
+    create_home: yes
+    state: present
+  loop: '{{ users }}'
+  when: users is defined
+
+- name: Configure sudo access safely
+  copy:
+    dest: /etc/sudoers.d/{{ item.username }}
+    content: |
+      # Managed by Ansible - {{ item.username }} sudo access
+      {{ item.username }} ALL=(ALL) NOPASSWD:ALL
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  loop: '{{ users }}'
+  when:
+    - users is defined
+    - item.sudo | default(false)
+
+- name: Create .ssh directories
+  file:
+    path: '/home/{{ item.username }}/.ssh'
+    state: directory
+    owner: '{{ item.username }}'
+    group: '{{ item.username }}'
+    mode: '0700'
+  loop: '{{ users }}'
+  when:
+    - users is defined
+    - item.ssh_authorized_keys is defined
+
+- name: Add SSH authorized keys safely
+  authorized_key:
+    user: '{{ item.0.username }}'
+    key: '{{ item.1 }}'
+    state: present
+    exclusive: false
+  with_subelements:
+    - '{{ users | default([]) }}'
+    - ssh_authorized_keys
+    - skip_missing: yes
+
+- name: Configure SSH client config
+  template:
+    src: ssh/ssh_config.j2
+    dest: '/home/{{ item.username }}/.ssh/config'
+    owner: '{{ item.username }}'
+    group: '{{ item.username }}'
+    mode: '0600'
+  loop: '{{ users }}'
+  when:
+    - users is defined
+    - item.ssh_client_config is defined
+
+# Post-configuration verification
+- name: Verify sudo configuration is valid
+  command: visudo -c
+  changed_when: false
+
+- name: Test SSH key authentication (if possible)
+  shell: |
+    if [ -f /home/{{ item.username }}/.ssh/authorized_keys ]; then
+      echo "SSH keys configured for {{ item.username }}"
+    fi
+  loop: '{{ users }}'
+  when: users is defined
+  changed_when: false

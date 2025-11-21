@@ -1,0 +1,44 @@
+[Unit]
+Description=Domain-Based Ansible Provisioning System - Node Configuration Service
+Documentation=https://github.com/domain-provisioning/docs
+After=cloud-final.service
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/role_id
+ConditionPathExists=!/etc/node-config/node-config.success
+Before=getty.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/bin/bash -c 'while ! ping -c1 google.com &>/dev/null; do sleep 5; done'
+ExecStart=/opt/scripts/configure-node.sh
+RemainAfterExit=yes
+StandardOutput=journal
+StandardError=journal
+User=root
+Group=root
+
+# Resource limits
+TimeoutStartSec=1800
+TimeoutStopSec=60
+
+# Restart policy - don't restart on success
+Restart=no
+
+# Environment
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="DEBIAN_FRONTEND=noninteractive"
+Environment="ANSIBLE_HOST_KEY_CHECKING=False"
+Environment="ANSIBLE_STDOUT_CALLBACK=yaml"
+
+# Security settings
+NoNewPrivileges=false
+ProtectSystem=false
+ProtectHome=false
+
+# Logging configuration
+SyslogIdentifier=node-config
+SyslogLevel=info
+
+[Install]
+WantedBy=multi-user.target

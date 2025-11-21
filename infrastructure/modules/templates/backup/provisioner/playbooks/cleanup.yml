@@ -1,0 +1,18 @@
+---
+- name: PN Infrastructure Cleanup - Rollback Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - import_tasks: ../tasks/cleanup_networking.yml
+    - import_tasks: ../tasks/cleanup_security.yml
+
+  handlers:
+    - name: apply netplan
+      command: netplan apply
+
+    - name: restart ssh
+      systemd:
+        name: ssh
+        state: restarted

@@ -1,0 +1,32 @@
+---
+- name: PN Infrastructure Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Read role ID from /etc/role_id
+      slurp:
+        src: /etc/role_id
+      register: role_id_raw
+
+    - name: Set role ID fact
+      set_fact:
+        node_role_id: '{{ role_id_raw.content | b64decode | trim | int }}'
+
+    - name: Extract instance ID from hostname
+      set_fact:
+        instance_id: "{{ ansible_hostname.split('-')[-1] | int }}"
+
+    - name: Calculate IP offset - FIXED
+      set_fact:
+        ip_offset: '{{ node_role_id | int + instance_id | int }}'
+
+  roles:
+    - system_config
+
+  handlers:
+    - name: apply netplan
+      command: netplan try --timeout=30
+      async: 45
+      poll: 5

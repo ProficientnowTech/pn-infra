@@ -1,0 +1,216 @@
+---
+# Phase 3: Apply disk management configuration changes
+- name: Apply disk partitioning and filesystem configuration
+  block:
+      - name: Create partitions
+        block:
+            - name: Create partition using parted
+              parted:
+                  device: '{{ item.device }}'
+                  number: '{{ item.number }}'
+                  part_start: '{{ item.part_start }}'
+                  part_end: '{{ item.part_end }}'
+                  state: present
+                  label: "{{ item.partition_label | default('gpt') }}"
+                  part_type: "{{ item.part_type | default('primary') }}"
+                  flags: '{{ item.flags | default([]) }}'
+              register: partition_creation
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Wait for partition device nodes to be available
+              wait_for:
+                  path: '{{ item.device }}{{ item.number }}'
+                  timeout: 30
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Log partition creation
+              debug:
+                  msg: |
+                      Created {{ disk_management.partitions | length }} partitions:
+                      {% for partition in disk_management.partitions %}
+                      - {{ partition.device }}{{ partition.number }}: {{ partition.part_start }} to {{ partition.part_end }}
+                      {% endfor %}
+
+        when: disk_management.partitions | length > 0
+
+      - name: Create filesystems
+        block:
+            - name: Create filesystems on partitions
+              filesystem:
+                  fstype: '{{ item.filesystem }}'
+                  dev: '{{ item.device }}{{ item.number }}'
+                  opts: "{{ item.mkfs_options | default('') }}"
+                  force: '{{ item.force_format | default(false) }}'
+              register: filesystem_creation
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Get filesystem UUIDs
+              command: blkid -s UUID -o value "{{ item.device }}{{ item.number }}"
+              register: filesystem_uuids
+              changed_when: false
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Store UUIDs for later use
+              set_fact:
+                  partition_uuids: '{{ (partition_uuids | default({})) | combine({ (item.item.device ~ item.item.number): (item.stdout | trim) }) }}'
+              loop: '{{ filesystem_uuids.results }}'
+
+            - name: Log filesystem creation
+              debug:
+                  msg: |
+                      Created filesystems:
+                      {% for partition in disk_management.partitions %}
+                      - {{ partition.device }}{{ partition.number }}: {{ partition.filesystem }}
+                      {% endfor %}
+
+        when: disk_management.partitions | length > 0
+
+      - name: Create mount points and mount filesystems
+        block:
+            - name: Create mount point directories
+              file:
+                  path: '{{ item.mount_point }}'
+                  state: directory
+                  mode: "{{ item.mount_mode | default('0755') }}"
+                  owner: "{{ item.mount_owner | default('root') }}"
+                  group: "{{ item.mount_group | default('root') }}"
+              loop: '{{ disk_management.partitions }}'
+              register: mount_point_creation
+
+            - name: Mount filesystems temporarily for testing
+              mount:
+                  path: '{{ item.mount_point }}'
+                  src: '{{ item.device }}{{ item.number }}'
+                  fstype: '{{ item.filesystem }}'
+                  opts: "{{ item.mount_options | default('defaults') }}"
+                  state: mounted
+              loop: '{{ disk_management.partitions }}'
+              register: temporary_mount
+
+            - name: Set proper ownership and permissions on mounted filesystems
+              file:
+                  path: '{{ item.mount_point }}'
+                  state: directory
+                  mode: "{{ item.mount_mode | default('0755') }}"
+                  owner: "{{ item.mount_owner | default('root') }}"
+                  group: "{{ item.mount_group | default('root') }}"
+                  recurse: '{{ item.recursive_ownership | default(false) }}'
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Log mount point creation
+              debug:
+                  msg: |
+                      Created and mounted {{ disk_management.partitions | length }} filesystems:
+                      {% for partition in disk_management.partitions %}
+                      - {{ partition.mount_point }}: {{ partition.device }}{{ partition.number }} ({{ partition.filesystem }})
+                      {% endfor %}
+
+        when: disk_management.partitions | length > 0
+
+      - name: Update fstab for persistent mounting
+        block:
+            - name: Add entries to fstab using UUIDs
+              mount:
+                  path: '{{ item.mount_point }}'
+                  src: 'UUID={{ partition_uuids[item.device ~ item.number] }}'
+                  fstype: '{{ item.filesystem }}'
+                  opts: "{{ item.mount_options | default('defaults') }}"
+                  dump: "{{ item.dump | default('0') }}"
+                  passno: "{{ item.passno | default('2') }}"
+                  state: present
+              loop: '{{ disk_management.partitions }}'
+              register: fstab_update
+
+            - name: Verify fstab syntax
+              command: findmnt --verify --verbose
+              register: fstab_verify
+              changed_when: false
+              failed_when: fstab_verify.rc != 0
+
+            - name: Log fstab updates
+              debug:
+                  msg: |
+                      Updated fstab with {{ disk_management.partitions | length }} entries:
+                      {% for partition in disk_management.partitions %}
+                      - {{ partition.mount_point }}: UUID={{ partition_uuids[partition.device ~ partition.number] }}
+                      {% endfor %}
+
+        when: disk_management.partitions | length > 0
+
+      - name: Apply additional disk optimizations
+        block:
+            - name: Set filesystem-specific optimizations
+              shell: |
+                  device="{{ item.device }}{{ item.number }}"
+                  fs_type="{{ item.filesystem }}"
+
+                  case "$fs_type" in
+                    ext4)
+                      # Enable fast commit and other ext4 optimizations
+                      tune2fs -o journal_data_writeback "$device" || true
+                      tune2fs -O ^has_journal "$device" && tune2fs -O has_journal "$device" || true
+                      ;;
+                    xfs)
+                      # XFS optimizations are typically done at mkfs time
+                      echo "XFS optimizations applied during creation"
+                      ;;
+                    btrfs)
+                      # Enable compression and other btrfs features
+                      echo "BTRFS optimizations can be enabled via mount options"
+                      ;;
+                  esac
+              register: fs_optimization
+              loop: '{{ disk_management.partitions }}'
+              when: item.enable_optimizations | default(false)
+              ignore_errors: true
+
+            - name: Set disk scheduler optimizations
+              shell: |
+                  device_basename=$(basename "{{ item.device }}")
+                  if [ -f "/sys/block/$device_basename/queue/scheduler" ]; then
+                    # Set optimal scheduler based on device type
+                    if [ -n "{{ item.io_scheduler | default('') }}" ]; then
+                      echo "{{ item.io_scheduler }}" > "/sys/block/$device_basename/queue/scheduler" || true
+                    else
+                      # Auto-detect optimal scheduler
+                      if grep -q "mq-deadline" "/sys/block/$device_basename/queue/scheduler"; then
+                        echo "mq-deadline" > "/sys/block/$device_basename/queue/scheduler" || true
+                      elif grep -q "deadline" "/sys/block/$device_basename/queue/scheduler"; then
+                        echo "deadline" > "/sys/block/$device_basename/queue/scheduler" || true
+                      fi
+                    fi
+                  fi
+              register: scheduler_optimization
+              loop: '{{ disk_management.partitions }}'
+              when: item.optimize_scheduler | default(false)
+              ignore_errors: true
+
+        when: disk_management.partitions | length > 0
+
+  when: disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0
+
+- name: Handle empty disk configuration
+  debug:
+      msg: 'No disk partitions defined - disk management operations skipped'
+  when: disk_management is not defined or disk_management.partitions is not defined or disk_management.partitions | length == 0
+
+- name: Log disk management application completion
+  debug:
+      msg: |
+          Disk management configuration applied:
+          - Partitions created: {{ disk_management.partitions | default([]) | length }}
+          - Filesystems created: {{ disk_management.partitions | default([]) | length }}
+          - Mount points configured: {{ disk_management.partitions | default([]) | length }}
+          - fstab entries added: {{ disk_management.partitions | default([]) | length }}
+
+# - name: Log disk management application completion
+#   debug:
+#       msg: |
+#           Disk management configuration applied:
+#           - Partitions created: {{ disk_management.partitions | default([]) | length }}
+#           - Filesystems created: {{ disk_management.partitions | default([]) | length }}
+#           - Mount points configured: {{ disk_management.partitions | default([]) | length }}
+#           - fstab entries added: {{ disk_management.partitions | default([]) | length }}
+#           {% if disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0 %}
+#           - Total disk space allocated: {{ disk_management.partitions | sum(attribute='size') | default('unknown') }}
+#           {% endif %}

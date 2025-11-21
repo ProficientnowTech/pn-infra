@@ -1,0 +1,187 @@
+---
+# Security Tasks - Safe Implementation with SSH Protection
+
+- name: Setup system banner
+  template:
+    src: banner/motd.j2
+    dest: /etc/motd
+    mode: '0644'
+  when: security.setup_banner | default(false)
+
+- name: Lock root account (with safety check)
+  block:
+    - name: Verify non-root users exist before locking root
+      user:
+        name: '{{ item.username }}'
+        state: present
+      loop: '{{ users | default([]) }}'
+      when:
+        - item.sudo | default(false)
+        - item.username != 'root'
+
+    - name: Lock root account only if sudo users exist
+      user:
+        name: root
+        password_lock: yes
+      when:
+        - users is defined
+        - users | selectattr('sudo', 'defined') | selectattr('sudo', 'equalto', true) | list | length > 0
+  when: security.lock_root_account | default(false)
+
+- name: Configure SSH hardening with safety checks
+  block:
+    - name: Backup current SSH configuration
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.backup.{{ ansible_date_time.epoch }}
+        remote_src: true
+        mode: '0600'
+
+    - name: Test SSH configuration before applying
+      template:
+        src: ssh/sshd_config.j2
+        dest: /etc/ssh/sshd_config.test
+        backup: yes
+        mode: '0600'
+
+    - name: Validate SSH configuration syntax
+      command: sshd -t -f /etc/ssh/sshd_config.test
+      changed_when: false
+
+    - name: Apply SSH configuration if valid
+      copy:
+        src: /etc/ssh/sshd_config.test
+        dest: /etc/ssh/sshd_config
+        remote_src: true
+        mode: '0600'
+      notify: restart ssh
+
+    - name: Remove test SSH config
+      file:
+        path: /etc/ssh/sshd_config.test
+        state: absent
+
+    - name: Verify SSH service can reload
+      service:
+        name: ssh
+        state: reloaded
+      ignore_errors: true
+
+  when: security.enable_ssh_hardening | default(false)
+
+- name: Configure firewall rules safely
+  block:
+    - name: Set UFW default policy to deny incoming
+      ufw:
+        state: enabled
+        policy: deny
+        direction: incoming
+
+    - name: Set UFW default policy to allow outgoing
+      ufw:
+        state: enabled
+        policy: allow
+        direction: outgoing
+
+    - name: Configure firewall rules
+      ufw:
+        rule: allow
+        proto: '{{ item.protocol }}'
+        port: '{{ item.port }}'
+        from_ip: "{{ '192.168.' + (network_vlans | selectattr('name', 'equalto', item.source) | first).id | string + '.0/24' if item.source != 'any' else 'any' }}"
+        comment: '{{ item.description }}'
+      loop: '{{ security.firewall_rules | default([]) }}'
+      when:
+        - item.direction == 'in'
+  when: security.firewall_rules is defined
+
+- name: Install and configure fail2ban
+  block:
+    - name: Install fail2ban
+      apt:
+        name: fail2ban
+        state: present
+
+    - name: Configure fail2ban
+      template:
+        src: fail2ban/jail.local.j2
+        dest: /etc/fail2ban/jail.local
+        backup: yes
+      notify: restart fail2ban
+  when: security.fail2ban is defined
+
+- name: Apply kernel hardening safely
+  sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    state: present
+    reload: yes
+  loop:
+    - {
+        key: 'net.ipv4.ip_forward',
+        value: '{{ 1 if security.kernel.secure_ipv4 else 0 }}',
+      }
+    - { key: 'net.ipv4.conf.all.rp_filter', value: '1' }
+    - { key: 'net.ipv4.conf.default.rp_filter', value: '1' }
+    - { key: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
+    - { key: 'net.ipv4.icmp_ignore_bogus_error_responses', value: '1' }
+    - { key: 'net.ipv4.conf.all.log_martians', value: '1' }
+    - {
+        key: 'net.ipv6.conf.all.disable_ipv6',
+        value: '{{ 1 if security.kernel.disable_ipv6 else 0 }}',
+      }
+    - { key: 'kernel.dmesg_restrict', value: '1' }
+    - { key: 'kernel.kptr_restrict', value: '2' }
+  when: security.kernel is defined and security.enable_kernel_hardening | default(false)
+
+- name: Configure audit logging
+  block:
+    - name: Install auditd
+      apt:
+        name: auditd
+        state: present
+
+    - name: Configure audit rules
+      template:
+        src: audit/audit.rules.j2
+        dest: /etc/audit/rules.d/audit.rules
+        backup: yes
+      notify: restart auditd
+
+    - name: Lock audit configuration
+      lineinfile:
+        path: /etc/audit/rules.d/audit.rules
+        line: '-e 2'
+        insertafter: EOF
+      when: security.audit.lock_config | default(false)
+      notify: restart auditd
+  when: security.audit.enable_logging | default(false)
+
+- name: Set secure file permissions safely
+  block:
+    - name: Secure sensitive directories
+      file:
+        path: '{{ item }}'
+        mode: '0750'
+        recurse: no # Changed to no to avoid breaking system files
+      loop:
+        - /etc/ssh
+        - /etc/ssl/private
+        - /etc/sudoers.d
+      when: security.filesystem.set_secure_permissions | default(false)
+
+    - name: Remove world-readable permissions from sensitive files (safe approach)
+      shell: find {{ item }} -maxdepth 1 -type f -perm /o+r -exec chmod o-r {} \;
+      loop:
+        - /etc
+        - /var/log
+      when: security.filesystem.remove_world_readable_perms_from_sensitive_dirs | default(false)
+
+    - name: Set sticky bit on tmp directories
+      file:
+        path: '{{ item }}'
+        mode: '1777'
+      loop:
+        - /tmp
+        - /var/tmp
+      when: security.filesystem.set_sticky_bit_on_tmp_dirs | default(false)

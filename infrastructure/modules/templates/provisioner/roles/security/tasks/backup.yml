@@ -1,0 +1,197 @@
+---
+# Phase 2: Backup existing security configurations
+- name: Create backup directory
+  file:
+      path: /var/backups/ansible-security
+      state: directory
+      mode: '0700'
+      owner: root
+      group: root
+
+- name: Generate backup timestamp
+  set_fact:
+      backup_timestamp: '{{ ansible_date_time.epoch }}'
+
+- name: Backup SSH configuration
+  block:
+      - name: Backup sshd_config
+        copy:
+            src: /etc/ssh/sshd_config
+            dest: '/var/backups/ansible-security/sshd_config.{{ backup_timestamp }}'
+            remote_src: yes
+            mode: '0600'
+        register: sshd_backup
+
+      - name: Backup SSH moduli
+        copy:
+            src: /etc/ssh/moduli
+            dest: '/var/backups/ansible-security/moduli.{{ backup_timestamp }}'
+            remote_src: yes
+            mode: '0600'
+        ignore_errors: true
+
+  when: security.enable_ssh_hardening | default(false)
+
+- name: Backup firewall configurations
+  block:
+      - name: Backup UFW configuration (Debian)
+        block:
+            - name: Backup UFW rules
+              shell: ufw status numbered > "/var/backups/ansible-security/ufw-rules.{{ backup_timestamp }}"
+              ignore_errors: true
+
+            - name: Backup UFW configuration files
+              shell: tar -czf "/var/backups/ansible-security/ufw-config.{{ backup_timestamp }}.tar.gz" -C /etc/ufw . 2>/dev/null
+              ignore_errors: true
+
+        when: ansible_os_family == "Debian"
+
+      - name: Backup firewalld configuration (RedHat)
+        block:
+            - name: Backup firewalld rules
+              shell: firewall-cmd --list-all > "/var/backups/ansible-security/firewalld-rules.{{ backup_timestamp }}"
+              ignore_errors: true
+
+            - name: Backup firewalld configuration files
+              shell: tar -czf "/var/backups/ansible-security/firewalld-config.{{ backup_timestamp }}.tar.gz" -C /etc/firewalld . 2>/dev/null
+              ignore_errors: true
+
+        when: ansible_os_family == "RedHat"
+
+- name: Backup fail2ban configuration
+  block:
+      - name: Backup fail2ban jail configuration
+        copy:
+            src: /etc/fail2ban/jail.local
+            dest: '/var/backups/ansible-security/jail.local.{{ backup_timestamp }}'
+            remote_src: yes
+            mode: '0600'
+        ignore_errors: true
+
+      - name: Backup fail2ban main configuration
+        copy:
+            src: /etc/fail2ban/fail2ban.local
+            dest: '/var/backups/ansible-security/fail2ban.local.{{ backup_timestamp }}'
+            remote_src: yes
+            mode: '0600'
+        ignore_errors: true
+
+  when: security.fail2ban is defined
+
+- name: Backup kernel security parameters
+  block:
+      - name: Backup current sysctl security parameters
+        shell: |
+            sysctl -a | grep -E "(kernel\.|net\.ipv4\.|net\.ipv6\.)" > "/var/backups/ansible-security/sysctl-security.{{ backup_timestamp }}"
+        ignore_errors: true
+
+      - name: Backup existing security sysctl files
+        shell: tar -czf "/var/backups/ansible-security/sysctl-security-files.{{ backup_timestamp }}.tar.gz" -C /etc/sysctl.d . 2>/dev/null
+        ignore_errors: true
+
+  when: security.enable_kernel_hardening | default(false)
+
+- name: Backup audit configuration
+  block:
+      - name: Backup auditd configuration
+        copy:
+            src: /etc/audit/auditd.conf
+            dest: '/var/backups/ansible-security/auditd.conf.{{ backup_timestamp }}'
+            remote_src: yes
+            mode: '0600'
+        ignore_errors: true
+
+      - name: Backup audit rules
+        copy:
+            src: /etc/audit/rules.d/audit.rules
+            dest: '/var/backups/ansible-security/audit.rules.{{ backup_timestamp }}'
+            remote_src: yes
+            mode: '0600'
+        ignore_errors: true
+
+  when: security.audit is defined and security.audit.enable_logging | default(false)
+
+- name: Backup system security state
+  block:
+      - name: Backup current iptables rules
+        shell: iptables-save > "/var/backups/ansible-security/iptables.{{ backup_timestamp }}"
+        ignore_errors: true
+
+      - name: Backup current ip6tables rules
+        shell: ip6tables-save > "/var/backups/ansible-security/ip6tables.{{ backup_timestamp }}"
+        ignore_errors: true
+
+      - name: Backup current service states for security services
+        shell: |
+            systemctl is-enabled sshd > "/var/backups/ansible-security/service-states.{{ backup_timestamp }}" 2>/dev/null || echo "sshd not found" > "/var/backups/ansible-security/service-states.{{ backup_timestamp }}"
+            systemctl is-enabled ssh >> "/var/backups/ansible-security/service-states.{{ backup_timestamp }}" 2>/dev/null || echo "ssh not found" >> "/var/backups/ansible-security/service-states.{{ backup_timestamp }}"
+            systemctl is-enabled fail2ban >> "/var/backups/ansible-security/service-states.{{ backup_timestamp }}" 2>/dev/null || echo "fail2ban not found" >> "/var/backups/ansible-security/service-states.{{ backup_timestamp }}"
+            systemctl is-enabled auditd >> "/var/backups/ansible-security/service-states.{{ backup_timestamp }}" 2>/dev/null || echo "auditd not found" >> "/var/backups/ansible-security/service-states.{{ backup_timestamp }}"
+        ignore_errors: true
+
+- name: Create comprehensive security backup manifest
+  copy:
+      content: |
+          # Security role backup manifest - {{ ansible_date_time.iso8601 }}
+          backup_timestamp: {{ backup_timestamp }}
+          hostname: {{ ansible_hostname }}
+
+          # Configuration sections to be applied:
+          ssh_hardening: {{ security.enable_ssh_hardening | default(false) }}
+          kernel_hardening: {{ security.enable_kernel_hardening | default(false) }}
+          fail2ban_enabled: {{ security.fail2ban is defined }}
+          audit_enabled: {{ security.audit.enable_logging | default(false) if security.audit is defined else false }}
+
+          # Backup files created:
+          {% if security.enable_ssh_hardening | default(false) %}
+          sshd_config_backup: {{ sshd_backup.dest | default('none') }}
+          ssh_moduli_backup: /var/backups/ansible-security/moduli.{{ backup_timestamp }}
+          {% endif %}
+
+          {% if ansible_os_family == "Debian" %}
+          ufw_rules_backup: /var/backups/ansible-security/ufw-rules.{{ backup_timestamp }}
+          ufw_config_backup: /var/backups/ansible-security/ufw-config.{{ backup_timestamp }}.tar.gz
+          {% elif ansible_os_family == "RedHat" %}
+          firewalld_rules_backup: /var/backups/ansible-security/firewalld-rules.{{ backup_timestamp }}
+          firewalld_config_backup: /var/backups/ansible-security/firewalld-config.{{ backup_timestamp }}.tar.gz
+          {% endif %}
+
+          {% if security.fail2ban is defined %}
+          fail2ban_jail_backup: /var/backups/ansible-security/jail.local.{{ backup_timestamp }}
+          fail2ban_main_backup: /var/backups/ansible-security/fail2ban.local.{{ backup_timestamp }}
+          {% endif %}
+
+          {% if security.enable_kernel_hardening | default(false) %}
+          sysctl_security_backup: /var/backups/ansible-security/sysctl-security.{{ backup_timestamp }}
+          sysctl_files_backup: /var/backups/ansible-security/sysctl-security-files.{{ backup_timestamp }}.tar.gz
+          {% endif %}
+
+          iptables_backup: /var/backups/ansible-security/iptables.{{ backup_timestamp }}
+          ip6tables_backup: /var/backups/ansible-security/ip6tables.{{ backup_timestamp }}
+          service_states_backup: /var/backups/ansible-security/service-states.{{ backup_timestamp }}
+
+          # Security settings to be applied:
+          {% if security.fail2ban is defined %}
+          fail2ban_max_retries: {{ security.fail2ban.max_retries }}
+          fail2ban_bantime_secs: {{ security.fail2ban.bantime_secs }}
+          fail2ban_findtime_secs: {{ security.fail2ban.findtime_secs }}
+          {% endif %}
+
+          {% if security.ssh is defined %}
+          ssh_max_startups: {{ security.ssh.max_startups }}
+          ssh_login_grace_time: {{ security.ssh.login_grace_time_secs }}
+          ssh_disable_weak_algorithms: {{ security.ssh.disable_weak_algorithms | default(false) }}
+          {% endif %}
+      dest: '/var/backups/ansible-security/manifest.{{ backup_timestamp }}'
+      mode: '0600'
+
+- name: Log backup completion
+  debug:
+      msg: |
+          Security configuration backup completed:
+          - Timestamp: {{ backup_timestamp }}
+          - SSH config: {{ 'backed up' if security.enable_ssh_hardening | default(false) else 'skipped' }}
+          - Firewall config: backed up
+          - Fail2ban config: {{ 'backed up' if security.fail2ban is defined else 'skipped' }}
+          - Kernel security: {{ 'backed up' if security.enable_kernel_hardening | default(false) else 'skipped' }}
+          - Audit config: {{ 'backed up' if (security.audit is defined and security.audit.enable_logging | default(false)) else 'skipped' }}

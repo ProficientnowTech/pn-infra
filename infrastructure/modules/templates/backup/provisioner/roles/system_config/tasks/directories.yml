@@ -1,0 +1,13 @@
+---
+# Directories Tasks - Create and Configure Directories
+
+- name: Create directories
+  file:
+      path: '{{ item.path }}'
+      state: directory
+      owner: "{{ item.owner | default('root') }}"
+      group: "{{ item.group | default('root') }}"
+      mode: "{{ item.mode | default('0755') }}"
+      recurse: '{{ item.apply_all | default(false) }}'
+  loop: '{{ directories }}'
+  when: directories is defined

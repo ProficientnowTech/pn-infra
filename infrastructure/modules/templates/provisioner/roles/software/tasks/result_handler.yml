@@ -1,0 +1,186 @@
+---
+# Phase 5: Handle software role results - commit success or rollback on failure
+- name: Evaluate software role execution status
+  set_fact:
+      software_role_success: >-
+          {{ software_validation_passed and
+             (software_backup_completed or backup_result is skipped) and
+             software_configuration_applied and
+             software_tests_passed }}
+
+- name: Handle successful software configuration
+  block:
+      - name: Log successful software configuration
+        debug:
+            msg: |
+                Software role completed successfully:
+                - All validations passed ✓
+                - Configuration applied ✓
+                - All tests passed ✓
+                - Packages installed: {{ installed_packages | default([]) | length }}/{{ base_packages | length }}
+                - Success rate: {{ installation_success_rate | default('unknown') }}%
+
+      - name: Create success marker
+        copy:
+            content: |
+                # Software role completion marker
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: success
+                os_family: {{ ansible_os_family }}
+                package_manager: {{ 'apt' if ansible_os_family == 'Debian' else 'yum/dnf' }}
+                packages_requested: {{ base_packages | length }}
+                packages_installed: {{ installed_packages | default([]) | length }}
+                packages_missing: {{ missing_packages | default([]) | length }}
+                success_rate: {{ installation_success_rate | default(0) }}%
+                backup_timestamp: {{ backup_timestamp | default('none') }}
+
+                # Successfully installed packages:
+                {% for package in installed_packages | default([]) %}
+                - {{ package }}
+                {% endfor %}
+
+                {% if missing_packages | default([]) | length > 0 %}
+                # Missing packages:
+                {% for package in missing_packages %}
+                - {{ package }}
+                {% endfor %}
+                {% endif %}
+            dest: /var/lib/ansible/software-role-status
+            mode: '0644'
+            owner: root
+            group: root
+
+      - name: Ensure ansible state directory exists
+        file:
+            path: /var/lib/ansible
+            state: directory
+            mode: '0755'
+            owner: root
+            group: root
+
+      - name: Set global software status flag for dependent roles
+        set_fact:
+            software_status: 'success'
+
+      - name: Update package cache one final time
+        block:
+            - name: Final apt cache update (Debian)
+              apt:
+                  update_cache: yes
+              when: ansible_os_family == "Debian"
+              ignore_errors: true
+
+            - name: Final yum cache clean (RedHat)
+              yum:
+                  autoremove: yes
+              when: ansible_os_family == "RedHat"
+              ignore_errors: true
+
+  when: software_role_success
+
+- name: Handle failed software configuration
+  block:
+      - name: Log software role failure details
+        debug:
+            msg: |
+                Software role failed with status:
+                - Validation passed: {{ software_validation_passed }}
+                - Backup completed: {{ software_backup_completed | default('skipped') }}
+                - Configuration applied: {{ software_configuration_applied }}
+                - Tests passed: {{ software_tests_passed }}
+                - Missing packages: {{ missing_packages | default([]) | join(', ') }}
+
+      - name: Attempt rollback if configuration was applied
+        block:
+            - name: Read backup manifest
+              slurp:
+                  src: '/var/backups/ansible-software/manifest.{{ backup_timestamp }}'
+              register: backup_manifest
+              when: backup_timestamp is defined
+
+            - name: Log rollback attempt
+              debug:
+                  msg: |
+                      Attempting software rollback:
+                      - Package installations cannot be automatically rolled back
+                      - Manual intervention may be required for package removal
+                      - Check /var/backups/ansible-software/ for backup files
+                      - Consider using backup manifests to identify changes
+
+            - name: Remove potentially problematic packages
+              block:
+                  - name: Remove packages that failed testing (Debian)
+                    apt:
+                        name: '{{ item }}'
+                        state: absent
+                        purge: yes
+                    loop: '{{ missing_packages | default([]) }}'
+                    when: ansible_os_family == "Debian"
+                    ignore_errors: true
+
+                  - name: Remove packages that failed testing (RedHat)
+                    yum:
+                        name: '{{ item }}'
+                        state: absent
+                    loop: '{{ missing_packages | default([]) }}'
+                    when: ansible_os_family == "RedHat"
+                    ignore_errors: true
+
+              when: missing_packages is defined and missing_packages | length > 0
+
+        when: software_configuration_applied and backup_timestamp is defined
+
+      - name: Create failure marker
+        copy:
+            content: |
+                # Software role failure marker
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: failed
+                validation_passed: {{ software_validation_passed }}
+                backup_completed: {{ software_backup_completed | default('unknown') }}
+                configuration_applied: {{ software_configuration_applied }}
+                tests_passed: {{ software_tests_passed }}
+                packages_requested: {{ base_packages | length }}
+                packages_installed: {{ installed_packages | default([]) | length }}
+                packages_missing: {{ missing_packages | default([]) | length }}
+                success_rate: {{ installation_success_rate | default(0) }}%
+                rollback_attempted: {{ 'yes' if backup_timestamp is defined else 'no' }}
+
+                # Requested packages:
+                {% for package in base_packages %}
+                - {{ package.name }}
+                {% endfor %}
+
+                {% if missing_packages | default([]) | length > 0 %}
+                # Failed installations:
+                {% for package in missing_packages %}
+                - {{ package }}
+                {% endfor %}
+                {% endif %}
+            dest: /var/lib/ansible/software-role-status
+            mode: '0644'
+            owner: root
+            group: root
+
+      - name: Ensure ansible state directory exists
+        file:
+            path: /var/lib/ansible
+            state: directory
+            mode: '0755'
+            owner: root
+            group: root
+
+      - name: Set global software status flag for dependent roles
+        set_fact:
+            software_status: 'failed'
+
+      - name: Fail the role if critical issues occurred
+        fail:
+            msg: |
+                Software role failed to complete successfully.
+                Success rate: {{ installation_success_rate | default('unknown') }}%
+                Missing packages: {{ missing_packages | default([]) | join(', ') }}
+                Check /var/lib/ansible/software-role-status for details.
+                Manual package management may be required.
+
+  when: not software_role_success

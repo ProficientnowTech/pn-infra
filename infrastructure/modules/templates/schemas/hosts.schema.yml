@@ -1,0 +1,55 @@
+---
+uri: ansible_hosts_inventory_schema
+schema:
+    type: object
+    items:
+        all:
+            $ref: all_vars
+---
+uri: all_vars
+schema:
+    type: object
+    items:
+        children:
+            $ref: children_vars_hash
+        vars:
+            type: object
+            items:
+                ansible_connection:
+                    type: string
+                ansible_python_interpreter:
+                    type: string
+                primary_interface:
+                    type: string
+            required:
+                - ansible_connection
+                - ansible_python_interpreter
+                - primary_interface
+    required:
+        - children
+        - vars
+---
+uri: children_vars_hash
+schema:
+    type: hash
+    items:
+        type: object
+        items:
+            hosts:
+                $ref: host_vars_hash
+        required:
+            - hosts
+---
+uri: host_vars_hash
+schema:
+    type: hash
+    items:
+        type: object
+        items:
+            ansible_host:
+                type: string
+            instance_id:
+                type: integer
+        required:
+            - ansible_host
+            - instance_id

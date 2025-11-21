@@ -1,0 +1,52 @@
+enabled: true
+roles:
+  - name: 'k8s-master'
+    enabled: true
+    instances: 5
+  - name: 'k8s-worker'
+    enabled: true
+    instances: 10
+  - name: 'k8s-storage'
+    enabled: true
+    instances: 3
+  - name: 'ans-controller'
+    enabled: true
+    instances: 1
+defaults:
+  packer:
+    required_version: 1.12.0
+    plugins:
+      ansible:
+        version: '1'
+      git:
+        version: '0.6.2'
+      proxmox:
+        version: '1.2.3'
+  vm:
+    bios_type: 'ovmf'
+    qemu_agent: true
+    boot_enabled: true
+    boot_wait: '10s'
+    timeout: '30m'
+    cloudinit: true
+  disk:
+    virtio_device: vda
+    scsi_device: sda
+    use_swap: false
+  plugins_config:
+    ansible:
+      enabled: true
+      requirements_file: 'linux-requirements.yml'
+      playbook_file: 'linux-playbook.yml'
+      python_interpreter: '/usr/bin/python3'
+      galaxy_force_with_deps: true
+      extra_vars: []
+    proxmox:
+      hostname: ''
+      node: ''
+      insecure: ''
+      pool: ''
+      api:
+        url: ''
+        token_id: ''
+        token_secret: ''

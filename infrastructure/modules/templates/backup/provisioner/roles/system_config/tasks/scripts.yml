@@ -1,0 +1,26 @@
+---
+# Scripts Tasks - Execute Configuration Scripts
+
+- name: Execute post-install scripts
+  shell: '{{ item }}'
+  loop: '{{ post_install_scripts }}'
+  when: post_install_scripts is defined
+  register: post_install_results
+
+- name: Execute startup scripts
+  shell: '{{ item }}'
+  loop: '{{ startup_scripts }}'
+  when: startup_scripts is defined
+  register: startup_results
+
+- name: Execute validation scripts
+  shell: '{{ item }}'
+  loop: '{{ validation_scripts }}'
+  when: validation_scripts is defined
+  register: validation_results
+
+- name: Display script execution results
+  debug:
+      msg: '{{ item }}'
+  loop: '{{ (post_install_results.results + startup_results.results + validation_results.results) | default([]) }}'
+  when: item.stdout is defined

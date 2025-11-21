@@ -1,0 +1,105 @@
+---
+# Disk Management Configuration Playbook
+# Handles partitioning, filesystem creation, mounting, and fstab management
+# Depends on software role for required disk utilities
+- name: Disk Management Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+      disk_management_status: 'unknown'
+
+  pre_tasks:
+      - name: Check software role dependency
+        assert:
+            that:
+                - software_status is defined
+                - software_status == "success"
+            fail_msg: |
+                Disk management playbook requires successful software configuration.
+                Software status: {{ software_status | default('undefined') }}
+                Run software.yml playbook first.
+            success_msg: 'Software role dependency satisfied'
+
+      - name: Log disk_management playbook start
+        debug:
+            msg: |
+                Starting disk management configuration playbook
+                Software status: {{ software_status }}
+                Partitions to create: {{ disk_management.partitions | default([]) | length }}
+                {% if disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0 %}
+                Target devices: {{ disk_management.partitions | map(attribute='device') | list | unique | join(', ') }}
+                Mount points: {{ disk_management.partitions | map(attribute='mount_point') | list | join(', ') }}
+                {% else %}
+                Note: No disk partitions defined - disk management will be skipped
+                {% endif %}
+
+  roles:
+      - role: disk_management
+        when: disk_management is defined
+
+  post_tasks:
+      - name: Set disk_management completion status for orchestrator
+        set_fact:
+            disk_management_status: "{{ 'success' if ansible_failed_task is not defined else 'failed' }}"
+
+      - name: Log disk_management playbook completion
+        debug:
+            msg: |
+                Disk management configuration playbook completed
+                Status: {{ disk_management_status }}
+                {% if disk_management_status == 'success' %}
+                {% if disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0 %}
+                ✓ Partitions created: {{ disk_management.partitions | length }}
+                ✓ Filesystems created: {{ disk_management.partitions | length }}
+                ✓ Mount points configured: {{ disk_management.partitions | length }}
+                ✓ fstab entries added: {{ disk_management.partitions | length }}
+                {% for partition in disk_management.partitions %}
+                ✓ {{ partition.mount_point }}: {{ partition.filesystem }} on {{ partition.device }}{{ partition.number }}
+                {% endfor %}
+                {% else %}
+                ✓ No disk operations required - configuration complete
+                {% endif %}
+                ✓ System ready for dependent roles
+                {% else %}
+                ✗ Disk management configuration failed - check role logs for details
+                ✗ System may be in inconsistent state - manual intervention required
+                ✗ Check /var/lib/ansible/disk-management-role-status for recovery information
+                {% endif %}
+
+      - name: Create disk_management status file for orchestrator
+        copy:
+            content: |
+                # Disk management playbook status for orchestration
+                timestamp: {{ ansible_date_time.iso8601 }}
+                playbook: disk_management.yml
+                status: {{ disk_management_status }}
+                software_dependency: {{ software_status }}
+                role_executed: {{ 'disk_management' if disk_management is defined else 'skipped - no disk config' }}
+                partitions_count: {{ disk_management.partitions | default([]) | length }}
+                hostname: {{ ansible_hostname }}
+
+                {% if disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0 %}
+                # Partition summary:
+                {% for partition in disk_management.partitions %}
+                - device: {{ partition.device }}{{ partition.number }}
+                  filesystem: {{ partition.filesystem }}
+                  mount_point: {{ partition.mount_point }}
+                  range: {{ partition.part_start }} to {{ partition.part_end }}
+                {% endfor %}
+                {% else %}
+                note: "No disk partitions were configured"
+                {% endif %}
+
+                # Critical warnings:
+                {% if disk_management_status == 'failed' %}
+                warning: "DISK OPERATIONS FAILED - Manual intervention required before reboot"
+                recovery_info: "Check /var/lib/ansible/disk-management-role-status for recovery steps"
+                backup_location: "/var/backups/ansible-disk-management/"
+                {% endif %}
+            dest: /var/lib/ansible/playbook-disk-management-status
+            mode: '0644'
+            owner: root
+            group: root
+        delegate_to: localhost
+        run_once: true

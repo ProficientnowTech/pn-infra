@@ -1,0 +1,26 @@
+---
+# Software role handlers
+- name: update apt cache
+  apt:
+      update_cache: yes
+  when: ansible_os_family == "Debian"
+  listen: update package cache
+
+- name: update yum cache
+  yum:
+      update_cache: yes
+  when: ansible_os_family == "RedHat"
+  listen: update package cache
+
+- name: clean apt cache
+  apt:
+      autoclean: yes
+      autoremove: yes
+  when: ansible_os_family == "Debian"
+  listen: clean package cache
+
+- name: clean yum cache
+  yum:
+      autoremove: yes
+  when: ansible_os_family == "RedHat"
+  listen: clean package cache

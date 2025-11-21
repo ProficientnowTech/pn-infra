@@ -1,0 +1,246 @@
+---
+# Phase 5: Handle disk_management role results - commit success or rollback on failure
+- name: Evaluate disk_management role execution status
+  set_fact:
+      disk_management_role_success: >-
+          {{ disk_management_validation_passed and
+             (disk_management_backup_completed or backup_result is skipped) and
+             disk_management_configuration_applied and
+             disk_management_tests_passed }}
+
+- name: Handle successful disk_management configuration
+  block:
+      - name: Log successful disk_management configuration
+        debug:
+            msg: |
+                Disk management role completed successfully:
+                - All validations passed ✓
+                - Configuration applied ✓
+                - All tests passed ✓
+                - Partitions created: {{ disk_management.partitions | default([]) | length }}
+                - Filesystems created: {{ disk_management.partitions | default([]) | length }}
+                - Mount points configured: {{ disk_management.partitions | default([]) | length }}
+                - fstab entries added: {{ disk_management.partitions | default([]) | length }}
+
+      - name: Create success marker
+        copy:
+            content: |
+                # Disk management role completion marker
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: success
+                hostname: {{ ansible_hostname }}
+
+                # Configuration applied:
+                partitions_count: {{ disk_management.partitions | default([]) | length }}
+                backup_timestamp: {{ backup_timestamp | default('none') }}
+
+                {% if disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0 %}
+                # Partition details:
+                {% for partition in disk_management.partitions %}
+                - device: {{ partition.device }}{{ partition.number }}
+                  filesystem: {{ partition.filesystem }}
+                  mount_point: {{ partition.mount_point }}
+                  uuid: {{ partition_uuids[partition.device ~ partition.number] | default('unknown') }}
+                  size_range: {{ partition.part_start }} to {{ partition.part_end }}
+                  mount_options: {{ partition.mount_options | default('defaults') }}
+                  created: success
+                {% endfor %}
+                {% else %}
+                # No partitions were configured
+                note: "Disk management role executed but no partitions were defined"
+                {% endif %}
+
+                # System state after operations:
+                fstab_updated: {{ 'yes' if (disk_management.partitions | default([]) | length > 0) else 'no' }}
+                all_mounts_functional: {{ 'yes' if (disk_management.partitions | default([]) | length > 0) else 'n/a' }}
+            dest: /var/lib/ansible/disk-management-role-status
+            mode: '0644'
+            owner: root
+            group: root
+
+      - name: Ensure ansible state directory exists
+        file:
+            path: /var/lib/ansible
+            state: directory
+            mode: '0755'
+            owner: root
+            group: root
+
+      - name: Set global disk_management status flag for dependent roles
+        set_fact:
+            disk_management_status: 'success'
+
+      - name: Final mount verification
+        command: mount -a
+        register: final_mount_check
+        ignore_errors: true
+
+      - name: Log final mount status
+        debug:
+            msg: |
+                Final mount verification: {{ 'passed' if final_mount_check.rc == 0 else 'failed' }}
+                {% if final_mount_check.rc != 0 %}
+                Mount errors: {{ final_mount_check.stderr }}
+                {% endif %}
+
+  when: disk_management_role_success
+
+- name: Handle failed disk_management configuration
+  block:
+      - name: Log disk_management role failure details
+        debug:
+            msg: |
+                Disk management role failed with status:
+                - Validation passed: {{ disk_management_validation_passed }}
+                - Backup completed: {{ disk_management_backup_completed | default('skipped') }}
+                - Configuration applied: {{ disk_management_configuration_applied }}
+                - Tests passed: {{ disk_management_tests_passed }}
+
+      - name: Attempt rollback if configuration was applied
+        block:
+            - name: Read backup manifest
+              slurp:
+                  src: '/var/backups/ansible-disk-management/manifest.{{ backup_timestamp }}'
+              register: backup_manifest
+              when: backup_timestamp is defined
+
+            - name: Emergency umount of failed partitions
+              mount:
+                  path: '{{ item.mount_point }}'
+                  state: unmounted
+              loop: '{{ disk_management.partitions | default([]) }}'
+              ignore_errors: true
+              when: backup_manifest is succeeded
+
+            - name: Remove failed fstab entries
+              mount:
+                  path: '{{ item.mount_point }}'
+                  state: absent
+              loop: '{{ disk_management.partitions | default([]) }}'
+              ignore_errors: true
+              when: backup_manifest is succeeded
+
+            - name: Restore original fstab
+              copy:
+                  src: '/var/backups/ansible-disk-management/fstab.{{ backup_timestamp }}'
+                  dest: /etc/fstab
+                  remote_src: yes
+                  backup: yes
+              ignore_errors: true
+              when: backup_manifest is succeeded
+
+            - name: Attempt to restore partition tables (DANGEROUS - manual verification recommended)
+              shell: |
+                  device="{{ item.device }}"
+                  backup_file="/var/backups/ansible-disk-management/partition-table-$(basename $device).{{ backup_timestamp }}.sfdisk"
+
+                  if [ -f "$backup_file" ] && [ -s "$backup_file" ] && ! grep -q "no partition table" "$backup_file"; then
+                    echo "WARNING: Attempting to restore partition table for $device"
+                    echo "This operation may cause data loss. Manual verification recommended."
+                    echo "Backup file: $backup_file"
+                    echo "To restore manually: sfdisk $device < $backup_file"
+                    # Uncomment the next line only if you want automatic partition table restoration
+                    # sfdisk "$device" < "$backup_file" || true
+                  else
+                    echo "No valid partition table backup found for $device or device had no partition table"
+                  fi
+              loop: '{{ disk_management.partitions | default([]) }}'
+              register: partition_rollback_attempt
+              ignore_errors: true
+              when: backup_manifest is succeeded
+
+            - name: Log rollback completion
+              debug:
+                  msg: |
+                      Rollback attempted for disk management configuration:
+                      - fstab restored from backup
+                      - Failed partitions unmounted
+                      - fstab entries removed
+                      - Partition table restoration info logged
+                      NOTE: Partition table restoration requires manual intervention for safety
+                      Check /var/backups/ansible-disk-management/ for restoration commands
+
+        when: disk_management_configuration_applied and backup_timestamp is defined
+
+      - name: Create failure marker
+        copy:
+            content: |
+                # Disk management role failure marker
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: failed
+                hostname: {{ ansible_hostname }}
+                validation_passed: {{ disk_management_validation_passed }}
+                backup_completed: {{ disk_management_backup_completed | default('unknown') }}
+                configuration_applied: {{ disk_management_configuration_applied }}
+                tests_passed: {{ disk_management_tests_passed }}
+                rollback_attempted: {{ 'yes' if backup_timestamp is defined else 'no' }}
+
+                # Configuration attempted:
+                partitions_count: {{ disk_management.partitions | default([]) | length }}
+
+                {% if disk_management is defined and disk_management.partitions is defined %}
+                # Partition configuration that failed:
+                {% for partition in disk_management.partitions %}
+                - device: {{ partition.device }}{{ partition.number }}
+                  filesystem: {{ partition.filesystem }}
+                  mount_point: {{ partition.mount_point }}
+                  size_range: {{ partition.part_start }} to {{ partition.part_end }}
+                  status: failed
+                {% endfor %}
+                {% endif %}
+
+                # Recovery information:
+                backup_location: /var/backups/ansible-disk-management/
+                fstab_backup: /var/backups/ansible-disk-management/fstab.{{ backup_timestamp | default('unknown') }}
+                partition_backups: /var/backups/ansible-disk-management/partition-table-*.{{ backup_timestamp | default('unknown') }}.*
+
+                # Manual recovery steps:
+                # 1. Check backup manifest: /var/backups/ansible-disk-management/manifest.{{ backup_timestamp | default('unknown') }}
+                # 2. Restore fstab: cp /var/backups/ansible-disk-management/fstab.{{ backup_timestamp | default('unknown') }} /etc/fstab
+                # 3. Unmount failed partitions manually if needed
+                # 4. Restore partition tables using sfdisk if required (DANGEROUS - verify first)
+                # 5. Check system integrity before proceeding
+            dest: /var/lib/ansible/disk-management-role-status
+            mode: '0644'
+            owner: root
+            group: root
+
+      - name: Ensure ansible state directory exists
+        file:
+            path: /var/lib/ansible
+            state: directory
+            mode: '0755'
+            owner: root
+            group: root
+
+      - name: Set global disk_management status flag for dependent roles
+        set_fact:
+            disk_management_status: 'failed'
+
+      - name: Fail the role if critical issues occurred
+        fail:
+            msg: |
+                Disk management role failed to complete successfully.
+
+                CRITICAL: Disk operations may have left the system in an inconsistent state.
+
+                Failure summary:
+                - Partitions attempted: {{ disk_management.partitions | default([]) | length }}
+                - Validation passed: {{ disk_management_validation_passed }}
+                - Configuration applied: {{ disk_management_configuration_applied }}
+                - Tests passed: {{ disk_management_tests_passed }}
+
+                Recovery information:
+                - Check /var/lib/ansible/disk-management-role-status for detailed recovery steps
+                - Backup files are available in /var/backups/ansible-disk-management/
+                - fstab has been restored from backup if rollback was attempted
+
+                MANUAL INTERVENTION REQUIRED:
+                1. Verify system boot capability
+                2. Check disk integrity: fsck on affected devices
+                3. Validate mount points and fstab entries
+                4. Consider restoring from full system backup if available
+
+                DO NOT REBOOT without verifying system integrity.
+
+  when: not disk_management_role_success

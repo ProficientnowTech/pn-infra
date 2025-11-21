@@ -1,0 +1,9 @@
+---
+- name: Manage systemd services
+  systemd:
+      name: '{{ item.name }}'
+      enabled: '{{ item.enabled | default(true) }}'
+      state: "{{ item.state | default('started') }}"
+      daemon_reload: yes
+  loop: '{{ systemd_services }}'
+  when: systemd_services is defined

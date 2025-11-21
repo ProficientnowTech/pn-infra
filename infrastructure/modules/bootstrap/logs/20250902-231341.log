@@ -1,0 +1,30 @@
+=== Deployment Script Log Started ===
+Timestamp: 2025-09-02 23:13:41 IST
+Script: ./test.sh
+Arguments: ./logs
+=========================================
+
+[2025-09-02 23:13:41] [INFO]: Checking Prerequisites...
+[2025-09-02 23:13:41] [DEBUG]: arch: x86_64
+[2025-09-02 23:13:41] [DEBUG]: os: Linux
+==================================================
+[2025-09-02 23:13:41] [INFO]: Checking OS and ARCH
+[2025-09-02 23:13:41] [INFO]: Checking variable OS...
+[2025-09-02 23:13:41] [SUCCESS]: Variable 'OS' is set to: Linux
+[2025-09-02 23:13:41] [INFO]: Checking variable ARCH...
+[2025-09-02 23:13:41] [SUCCESS]: Variable 'ARCH' is set to: x86_64
+[2025-09-02 23:13:41] [SUCCESS]: Operating System and Architecture are supported
+==================================================
+[2025-09-02 23:13:41] [INFO]: Validating script parameters
+[2025-09-02 23:13:41] [SUCCESS]: Parameters are valid
+==================================================
+[2025-09-02 23:13:41] [INFO]: Checking required tools
+[2025-09-02 23:13:41] [INFO]: Checking yq...
+[2025-09-02 23:13:41] [SUCCESS]: yq found with version: yq 3.4.3
+[2025-09-02 23:13:41] [INFO]: Checking python3...
+[2025-09-02 23:13:41] [SUCCESS]: python3 found with version: Python 3.13.5
+[2025-09-02 23:13:41] [INFO]: Checking jinja2...
+[2025-09-02 23:13:41] [SUCCESS]: jinja2 found with version: jinja2-cli v0.8.2
+ - Jinja2 v3.1.6
+[2025-09-02 23:13:41] [SUCCESS]: All required tools are installed
+[2025-09-02 23:13:41] [SUCCESS]: All prerequisites verified

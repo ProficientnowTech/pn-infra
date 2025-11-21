@@ -1,0 +1,16 @@
+---
+# Identity & Users Role - Handlers
+# Basic SSH service management
+
+- name: restart ssh service
+  listen: restart ssh service
+  systemd:
+      name: "{{ ((ansible_facts.os_family | default(ansible_os_family)) == 'Debian') | ternary('ssh','sshd') }}"
+      state: restarted
+      enabled: true
+      daemon_reload: true
+
+- name: reload ssh service
+  systemd:
+      name: "{{ ((ansible_facts.os_family | default(ansible_os_family)) == 'Debian') | ternary('ssh','sshd') }}"
+      state: reloaded

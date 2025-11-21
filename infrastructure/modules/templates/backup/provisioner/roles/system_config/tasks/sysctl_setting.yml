@@ -1,0 +1,17 @@
+---
+- name: Apply custom sysctl settings
+  sysctl:
+      name: '{{ item.name }}'
+      value: '{{ item.value }}'
+      state: present
+      reload: yes
+  loop: '{{ sysctl_settings }}'
+  when: sysctl_settings is defined
+
+- name: Create custom sysctl configuration file
+  template:
+      src: sysctl/99-custom.conf.j2
+      dest: /etc/sysctl.d/99-custom.conf
+      mode: '0644'
+  when: sysctl_settings is defined
+  notify: reload sysctl

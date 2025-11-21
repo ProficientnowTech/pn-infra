@@ -1,0 +1,99 @@
+---
+# Networking Role - Validation Phase
+# Validates VLAN configuration and network prerequisites
+
+- name: Check if network_vlans variable is defined
+  fail:
+      msg: "Network VLANs variable is not defined. Define 'network_vlans' in inventory or set to empty list []."
+  when: network_vlans is not defined
+
+- name: Skip validation if network_vlans list is empty
+  debug:
+      msg: 'No VLANs configured - skipping network management'
+  when: network_vlans | length == 0
+
+- name: Validate VLAN configuration format
+  fail:
+      msg: 'VLAN entry {{ item }} is missing required fields: name, id, gateway'
+  when:
+      - network_vlans | length > 0
+      - item.name is not defined or item.name == ""
+      - item.id is not defined
+      - item.gateway is not defined or item.gateway == ""
+  loop: '{{ network_vlans }}'
+
+- name: Validate VLAN IDs are numeric and in valid range
+  fail:
+      msg: "VLAN ID '{{ item.id }}' for VLAN '{{ item.name }}' must be between 1 and 4094"
+  when:
+      - network_vlans | length > 0
+      - item.id | int < 1 or item.id | int > 4094
+  loop: '{{ network_vlans }}'
+
+- name: Check for duplicate VLAN IDs
+  fail:
+      msg: 'Duplicate VLAN ID detected: {{ item }}'
+  when: network_vlans | selectattr('id', 'equalto', item) | list | length > 1
+  loop: "{{ network_vlans | map(attribute='id') | list }}"
+
+- name: Check for duplicate VLAN names
+  fail:
+      msg: 'Duplicate VLAN name detected: {{ item }}'
+  when: network_vlans | selectattr('name', 'equalto', item) | list | length > 1
+  loop: "{{ network_vlans | map(attribute='name') | list }}"
+
+- name: Validate gateway IP addresses
+  fail:
+      msg: "Invalid gateway IP '{{ item.gateway }}' for VLAN '{{ item.name }}'"
+  when:
+      - (network_vlans | length) > 0
+      - not (item.gateway is ansible.utils.ipv4)
+  loop: '{{ network_vlans }}'
+
+- name: Check system networking prerequisites
+  stat:
+      path: /sys/class/net
+  register: net_sys_check
+  failed_when: not net_sys_check.stat.exists
+
+- name: Validate required networking commands are available
+  vars:
+      required_net_commands: ['ip']
+  command: 'which {{ item }}'
+  loop: '{{ required_net_cmds }}'
+  register: required_net_commands
+  failed_when: required_net_commands.rc != 0
+  changed_when: false
+  when: network_vlans | length > 0
+
+- name: Check if we can modify network configuration
+  stat:
+      path: /etc/netplan
+  register: netplan_check
+  when: ansible_os_family == "Debian"
+
+- name: Check network-scripts directory (RedHat family)
+  stat:
+      path: /etc/sysconfig/network-scripts
+  register: network_scripts_check
+  when: ansible_os_family == "RedHat"
+
+- name: Validate network configuration directory exists
+  fail:
+      msg: 'Network configuration directory not found. Cannot configure VLANs.'
+  when:
+      - network_vlans | length > 0
+      - ansible_os_family == "Debian" and not netplan_check.stat.exists
+      - ansible_os_family == "RedHat" and not network_scripts_check.stat.exists
+
+- name: Log validation results
+  debug:
+      msg:
+          - 'Networking validation completed successfully'
+          - 'Found {{ network_vlans | length }} VLANs to configure'
+          - 'System networking prerequisites verified'
+  when: network_vlans | length > 0
+
+- name: Set validation success marker
+  set_fact:
+      networking_validation_passed: true

@@ -1,0 +1,96 @@
+{{- range .Values.projects }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .name }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+    platform.pnats.cloud/stack: {{ .stack | default .name | quote }}
+    platform.pnats.cloud/layer: {{ .layer | default "application" | quote }}
+    {{- if .syncWaveRange }}
+    platform.pnats.cloud/sync-wave-range: {{ .syncWaveRange | quote }}
+    {{- end }}
+    {{- if .dependencies }}
+    platform.pnats.cloud/depends-on: {{ .dependencies | join "," | quote }}
+    {{- end }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: appproject
+    app.kubernetes.io/part-of: argocd
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    platform.pnats.cloud/project-type: {{ .projectType | default "platform" | quote }}
+    platform.pnats.cloud/environment: {{ .environment | default "production" | quote }}
+spec:
+  description: {{ .description | quote }}
+
+  sourceRepos:
+    {{- range .sourceRepos }}
+    - {{ . | quote }}
+    {{- end }}
+
+  destinations:
+    {{- range .destinations }}
+    - namespace: {{ .namespace }}
+      server: {{ .server | default "https://kubernetes.default.svc" }}
+      {{- if .name }}
+      name: {{ .name }}
+      {{- end }}
+    {{- end }}
+
+  clusterResourceWhitelist:
+    {{- range .clusterResources }}
+    - group: {{ .group | quote }}
+      kind: {{ .kind | quote }}
+    {{- end }}
+
+  namespaceResourceWhitelist:
+    {{- range .namespaceResources }}
+    - group: {{ .group | quote }}
+      kind: {{ .kind | quote }}
+    {{- end }}
+
+  {{- if .orphanedResources }}
+  orphanedResources:
+    warn: {{ .orphanedResources.warn | default true }}
+    {{- if .orphanedResources.ignore }}
+    ignore:
+      {{- toYaml .orphanedResources.ignore | nindent 6 }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .syncWindows }}
+  syncWindows:
+    {{- toYaml .syncWindows | nindent 4 }}
+  {{- end }}
+
+  roles:
+    - name: admin
+      description: Admin access to {{ .name }} project
+      policies:
+        - p, proj:{{ .name }}:admin, applications, *, {{ .name }}/*, allow
+        - p, proj:{{ .name }}:admin, repositories, *, *, allow
+        - p, proj:{{ .name }}:admin, clusters, *, *, allow
+      groups:
+        - platform-admins
+
+    - name: developer
+      description: Developer access to {{ .name }} project
+      policies:
+        - p, proj:{{ .name }}:developer, applications, get, {{ .name }}/*, allow
+        - p, proj:{{ .name }}:developer, applications, sync, {{ .name }}/*, allow
+        - p, proj:{{ .name }}:developer, repositories, get, *, allow
+      groups:
+        - {{ .name }}-developers
+
+    - name: viewer
+      description: Read-only access to {{ .name }} project
+      policies:
+        - p, proj:{{ .name }}:viewer, applications, get, {{ .name }}/*, allow
+        - p, proj:{{ .name }}:viewer, repositories, get, *, allow
+      groups:
+        - {{ .name }}-viewers
+        - platform-viewers
+{{- end }}

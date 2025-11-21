@@ -1,0 +1,221 @@
+---
+# Phase 4: Test disk management configuration
+- name: Test disk management configuration
+  block:
+      - name: Test partition existence
+        block:
+            - name: Verify partitions were created
+              stat:
+                  path: '{{ item.device }}{{ item.number }}'
+              register: partition_test
+              failed_when: not partition_test.stat.exists
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Assert all partitions exist
+              assert:
+                  that:
+                      - partition_test.results | selectattr('stat.exists', 'equalto', true) | list | length == disk_management.partitions | length
+                  fail_msg: 'Not all partitions were created successfully'
+                  success_msg: 'All {{ disk_management.partitions | length }} partitions created successfully'
+
+        when: disk_management.partitions | length > 0
+
+      - name: Test filesystem creation
+        block:
+            - name: Verify filesystems were created
+              command: blkid -s TYPE -o value "{{ item.device }}{{ item.number }}"
+              register: filesystem_test
+              changed_when: false
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Assert filesystems match expected types
+              assert:
+                  that:
+                      - filesystem_test.results[idx].stdout == item.filesystem
+                  fail_msg: |
+                      Filesystem type mismatch on {{ item.device }}{{ item.number }}:
+                      Expected: {{ item.filesystem }}
+                      Actual: {{ filesystem_test.results[idx].stdout }}
+                  success_msg: 'Filesystem {{ item.filesystem }} created successfully on {{ item.device }}{{ item.number }}'
+              loop: '{{ disk_management.partitions }}'
+              loop_control:
+                  index_var: idx
+
+        when: disk_management.partitions | length > 0
+
+      - name: Test mount point creation and mounting
+        block:
+            - name: Verify mount points exist
+              stat:
+                  path: '{{ item.mount_point }}'
+              register: mount_point_test
+              failed_when: not mount_point_test.stat.exists or not mount_point_test.stat.isdir
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Verify filesystems are mounted
+              command: findmnt "{{ item.mount_point }}"
+              register: mount_test
+              changed_when: false
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Assert all filesystems are properly mounted
+              assert:
+                  that:
+                      - mount_test.results[idx].rc == 0
+                      - item.device ~ item.number in mount_test.results[idx].stdout or partition_uuids[item.device ~ item.number] in mount_test.results[idx].stdout
+                  fail_msg: |
+                      Mount verification failed for {{ item.mount_point }}:
+                      Expected device: {{ item.device }}{{ item.number }}
+                      Mount output: {{ mount_test.results[idx].stdout }}
+                  success_msg: '{{ item.mount_point }} mounted successfully'
+              loop: '{{ disk_management.partitions }}'
+              loop_control:
+                  index_var: idx
+
+        when: disk_management.partitions | length > 0
+
+      - name: Test fstab configuration
+        block:
+            - name: Verify fstab entries exist
+              command: grep "{{ item.mount_point }}" /etc/fstab
+              register: fstab_test
+              changed_when: false
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Verify fstab syntax is valid
+              command: findmnt --verify --verbose
+              register: fstab_syntax_test
+              changed_when: false
+              failed_when: fstab_syntax_test.rc != 0
+
+            - name: Assert fstab entries are correct
+              assert:
+                  that:
+                      - fstab_test.results[idx].rc == 0
+                      - item.mount_point in fstab_test.results[idx].stdout
+                      - partition_uuids[item.device ~ item.number] in fstab_test.results[idx].stdout
+                  fail_msg: |
+                      fstab entry verification failed for {{ item.mount_point }}:
+                      Expected UUID: {{ partition_uuids[item.device ~ item.number] }}
+                      fstab entry: {{ fstab_test.results[idx].stdout }}
+                  success_msg: 'fstab entry for {{ item.mount_point }} is correct'
+              loop: '{{ disk_management.partitions }}'
+              loop_control:
+                  index_var: idx
+
+        when: disk_management.partitions | length > 0
+
+      - name: Test filesystem functionality
+        block:
+            - name: Test write operations on mounted filesystems
+              file:
+                  path: '{{ item.mount_point }}/.ansible-disk-test'
+                  state: touch
+                  mode: '0644'
+              register: write_test
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Test read operations on mounted filesystems
+              stat:
+                  path: '{{ item.mount_point }}/.ansible-disk-test'
+              register: read_test
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Clean up test files
+              file:
+                  path: '{{ item.mount_point }}/.ansible-disk-test'
+                  state: absent
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Assert filesystem read/write functionality
+              assert:
+                  that:
+                      - write_test.results[idx] is succeeded
+                      - read_test.results[idx].stat.exists
+                  fail_msg: 'Filesystem read/write test failed on {{ item.mount_point }}'
+                  success_msg: 'Filesystem {{ item.mount_point }} is fully functional'
+              loop: '{{ disk_management.partitions }}'
+              loop_control:
+                  index_var: idx
+
+        when: disk_management.partitions | length > 0
+
+      - name: Test disk space and utilization
+        block:
+            - name: Get disk usage information
+              command: df -h "{{ item.mount_point }}"
+              register: disk_usage_test
+              changed_when: false
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Check available disk space
+              shell: df "{{ item.mount_point }}" | tail -1 | awk '{print $4}'
+              register: available_space_test
+              changed_when: false
+              loop: '{{ disk_management.partitions }}'
+
+            - name: Assert reasonable available space
+              assert:
+                  that:
+                      - available_space_test.results[idx].stdout | int > 1024 # At least 1MB available
+                  fail_msg: |
+                      Insufficient available space on {{ item.mount_point }}:
+                      {{ available_space_test.results[idx].stdout | int / 1024 }}MB
+                  success_msg: '{{ item.mount_point }} has adequate free space'
+              loop: '{{ disk_management.partitions }}'
+              loop_control:
+                  index_var: idx
+
+        when: disk_management.partitions | length > 0
+
+      - name: Test system stability after disk operations
+        block:
+            - name: Check system load after disk operations
+              shell: uptime | awk '{print $NF}'
+              register: system_load_disk_test
+              changed_when: false
+
+            - name: Check memory usage
+              shell: free | grep Mem | awk '{print ($3/$2) * 100.0}'
+              register: memory_usage_disk_test
+              changed_when: false
+
+            - name: Verify system stability
+              assert:
+                  that:
+                      - system_load_disk_test.stdout | float < 15.0
+                      - memory_usage_disk_test.stdout | float < 90.0
+                  fail_msg: |
+                      System may be stressed after disk operations:
+                      Load: {{ system_load_disk_test.stdout }}
+                      Memory: {{ memory_usage_disk_test.stdout }}%
+                  success_msg: 'System stable after disk operations'
+
+        when: disk_management.partitions | length > 0
+
+  when: disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0
+
+- name: Handle empty disk configuration test
+  debug:
+      msg: 'No disk partitions configured - disk management tests skipped ✓'
+  when: disk_management is not defined or disk_management.partitions is not defined or disk_management.partitions | length == 0
+
+- name: Final disk management validation summary
+  debug:
+      msg: |
+          Disk management configuration tests completed:
+          {% if disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0 %}
+          - Partitions created: {{ disk_management.partitions | length }} ✓
+          - Filesystems created: {{ disk_management.partitions | length }} ✓
+          - Mount points: {{ disk_management.partitions | length }} ✓
+          - fstab entries: {{ disk_management.partitions | length }} ✓
+          - Read/write functionality: tested ✓
+          - System stability: verified ✓
+          {% for partition in disk_management.partitions %}
+          - {{ partition.mount_point }}: {{ partition.filesystem }} on {{ partition.device }}{{ partition.number }} ✓
+          {% endfor %}
+          {% else %}
+          - No disk operations configured - skipped ✓
+          {% endif %}
+          - System load: {{ system_load_disk_test.stdout | default('N/A') }}
+          - Memory usage: {{ memory_usage_disk_test.stdout | default('N/A') }}%

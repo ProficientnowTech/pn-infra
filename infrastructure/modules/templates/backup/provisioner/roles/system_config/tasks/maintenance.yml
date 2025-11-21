@@ -1,0 +1,24 @@
+---
+- name: Configure automatic updates
+  block:
+      - name: Install unattended-upgrades
+        apt:
+            name: unattended-upgrades
+            state: present
+
+      - name: Configure unattended-upgrades
+        lineinfile:
+            path: /etc/apt/apt.conf.d/20auto-upgrades
+            line: '{{ item }}'
+            create: yes
+        loop:
+            - 'APT::Periodic::Update-Package-Lists "1";'
+            - 'APT::Periodic::Unattended-Upgrade "1";'
+            - 'APT::Periodic::AutocleanInterval "7";'
+
+      - name: Enable unattended-upgrades service
+        systemd:
+            name: unattended-upgrades
+            enabled: yes
+            state: started
+  when: maintenance.enable_autoupdates | default(false)

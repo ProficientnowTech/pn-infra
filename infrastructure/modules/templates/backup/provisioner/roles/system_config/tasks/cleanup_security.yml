@@ -1,0 +1,62 @@
+---
+# Cleanup Security Configuration
+
+- name: Restore original SSH configuration
+  copy:
+    src: /etc/ssh/sshd_config.bak
+    dest: /etc/ssh/sshd_config
+    remote_src: true
+  ignore_errors: true
+  notify: restart ssh
+
+- name: Disable UFW firewall
+  ufw:
+    state: disabled
+  ignore_errors: true
+
+- name: Reset UFW to defaults
+  ufw:
+    state: reset
+  ignore_errors: true
+
+- name: Stop and disable fail2ban
+  systemd:
+    name: fail2ban
+    state: stopped
+    enabled: no
+  ignore_errors: true
+
+- name: Remove fail2ban configuration
+  file:
+    path: /etc/fail2ban/jail.local
+    state: absent
+  ignore_errors: true
+
+- name: Stop and disable auditd
+  systemd:
+    name: auditd
+    state: stopped
+    enabled: no
+  ignore_errors: true
+
+- name: Remove audit rules
+  file:
+    path: /etc/audit/rules.d/audit.rules
+    state: absent
+  ignore_errors: true
+
+- name: Remove custom sysctl settings
+  file:
+    path: /etc/sysctl.d/99-custom.conf
+    state: absent
+  ignore_errors: true
+
+- name: Reload sysctl defaults
+  shell: sysctl -p
+  ignore_errors: true
+
+- name: Remove custom motd
+  file:
+    path: /etc/motd
+    state: absent
+  ignore_errors: true

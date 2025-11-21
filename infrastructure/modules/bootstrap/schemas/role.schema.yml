@@ -1,0 +1,365 @@
+---
+uri: role
+schema:
+    type: object
+    items:
+        name:
+            type: string
+            pattern: ^[a-z0-9-]+$
+        role_id:
+            type: integer
+        display_name:
+            type: string
+        description:
+            type: string
+        category:
+            type: string
+    required:
+        - name
+        - role_id
+        - display_name
+---
+uri: vm_size
+schema:
+    type: string
+    pattern: ^(xs|s|m|l|xl)\.(1|2)$
+---
+uri: os
+schema:
+    allOf:
+        - type: object
+          items:
+              name:
+                  type: string
+              version:
+                  type: string
+              architecture:
+                  type: string
+                  pattern: ^(amd64|arm64)$
+              image_format:
+                  type: string
+                  pattern: ^(iso|qcow2|raw|vmdk)$
+---
+uri: disk
+schema:
+    type: string
+---
+uri: network
+schema:
+    type: object
+    items:
+        vlans:
+            type: array
+            items:
+                type: string
+    required:
+        - vlans
+---
+uri: software
+schema:
+    type: object
+    items:
+        base_packages:
+            type: array
+            items:
+                anyOf:
+                    - type: object
+                      items:
+                          name:
+                              type: string
+                          uri:
+                              type: string
+---
+uri: configuration
+schema:
+    type: object
+    items:
+        base_setup:
+            type: object
+            items:
+                timezone:
+                    type: string
+                locale:
+                    type: string
+                config_time_sync:
+                    type: boolean
+                config_logging:
+                    type: boolean
+        security:
+            type: object
+            items:
+                setup_banner:
+                    type: boolean
+                lock_root_account:
+                    type: boolean
+                configure_password_policies:
+                    type: boolean
+                configure_account_lockout_policy:
+                    type: boolean
+                enable_ssh_hardening:
+                    type: boolean
+                enable_kernel_hardening:
+                    type: boolean
+                firewall_rules:
+                    type: array
+                    items:
+                        type: object
+                        items:
+                            direction:
+                                type: string
+                                pattern: ^(in|out)$
+                            description:
+                                type: string
+                            protocol:
+                                type: string
+                                pattern: ^(tcp|udp|icmp)$
+                            port:
+                                oneOf:
+                                    - type: integer
+                                      minimum: 1
+                                      maximum: 65535
+                                    - type: string
+                                      pattern: ^[a-zA-Z0-9]{1,20}$
+                            source:
+                                type: string
+                        required:
+                            - direction
+                            - protocol
+                            - port
+                            - source
+                fail2ban:
+                    type: object
+                    items:
+                        max_retries:
+                            type: integer
+                        bantime_secs:
+                            type: integer
+                        findtime_secs:
+                            type: integer
+                        maxretry_attempts:
+                            type: integer
+                        destemail:
+                            type: string
+                ssh:
+                    type: object
+                    items:
+                        max_startups:
+                            type: integer
+                        login_grace_time_secs:
+                            type: integer
+                        permit_user_environment:
+                            type: boolean
+                        compression:
+                            type: boolean
+                        tcp_keep_alive:
+                            type: boolean
+                        allow_tcp_forwarding:
+                            type: boolean
+                        allow_stream_local_forwarding:
+                            type: boolean
+                        gateway_ports:
+                            type: boolean
+                        permit_tunnel:
+                            type: boolean
+                        disable_weak_algorithms:
+                            type: boolean
+                kernel:
+                    type: object
+                    items:
+                        secure_ipv4:
+                            type: boolean
+                        secure_ipv6:
+                            type: boolean
+                        disable_ipv6:
+                            type: boolean
+                        secure_memory:
+                            type: boolean
+                        restrict_insecure_processes:
+                            type: boolean
+                filesystem:
+                    type: object
+                    items:
+                        set_secure_permissions:
+                            type: boolean
+                        remove_world_readable_perms_from_sensitive_dirs:
+                            type: boolean
+                        set_sticky_bit_on_tmp_dirs:
+                            type: boolean
+                audit:
+                    type: object
+                    items:
+                        enable_logging:
+                            type: boolean
+                        monitor_auth:
+                            type: boolean
+                        monitor_login_logout_events:
+                            type: boolean
+                        monitor_network_config:
+                            type: boolean
+                        monitor_ssh_config:
+                            type: boolean
+                        monitor_sys_calls:
+                            type: boolean
+                        monitor_file_access:
+                            type: boolean
+                        lock_config:
+                            type: boolean
+        maintenance:
+            type: object
+            items:
+                enable_autoupdates:
+                    type: boolean
+        optimization:
+            type: object
+            items:
+                enable_network_optimization:
+                    type: boolean
+                enable_fs_optimization:
+                    type: boolean
+        sysctl_settings:
+            type: array
+            items:
+                type: object
+                items:
+                    name:
+                        type: string
+                    value:
+                        type: string
+        kernel_modules:
+            type: array
+            items:
+                type: string
+        systemd_services:
+            type: array
+            items:
+                type: object
+                items:
+                    name:
+                        type: string
+                    enabled:
+                        type: boolean
+                    state:
+                        type: string
+                        pattern: ^(started|stopped)$
+                required:
+                    - name
+        users:
+            type: array
+            items:
+                type: object
+                items:
+                    username:
+                        type: string
+                    is_admin:
+                        type: boolean
+                    groups:
+                        type: array
+                        items:
+                            type: string
+                    sudo:
+                        type: boolean
+                    shell:
+                        type: string
+                        pattern: ^(\/bin\/bash|\/bin\/zsh)$
+                    lock_passwd:
+                        type: boolean
+                    hashed_passwd:
+                        type: string
+                    ssh_authorized_keys:
+                        type: array
+                        items:
+                            type: string
+                    ssh_client_config:
+                        type: object
+                        items:
+                            strict_host_key_checking:
+                                type: boolean
+                            user_known_hosts_file:
+                                type: string
+                            pass_authentication:
+                                type: boolean
+                            pubkey_authentication:
+                                type: boolean
+                            identities_only:
+                                type: boolean
+                            log_level:
+                                type: string
+                            server_alive_interval:
+                                type: integer
+                            server_alive_count_max:
+                                type: integer
+                            connect_timeout:
+                                type: integer
+                required:
+                    - username
+        directories:
+            type: array
+            items:
+                type: object
+                items:
+                    path:
+                        type: string
+                    owner:
+                        type: string
+                    group:
+                        type: string
+                    mode:
+                        type: string
+                        pattern: ^[0-7]{3,4}$
+                    apply_all:
+                        type: boolean
+                required:
+                    - path
+---
+uri: scripts
+schema:
+    type: object
+    items:
+        pre_install:
+            type: array
+            items:
+                type: string
+        post_install:
+            type: array
+            items:
+                type: string
+        startup:
+            type: array
+            items:
+                type: string
+        validation:
+            type: array
+            items:
+                type: string
+---
+uri: roles_schema
+schema:
+    type: object
+    items:
+        role:
+            $ref: role
+        vm_size:
+            $ref: vm_size
+        operating_system:
+            $ref: os
+        disks:
+            type: array
+            items:
+                $ref: disk
+        network:
+            $ref: network
+        software:
+            $ref: software
+        configuration:
+            $ref: configuration
+        scripts:
+            $ref: scripts
+        metadata:
+            $ref: metadata
+    required:
+        - role
+        - vm_size
+        - operating_system
+        - disks
+        - network
+        - metadata

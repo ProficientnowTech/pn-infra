@@ -1,0 +1,30 @@
+██████████████████████████████████████████████████████████████████████
+██                                                                  ██
+██  PN INFRASTRUCTURE - {{ role_name | upper }} NODE                ██
+██                                                                  ██
+██  Hostname: {{ ansible_hostname }}                                ██
+██  Role ID:  {{ node_role_id | default('N/A') }}                   ██
+██  Environment: {{ ansible_environment | default('production') }}  ██
+██                                                                  ██
+██                                                                  ██
+██  WARNING: Unauthorized access is prohibited!                     ██
+██  All activities are monitored and logged.                        ██
+██                                                                  ██
+██  If you see any unauthorized activities,                         ██
+██  Please do not hesitate to report our                            ██
+██  Security team: security@pnats.cloud,                            ██
+██  Infra: infra@pnats.cloud                                        ██
+██                                                                  ██
+██████████████████████████████████████████████████████████████████████
+
+Last updated: {{ ansible_date_time.iso8601 }}
+Kernel: {{ ansible_kernel }}
+Architecture: {{ ansible_architecture }}
+Distribution: {{ ansible_distribution }} {{ ansible_distribution_version }}
+
+NETWORK INTERFACES:
+{% for vlan in network_vlans | default([]) %}
+  {{ vlan.name }}: 192.168.{{ vlan.id }}.{{ ip_offset }}
+{% endfor %}
+
+For support: https://docs.pnats.cloud

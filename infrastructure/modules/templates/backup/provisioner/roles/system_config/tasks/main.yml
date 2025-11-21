@@ -1,0 +1,49 @@
+---
+# Main task orchestrator - Safe version with no duplicates
+# Software tasks
+- name: Update package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install base packages
+  apt:
+    name: '{{ item.name }}'
+    state: present
+  loop: '{{ base_packages }}'
+  when: base_packages is defined
+
+# Base system configuration
+- include_tasks: base_setup.yml
+  when: base_setup is defined
+
+# User management tasks
+- include_tasks: users.yml
+  when: users is defined
+
+# Directory creation tasks
+- include_tasks: directories.yml
+  when: directories is defined
+
+# Networking tasks
+- include_tasks: networking.yml
+  when: network_vlans is defined
+# # Security configuration (with SSH safety checks)
+# - include_tasks: security.yml
+#   when: security is defined
+
+# # Other configurations
+# - include_tasks: maintenance.yml
+#   when: maintenance is defined
+
+# - include_tasks: optimization.yml
+#   when: optimization is defined
+
+# - include_tasks: systemd_services.yml
+#   when: systemd_services is defined
+
+# - include_tasks: sysctl_setting.yml
+#   when: sysctl_settings is defined
+
+# - include_tasks: kernel_modules.yml
+#   when: kernel_modules is defined

@@ -1,0 +1,343 @@
+uri: base_setup
+schema:
+    type: object
+    items:
+        timezone:
+            type: string
+        locale:
+            type: string
+        config_time_sync:
+            type: boolean
+        config_logging:
+            type: boolean
+---
+uri: base_packages
+schema:
+    type: array
+    items:
+        type: object
+        items:
+            name:
+                type: string
+---
+uri: system_settings
+schema:
+    type: object
+    items:
+        kernel_modules:
+            type: array
+            items:
+                type: string
+        sysctl:
+            type: array
+            items:
+                type: object
+                items:
+                    name:
+                        type: string
+                    value:
+                        type: integer
+                        minimum: 0
+                        maximum: 1
+        systemd_services:
+            type: array
+            items:
+                type: object
+                items:
+                    name:
+                        type: string
+                    enabled:
+                        type: boolean
+                    state:
+                        type: string
+                        pattern: '^(started|stopped|enabled)$'
+---
+uri: disk_management
+schema:
+    type: object
+    items:
+        partitions:
+            type: array
+            items:
+                type: object
+                items:
+                    device:
+                        type: string
+                        pattern: '^(?:/dev/(?:sd[a-z]+|vd[a-z]+|xvd[a-z]+|hd[a-z]+|nvme[0-9]+n[0-9]+|mmcblk[0-9]+|loop[0-9]+|sr[0-9]+|dm-[0-9]+|mapper/[A-Za-z0-9._+-]+))$'
+                    number:
+                        type: integer
+                        minimum: 1
+                        maximum: 10
+                    filesystem:
+                        type: string
+                        pattern: '(?i)^(?:proc|sysfs|devtmpfs|tmpfs|ext[2-4]|xfs|btrfs|f2fs|vfat|iso9660|udf|squashfs|overlay|ntfs3?|zfs)$'
+                    mount_point:
+                        type: string
+                    mount_options:
+                        type: string
+                    part_start:
+                        type: integer
+                        minimum: 0
+                        maximum: 100
+                    part_end:
+                        type: integer
+                        minimum: 0
+                        maximum: 100
+                    partition_label:
+                        type: string
+                        pattern: '^(gpt)$'
+                    mkfs_options:
+                        type: string
+---
+uri: users
+schema:
+    type: array
+    items:
+        type: object
+        items:
+            username:
+                type: string
+            groups:
+                type: array
+                items:
+                    type: string
+            sudo:
+                type: boolean
+            shell:
+                type: string
+            hashed_passwd:
+                type: string
+            lock_passwd:
+                type: boolean
+            ssh_authorized_keys:
+                type: array
+                items:
+                    type: string
+            ssh_client_config:
+                type: object
+                items:
+                    strict_host_key_checking:
+                        type: boolean
+                    user_known_hosts_file:
+                        type: string
+                    pass_authentication:
+                        type: boolean
+                    pubkey_authentication:
+                        type: boolean
+                    identities_only:
+                        type: boolean
+                    log_level:
+                        type: string
+                    server_alive_interval:
+                        type: integer
+                        minimum: 60
+                    server_alive_count_max:
+                        type: integer
+                        minimum: 3
+                    connect_timeout:
+                        type: integer
+                        minimum: 10
+---
+uri: directories
+schema:
+    type: array
+    items:
+        type: object
+        items:
+            path:
+                type: string
+            owner:
+                type: string
+            group:
+                type: string
+            mode:
+                type: string
+            cascade_ownership:
+                type: boolean
+            cascade_permissions:
+                type: boolean
+---
+uri: network_vlans
+schema:
+    type: array
+    items:
+        type: object
+        items:
+            name:
+                type: string
+            id:
+                type: integer
+            gateway:
+                type: string
+---
+uri: security
+schema:
+    type: object
+    items:
+        setup_banner:
+            type: boolean
+        lock_root_account:
+            type: boolean
+        configure_password_policies:
+            type: boolean
+        configure_account_lockout_policy:
+            type: boolean
+        enable_ssh_hardening:
+            type: boolean
+        enable_kernel_hardening:
+            type: boolean
+        fail2ban:
+            type: object
+            items:
+                max_retries:
+                    type: integer
+                    minimum: 3
+                    maximum: 10
+                bantime_secs:
+                    type: integer
+                    minimum: 60
+                    maximum: 7200
+                findtime_secs:
+                    type: integer
+                    minimum: 300
+                    maximum: 1500
+                maxretry_attempts:
+                    type: integer
+                    minimum: 6
+                    maximum: 100
+                destemail:
+                    type: string
+        ssh:
+            type: object
+            items:
+                max_startups:
+                    type: integer
+                    minimum: 3
+                    maximum: 100
+                login_grace_time_secs:
+                    type: integer
+                    minimum: 1
+                    maximum: 120
+                permit_user_environment:
+                    type: boolean
+                compression:
+                    type: boolean
+                tcp_keep_alive:
+                    type: boolean
+                allow_tcp_forwarding:
+                    type: boolean
+                allow_stream_local_forwarding:
+                    type: boolean
+                gateway_ports:
+                    type: boolean
+                permit_tunnel:
+                    type: boolean
+                disable_weak_algorithms:
+                    type: boolean
+        kernel:
+            type: object
+            items:
+                secure_ipv4:
+                    type: boolean
+                secure_ipv6:
+                    type: boolean
+                disable_ipv6:
+                    type: boolean
+                secure_memory:
+                    type: boolean
+                restrict_insecure_processes:
+                    type: boolean
+        filesystem:
+            type: object
+            items:
+                set_secure_permissions:
+                    type: boolean
+                remove_world_readable_perms_from_sensitive_dirs:
+                    type: boolean
+                set_sticky_bit_on_tmp_dirs:
+                    type: boolean
+        audit:
+            type: object
+            items:
+                enable_logging:
+                    type: boolean
+                monitor_auth:
+                    type: boolean
+                monitor_login_logout_events:
+                    type: boolean
+                monitor_network_config:
+                    type: boolean
+                monitor_ssh_config:
+                    type: boolean
+                monitor_sys_calls:
+                    type: boolean
+                monitor_file_access:
+                    type: boolean
+                lock_config:
+                    type: boolean
+        firewall_rules:
+            type: array
+            items:
+                type: object
+                items:
+                    direction:
+                        type: string
+                        pattern: '^(in|out)$'
+                    protocol:
+                        type: string
+                        pattern: '^(tcp|udp)$'
+                    port:
+                        type: integer
+                        minimum: 0
+                        maximum: 65000
+                    source:
+                        type: string
+                    description:
+                        type: string
+---
+uri: maintenance
+schema:
+    type: object
+    items:
+        enable_autoupdates:
+            type: boolean
+---
+uri: optimization
+schema:
+    type: object
+    items:
+        enable_network_optimization:
+            type: boolean
+        enable_fs_optimization:
+            type: boolean
+---
+uri: group_vars_schema
+schema:
+    type: object
+    items:
+        role_id:
+            type: integer
+            minimum: 10
+            maximum: 225
+        role_name:
+            type: string
+        base_setup:
+            $ref: base_setup
+        base_packages:
+            $ref: base_packages
+        system_settings:
+            $ref: system_settings
+        disk_management:
+            $ref: disk_management
+        users:
+            $ref: users
+        directories:
+            $ref: directories
+        network_vlans:
+            $ref: network_vlans
+        security:
+            $ref: security
+        maintenance:
+            $ref: maintenance
+        optimization:
+            $ref: optimization

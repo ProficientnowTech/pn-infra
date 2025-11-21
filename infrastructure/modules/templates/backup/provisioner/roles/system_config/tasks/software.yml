@@ -1,0 +1,33 @@
+---
+# Software Tasks - Install Software Packages
+
+- name: Update package cache
+  apt:
+      update_cache: yes
+      cache_valid_time: 3600
+
+- name: Install base packages
+  apt:
+      name: '{{ item.name }}'
+      state: present
+  loop: '{{ base_packages }}'
+  when: base_packages is defined
+
+- name: Install packages from URIs
+  get_url:
+      url: '{{ item.uri }}'
+      dest: '/tmp/{{ item.name }}'
+      mode: '0644'
+  loop: '{{ base_packages }}'
+  when:
+      - base_packages is defined
+      - item.uri is defined
+  register: downloaded_packages
+
+- name: Install downloaded packages
+  apt:
+      deb: '/tmp/{{ item.item.name }}'
+  loop: '{{ downloaded_packages.results }}'
+  when:
+      - downloaded_packages is defined
+      - not item.skipped | default(false)

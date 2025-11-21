@@ -1,0 +1,6 @@
+---
+# Configuration Tasks - Apply System Configuration
+
+- name: Apply system configuration
+  include_role:
+      name: system_config

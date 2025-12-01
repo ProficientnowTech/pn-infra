@@ -1,0 +1,72 @@
+---
+# Directories Role - Backup Phase
+# Records current directory states before making changes
+
+- name: Create backup directory
+  file:
+      path: /var/lib/ansible/backups/directories
+      state: directory
+      mode: '0700'
+      owner: root
+      group: root
+
+- name: Get current timestamp for backup naming
+  set_fact:
+      backup_timestamp: '{{ ansible_date_time.epoch }}'
+
+- name: Record existing directory states
+  stat:
+      path: '{{ item.path }}'
+  loop: '{{ directories }}'
+  register: existing_dirs
+  when: directories | length > 0
+
+- name: Create directory backup manifest
+  copy:
+      content: |
+          # Directories Role Backup Manifest
+          # Created: {{ ansible_date_time.iso8601 }}
+          # Timestamp: {{ backup_timestamp }}
+
+          DIRECTORIES_TO_CONFIGURE:
+          {% for dir in directories %}
+          - path: {{ dir.path }}
+            owner: {{ dir.owner | default('root') }}
+            group: {{ dir.group | default('root') }}
+            mode: {{ dir.mode | default('0755') }}
+            cascade_ownership: {{ dir.cascade_ownership | default(false) }}
+            cascade_permissions: {{ dir.cascade_permissions | default(false) }}
+            existed_before: {{ existing_dirs.results[loop.index0].stat.exists if existing_dirs.results is defined else false }}
+          {% endfor %}
+
+          ROLLBACK_INSTRUCTIONS:
+          1. Remove newly created directories if needed
+          2. Restore original ownership/permissions if changed
+          3. Check manifest for pre-existing state
+      dest: '/var/lib/ansible/backups/directories/manifest.{{ backup_timestamp }}.txt'
+      mode: '0600'
+  when: directories | length > 0
+
+- name: Backup existing directory permissions and ownership
+  shell: |
+      if [ -d "{{ item.path }}" ]; then
+        stat -c "%a %U %G" "{{ item.path }}" > "/var/lib/ansible/backups/directories/{{ item.path | replace('/', '_') }}.{{ backup_timestamp }}.perms"
+      fi
+  loop: '{{ directories }}'
+  when: directories | length > 0
+  register: permission_backups
+  changed_when: false
+
+- name: Log backup completion
+  debug:
+      msg:
+          - 'Directories backup completed successfully'
+          - 'Backup timestamp: {{ backup_timestamp }}'
+          - 'Directories to configure: {{ directories | length }}'
+          - 'Manifest: /var/lib/ansible/backups/directories/manifest.{{ backup_timestamp }}.txt'
+  when: directories | length > 0
+
+- name: Log skip message for empty directories
+  debug:
+      msg: 'No directories to backup - directories list is empty'
+  when: directories | length == 0

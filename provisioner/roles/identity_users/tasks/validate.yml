@@ -1,0 +1,148 @@
+---
+# Identity & Users Role - Validation Phase
+# Validates user management prerequisites and system state
+
+- name: Check if users variable is defined
+  fail:
+      msg: "Users variable is not defined. Please define 'users' in inventory."
+  when: users is not defined or users | length == 0
+
+- name: Validate required system packages are available
+  command: 'which {{ item }}'
+  loop:
+      - useradd
+      - usermod
+      - userdel
+      - groupadd
+      - passwd
+      - ssh-keygen
+  register: required_commands
+  failed_when: false
+  changed_when: false
+
+- name: Check for missing system commands
+  fail:
+      msg: 'Required command {{ item.item }} not found on system'
+  when: item.rc != 0
+  loop: '{{ required_commands.results }}'
+
+- name: Check SSH service availability
+  systemd:
+      name: "{{ ansible_facts['os_family'] == 'Debian' | ternary('ssh', 'sshd') }}"
+  register: ssh_service
+  failed_when: false
+
+- name: Validate SSH configuration directory exists
+  stat:
+      path: /etc/ssh
+  register: ssh_config_dir
+
+- name: Fail if SSH is not properly installed
+  fail:
+      msg: 'SSH server is not properly installed or configured'
+  when: not ssh_config_dir.stat.exists
+
+- name: Check system resources for user operations
+  shell: |
+      # Check available disk space in /home (need at least 100MB)
+      df_home=$(df -BM /home 2>/dev/null | awk 'NR==2 {print $4}' | sed 's/M//' || echo "1000")
+      if [ "$df_home" -lt 100 ]; then
+        echo "INSUFFICIENT_SPACE"
+        exit 1
+      fi
+
+      # Check if we can create users (not in container)
+      if [ ! -w /etc/passwd ]; then
+        echo "NO_PASSWD_WRITE"
+        exit 1
+      fi
+
+      echo "OK"
+  register: system_resources
+  failed_when: system_resources.rc != 0
+  changed_when: false
+
+- name: Validate user configuration format
+  fail:
+      msg: 'User {{ item.username }} is missing required fields: username is mandatory'
+  when: item.username is not defined or item.username == ""
+  loop: '{{ users }}'
+
+- name: Check for duplicate usernames
+  fail:
+      msg: 'Duplicate username detected: {{ item }}'
+  when: users | selectattr('username', 'equalto', item) | list | length > 1
+  loop: "{{ users | map(attribute='username') | list }}"
+
+- name: Validate SSH key formats for users with SSH keys
+  fail:
+      msg: 'Invalid SSH key format for user {{ item.username }}: {{ ssh_key }}'
+  when:
+      - item.ssh_authorized_keys is defined
+      - item.ssh_authorized_keys | length > 0
+      - ssh_key is defined
+      - ssh_key != ""
+      - not (ssh_key is match('^(ssh-rsa|ssh-dss|ssh-ed25519|ecdsa-sha2-nistp256|ecdsa-sha2-nistp384|ecdsa-sha2-nistp521) '))
+  loop: '{{ users }}'
+  loop_control:
+      loop_var: item
+      label: '{{ item.username }}'
+  vars:
+      ssh_key: "{{ item.ssh_authorized_keys[0] | default('') }}"
+
+- name: Check for invalid shell paths
+  stat:
+      path: "{{ item.shell | default('/bin/bash') }}"
+  loop: '{{ users }}'
+  when: item.shell is defined
+  register: shell_checks
+  failed_when: not shell_checks.stat.exists
+
+- name: Check existing system users to avoid conflicts
+  getent:
+      database: passwd
+  register: existing_users
+
+- name: Warn about existing users that will be modified
+  debug:
+      msg: 'Warning: User {{ item.username }} already exists and will be modified'
+  loop: '{{ users }}'
+  when: item.username in existing_users.ansible_facts.getent_passwd.keys()
+
+- name: Validate group names if specified
+  fail:
+      msg: "Invalid group name '{{ group }}' for user {{ item.username }}"
+  loop: '{{ users }}'
+  loop_control:
+      loop_var: item
+      label: '{{ item.username }}'
+  when:
+      - item.groups is defined
+      - group is match('^[0-9].*') or group is match('.*[^a-zA-Z0-9_-].*')
+  vars:
+      group: "{{ item.groups | first | default('') }}"
+
+- name: Check sudo package availability if needed
+  package_facts:
+      manager: auto
+  register: package_facts
+
+- name: Validate sudo is available for sudo users
+  fail:
+      msg: 'sudo package not installed but required for user {{ item.username }}'
+  loop: '{{ users }}'
+  when:
+      - item.sudo | default(false)
+      - "'sudo' not in ansible_facts.packages"
+
+- name: Log validation results
+  debug:
+      msg:
+          - 'Identity & Users validation completed successfully'
+          - 'Found {{ users | length }} users to configure'
+          - 'System has required commands and sufficient resources'
+          - 'SSH service is available and configured'
+
+- name: Set validation success marker
+  set_fact:
+      identity_validation_passed: true

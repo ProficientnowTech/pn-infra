@@ -1,0 +1,93 @@
+---
+# System Settings Configuration Playbook
+# Handles kernel modules, sysctl parameters, systemd services, and system optimization
+# Depends on software role for required packages and tools
+- name: System Settings Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+      system_settings_status: 'unknown'
+
+  pre_tasks:
+      - name: Check software role dependency
+        assert:
+            that:
+                - software_status is defined
+                - software_status == "success"
+            fail_msg: |
+                System settings playbook requires successful software configuration.
+                Software status: {{ software_status | default('undefined') }}
+                Run software.yml playbook first.
+            success_msg: 'Software role dependency satisfied'
+
+      - name: Log system_settings playbook start
+        debug:
+            msg: |
+                Starting system settings configuration playbook
+                Software status: {{ software_status }}
+                Kernel modules: {{ system_settings.kernel_modules | default([]) | length }}
+                Sysctl parameters: {{ system_settings.sysctl | default([]) | length }}
+                Systemd services: {{ system_settings.systemd_services | default([]) | length }}
+                Network optimization: {{ optimization.enable_network_optimization | default(false) }}
+                FS optimization: {{ optimization.enable_fs_optimization | default(false) }}
+                Auto updates: {{ maintenance.enable_autoupdates | default(false) }}
+
+  roles:
+      - role: system_settings
+        when: >
+            (system_settings is defined and 
+             (system_settings.kernel_modules is defined or 
+              system_settings.sysctl is defined or 
+              system_settings.systemd_services is defined)) or
+            (optimization is defined and
+             (optimization.enable_network_optimization | default(false) or
+              optimization.enable_fs_optimization | default(false))) or
+            (maintenance is defined and
+             maintenance.enable_autoupdates | default(false))
+
+  post_tasks:
+      - name: Set system_settings completion status for orchestrator
+        set_fact:
+            system_settings_status: "{{ 'success' if ansible_failed_task is not defined else 'failed' }}"
+
+      - name: Log system_settings playbook completion
+        debug:
+            msg: |
+                System settings configuration playbook completed
+                Status: {{ system_settings_status }}
+                {% if system_settings_status == 'success' %}
+                ✓ Kernel modules: {{ system_settings.kernel_modules | default([]) | length }} configured
+                ✓ Sysctl parameters: {{ system_settings.sysctl | default([]) | length }} applied
+                ✓ Systemd services: {{ system_settings.systemd_services | default([]) | length }} managed
+                ✓ Network optimization: {{ 'enabled' if (optimization is defined and optimization.enable_network_optimization | default(false)) else 'disabled' }}
+                ✓ FS optimization: {{ 'enabled' if (optimization is defined and optimization.enable_fs_optimization | default(false)) else 'disabled' }}
+                ✓ Auto updates: {{ 'enabled' if (maintenance is defined and maintenance.enable_autoupdates | default(false)) else 'disabled' }}
+                ✓ System ready for dependent roles
+                {% else %}
+                ✗ System settings configuration failed - check role logs for details
+                {% endif %}
+
+      - name: Create system_settings status file for orchestrator
+        copy:
+            content: |
+                # System settings playbook status for orchestration
+                timestamp: {{ ansible_date_time.iso8601 }}
+                playbook: system_settings.yml
+                status: {{ system_settings_status }}
+                software_dependency: {{ software_status }}
+                role_executed: {{ 'system_settings' if (system_settings is defined or optimization is defined or maintenance is defined) else 'skipped - no system settings defined' }}
+                kernel_modules_count: {{ system_settings.kernel_modules | default([]) | length }}
+                sysctl_params_count: {{ system_settings.sysctl | default([]) | length }}
+                systemd_services_count: {{ system_settings.systemd_services | default([]) | length }}
+                network_optimization: {{ optimization.enable_network_optimization | default(false) }}
+                fs_optimization: {{ optimization.enable_fs_optimization | default(false) }}
+                auto_updates: {{ maintenance.enable_autoupdates | default(false) }}
+                hostname: {{ ansible_hostname }}
+                kernel_version: {{ ansible_kernel }}
+            dest: /var/lib/ansible/playbook-system-settings-status
+            mode: '0644'
+            owner: root
+            group: root
+        delegate_to: localhost
+        run_once: true

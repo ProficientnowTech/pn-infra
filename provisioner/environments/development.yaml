@@ -1,0 +1,4 @@
+configPackage: core
+roles:
+  - k8s-master
+  - k8s-worker

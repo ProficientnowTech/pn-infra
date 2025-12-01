@@ -1,0 +1,313 @@
+---
+# Phase 4: Test security configuration
+- name: Test SSH hardening configuration
+  block:
+      - name: Test SSH daemon configuration syntax
+        command: sshd -t
+        register: sshd_syntax_test
+        changed_when: false
+        failed_when: sshd_syntax_test.rc != 0
+
+      - name: Verify SSH service is running
+        systemd:
+            name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+        register: ssh_service_test
+        failed_when: ssh_service_test.status.ActiveState != "active"
+
+      - name: Test SSH configuration parameters
+        shell: sshd -T | grep -E "{{ item.param }}" | awk '{print $2}'
+        register: ssh_param_test
+        changed_when: false
+        loop:
+            - {
+                  param: 'maxstartups',
+                  expected: '{{ security.ssh.max_startups | default(10) }}',
+              }
+            - {
+                  param: 'logingracetime',
+                  expected: '{{ security.ssh.login_grace_time_secs | default(60) }}',
+              }
+        when: security.ssh is defined
+
+      - name: Assert SSH parameters are correctly set
+        assert:
+            that:
+                - ssh_param_test.results[idx].stdout | string == item.expected | string
+            fail_msg: |
+                SSH parameter {{ item.param }} mismatch:
+                Expected: {{ item.expected }}
+                Actual: {{ ssh_param_test.results[idx].stdout }}
+            success_msg: 'SSH parameter {{ item.param }} configured correctly'
+        loop: '{{ ssh_param_test.results if ssh_param_test.results is defined else [] }}'
+        loop_control:
+            index_var: idx
+
+  when: security.enable_ssh_hardening | default(false)
+
+- name: Test firewall configuration
+  block:
+      - name: Test UFW status (Debian)
+        block:
+            - name: Check UFW status
+              command: ufw status
+              register: ufw_status_test
+              changed_when: false
+
+            - name: Verify UFW is active
+              assert:
+                  that:
+                      - "'Status: active' in ufw_status_test.stdout"
+                  fail_msg: 'UFW firewall is not active'
+                  success_msg: 'UFW firewall is active and configured'
+
+            - name: Verify SSH is allowed through UFW
+              assert:
+                  that:
+                      - "'22/tcp' in ufw_status_test.stdout or '22' in ufw_status_test.stdout"
+                  fail_msg: 'SSH port 22 is not allowed through UFW'
+                  success_msg: 'SSH access is properly configured in UFW'
+
+        when: ansible_os_family == "Debian"
+
+      - name: Test firewalld status (RedHat)
+        block:
+            - name: Check firewalld status
+              command: firewall-cmd --state
+              register: firewalld_status_test
+              changed_when: false
+
+            - name: Verify firewalld is running
+              assert:
+                  that:
+                      - firewalld_status_test.stdout == "running"
+                  fail_msg: 'firewalld is not running'
+                  success_msg: 'firewalld is active and configured'
+
+            - name: Check if SSH service is allowed
+              command: firewall-cmd --list-services
+              register: firewalld_services_test
+              changed_when: false
+
+            - name: Verify SSH is allowed through firewalld
+              assert:
+                  that:
+                      - "'ssh' in firewalld_services_test.stdout"
+                  fail_msg: 'SSH service is not allowed through firewalld'
+                  success_msg: 'SSH access is properly configured in firewalld'
+
+        when: ansible_os_family == "RedHat"
+
+- name: Test fail2ban configuration
+  block:
+      - name: Check fail2ban service status
+        systemd:
+            name: fail2ban
+        register: fail2ban_service_test
+
+      - name: Verify fail2ban is running
+        assert:
+            that:
+                - fail2ban_service_test.status.ActiveState == "active"
+            fail_msg: 'fail2ban service is not active'
+            success_msg: 'fail2ban service is running'
+
+      - name: Test fail2ban jail configuration
+        command: fail2ban-client status sshd
+        register: fail2ban_jail_test
+        changed_when: false
+
+      - name: Verify SSH jail is active
+        assert:
+            that:
+                - "'Status for the jail: sshd' in fail2ban_jail_test.stdout"
+                - "'Currently banned:' in fail2ban_jail_test.stdout"
+            fail_msg: 'fail2ban SSH jail is not properly configured'
+            success_msg: 'fail2ban SSH jail is active and monitoring'
+
+      - name: Test fail2ban configuration parameters
+        shell: grep -E "{{ item.param }}" /etc/fail2ban/jail.local | awk -F'=' '{print $2}' | tr -d ' '
+        register: fail2ban_param_test
+        changed_when: false
+        loop:
+            - {
+                  param: 'bantime',
+                  expected: '{{ security.fail2ban.bantime_secs | default(3600) }}',
+              }
+            - {
+                  param: 'findtime',
+                  expected: '{{ security.fail2ban.findtime_secs | default(600) }}',
+              }
+            - {
+                  param: 'maxretry',
+                  expected: '{{ security.fail2ban.max_retries | default(3) }}',
+              }
+
+      - name: Assert fail2ban parameters are correctly set
+        assert:
+            that:
+                - fail2ban_param_test.results[idx].stdout | string == item.expected | string
+            fail_msg: |
+                fail2ban parameter {{ item.param }} mismatch:
+                Expected: {{ item.expected }}
+                Actual: {{ fail2ban_param_test.results[idx].stdout }}
+            success_msg: 'fail2ban parameter {{ item.param }} configured correctly'
+        loop: '{{ fail2ban_param_test.results }}'
+        loop_control:
+            index_var: idx
+
+  when: security.fail2ban is defined
+
+- name: Test kernel security hardening
+  block:
+      - name: Test kernel security parameters
+        command: sysctl -n "{{ item.name }}"
+        register: kernel_security_test
+        changed_when: false
+        loop:
+            - { name: 'kernel.dmesg_restrict', expected: '1' }
+            - { name: 'kernel.kptr_restrict', expected: '2' }
+            - { name: 'net.ipv4.conf.all.log_martians', expected: '1' }
+            - { name: 'net.ipv4.conf.all.send_redirects', expected: '0' }
+            - { name: 'net.ipv4.ip_forward', expected: '0' }
+            - { name: 'net.ipv4.tcp_syncookies', expected: '1' }
+
+      - name: Assert kernel security parameters are set
+        assert:
+            that:
+                - kernel_security_test.results[idx].stdout | string == item.expected | string
+            fail_msg: |
+                Kernel security parameter {{ item.name }} mismatch:
+                Expected: {{ item.expected }}
+                Actual: {{ kernel_security_test.results[idx].stdout }}
+            success_msg: 'Kernel security parameter {{ item.name }} configured correctly'
+        loop: '{{ kernel_security_test.results }}'
+        loop_control:
+            index_var: idx
+
+      - name: Verify security sysctl configuration file exists
+        stat:
+            path: /etc/sysctl.d/99-ansible-security.conf
+        register: security_sysctl_file_test
+        failed_when: not security_sysctl_file_test.stat.exists
+
+  when: security.enable_kernel_hardening | default(false)
+
+- name: Test filesystem security
+  block:
+      - name: Check permissions on sensitive files
+        stat:
+            path: '{{ item }}'
+        register: file_perms_test
+        loop:
+            - /etc/shadow
+            - /etc/gshadow
+        when: security.filesystem.set_secure_permissions | default(false)
+
+      - name: Verify sensitive file permissions
+        assert:
+            that:
+                - file_perms_test.results[idx].stat.mode == '0600'
+            fail_msg: |
+                Insecure permissions on {{ item }}: {{ file_perms_test.results[idx].stat.mode }}
+                Expected: 0600
+            success_msg: '{{ item }} has secure permissions'
+        loop: '{{ file_perms_test.results if file_perms_test.results is defined else [] }}'
+        loop_control:
+            index_var: idx
+        when: security.filesystem.set_secure_permissions | default(false)
+
+      - name: Check sticky bit on tmp directories
+        stat:
+            path: '{{ item }}'
+        register: tmp_perms_test
+        loop:
+            - /tmp
+            - /var/tmp
+        when: security.filesystem.set_sticky_bit_on_tmp_dirs | default(false)
+
+      - name: Verify sticky bit is set
+        assert:
+            that:
+                - tmp_perms_test.results[idx].stat.mode == '1777'
+            fail_msg: |
+                Sticky bit not set on {{ item }}: {{ tmp_perms_test.results[idx].stat.mode }}
+                Expected: 1777
+            success_msg: '{{ item }} has sticky bit set'
+        loop: '{{ tmp_perms_test.results if tmp_perms_test.results is defined else [] }}'
+        loop_control:
+            index_var: idx
+        when: security.filesystem.set_sticky_bit_on_tmp_dirs | default(false)
+
+  when: security.filesystem is defined
+
+- name: Test audit configuration
+  block:
+      - name: Check auditd service status
+        systemd:
+            name: auditd
+        register: auditd_service_test
+
+      - name: Verify auditd is running
+        assert:
+            that:
+                - auditd_service_test.status.ActiveState == "active"
+            fail_msg: 'auditd service is not active'
+            success_msg: 'auditd service is running'
+
+      - name: Test audit rules are loaded
+        command: auditctl -l
+        register: audit_rules_test
+        changed_when: false
+
+      - name: Verify audit rules are active
+        assert:
+            that:
+                - "'identity' in audit_rules_test.stdout"
+                - "'authentication' in audit_rules_test.stdout"
+            fail_msg: 'Audit rules are not properly loaded'
+            success_msg: 'Audit rules are active and monitoring'
+
+  when: security.audit is defined and security.audit.enable_logging | default(false)
+
+- name: Test system security stability
+  block:
+      - name: Check system load after security configuration
+        shell: uptime | awk '{print $NF}'
+        register: security_load_test
+        changed_when: false
+
+      - name: Check memory usage
+        shell: free | grep Mem | awk '{print ($3/$2) * 100.0}'
+        register: security_memory_test
+        changed_when: false
+
+      - name: Test basic network connectivity
+        command: ping -c 3 8.8.8.8
+        register: connectivity_test
+        changed_when: false
+        ignore_errors: true
+
+      - name: Verify system stability
+        assert:
+            that:
+                - security_load_test.stdout | float < 10.0
+                - security_memory_test.stdout | float < 85.0
+            fail_msg: |
+                System may be stressed after security configuration:
+                Load: {{ security_load_test.stdout }}
+                Memory: {{ security_memory_test.stdout }}%
+            success_msg: 'System stable after security hardening'
+
+- name: Final security validation summary
+  debug:
+      msg: |
+          Security configuration tests completed:
+          - SSH hardening: {{ 'tested ✓' if security.enable_ssh_hardening | default(false) else 'disabled' }}
+          - Firewall ({{ 'UFW' if ansible_os_family == 'Debian' else 'firewalld' }}): active ✓
+          - fail2ban: {{ 'tested ✓' if security.fail2ban is defined else 'disabled' }}
+          - Kernel hardening: {{ 'tested ✓' if security.enable_kernel_hardening | default(false) else 'disabled' }}
+          - Filesystem security: {{ 'tested ✓' if security.filesystem is defined else 'disabled' }}
+          - Audit logging: {{ 'tested ✓' if (security.audit is defined and security.audit.enable_logging | default(false)) else 'disabled' }}
+          - System load: {{ security_load_test.stdout }}
+          - Memory usage: {{ security_memory_test.stdout }}%
+          - Network connectivity: {{ 'working ✓' if connectivity_test.rc == 0 else 'limited connectivity' }}

@@ -1,0 +1,174 @@
+---
+# Phase 2: Backup existing system settings configurations
+- name: Create backup directory
+  file:
+      path: /var/backups/ansible-system-settings
+      state: directory
+      mode: '0700'
+      owner: root
+      group: root
+
+- name: Generate backup timestamp
+  set_fact:
+      backup_timestamp: '{{ ansible_date_time.epoch }}'
+
+- name: Backup current kernel modules
+  block:
+      - name: Get currently loaded kernel modules
+        shell: lsmod > "/var/backups/ansible-system-settings/lsmod.{{ backup_timestamp }}"
+        changed_when: false
+
+      - name: Backup modules configuration
+        copy:
+            src: /etc/modules
+            dest: '/var/backups/ansible-system-settings/modules.{{ backup_timestamp }}'
+            remote_src: yes
+        ignore_errors: true
+
+      - name: Backup modules-load configuration
+        shell: tar -czf "/var/backups/ansible-system-settings/modules-load.d.{{ backup_timestamp }}.tar.gz" -C /etc modules-load.d/
+        ignore_errors: true
+
+  when: system_settings is defined and system_settings.kernel_modules is defined
+
+- name: Backup current sysctl settings
+  block:
+      - name: Get current sysctl values for parameters we're about to change
+        shell: sysctl -a > "/var/backups/ansible-system-settings/sysctl-all.{{ backup_timestamp }}"
+        changed_when: false
+
+      - name: Backup specific sysctl parameters we're changing
+        shell: sysctl -n "{{ item.name }}" > "/var/backups/ansible-system-settings/sysctl-{{ item.name | replace('.', '-') }}.{{ backup_timestamp }}"
+        loop: '{{ system_settings.sysctl | default([]) }}'
+        ignore_errors: true
+
+      - name: Backup sysctl configuration files
+        shell: tar -czf "/var/backups/ansible-system-settings/sysctl.d.{{ backup_timestamp }}.tar.gz" -C /etc sysctl.d/
+        ignore_errors: true
+
+      - name: Backup main sysctl.conf
+        copy:
+            src: /etc/sysctl.conf
+            dest: '/var/backups/ansible-system-settings/sysctl.conf.{{ backup_timestamp }}'
+            remote_src: yes
+        ignore_errors: true
+
+  when: system_settings is defined and system_settings.sysctl is defined
+
+- name: Backup systemd service states
+  block:
+      - name: Get current service states for services we're managing
+        systemd:
+            name: '{{ item.name }}'
+        register: service_states_backup
+        loop: '{{ system_settings.systemd_services | default([]) }}'
+        ignore_errors: true
+
+      - name: Store service states in backup file
+        copy:
+            content: |
+                # Systemd service states backup - {{ ansible_date_time.iso8601 }}
+                {% for result in service_states_backup.results %}
+                {% if result.status is defined %}
+                {{ result.item.name }}:
+                  enabled: {{ result.status.UnitFileState | default('unknown') }}
+                  active: {{ result.status.ActiveState | default('unknown') }}
+                  state: {{ result.status.SubState | default('unknown') }}
+                {% endif %}
+                {% endfor %}
+            dest: '/var/backups/ansible-system-settings/systemd-states.{{ backup_timestamp }}'
+            mode: '0600'
+
+  when: system_settings is defined and system_settings.systemd_services is defined
+
+- name: Backup system optimization settings
+  block:
+      - name: Backup network interface settings
+        shell: ip addr show > "/var/backups/ansible-system-settings/ip-addr.{{ backup_timestamp }}"
+        changed_when: false
+        when: optimization.enable_network_optimization | default(false)
+
+      - name: Backup mount options
+        copy:
+            src: /proc/mounts
+            dest: '/var/backups/ansible-system-settings/mounts.{{ backup_timestamp }}'
+            remote_src: yes
+        when: optimization.enable_fs_optimization | default(false)
+
+      - name: Backup /etc/fstab
+        copy:
+            src: /etc/fstab
+            dest: '/var/backups/ansible-system-settings/fstab.{{ backup_timestamp }}'
+            remote_src: yes
+        ignore_errors: true
+        when: optimization.enable_fs_optimization | default(false)
+
+  when: optimization is defined
+
+- name: Backup automatic update configuration
+  block:
+      - name: Backup unattended-upgrades config (Debian)
+        copy:
+            src: /etc/apt/apt.conf.d/50unattended-upgrades
+            dest: '/var/backups/ansible-system-settings/50unattended-upgrades.{{ backup_timestamp }}'
+            remote_src: yes
+        ignore_errors: true
+        when: ansible_os_family == "Debian"
+
+      - name: Backup yum-cron config (RedHat)
+        copy:
+            src: /etc/yum/yum-cron.conf
+            dest: '/var/backups/ansible-system-settings/yum-cron.conf.{{ backup_timestamp }}'
+            remote_src: yes
+        ignore_errors: true
+        when: ansible_os_family == "RedHat"
+
+  when: maintenance is defined and maintenance.enable_autoupdates | default(false)
+
+- name: Create system settings backup manifest
+  copy:
+      content: |
+          # System settings backup manifest - {{ ansible_date_time.iso8601 }}
+          backup_timestamp: {{ backup_timestamp }}
+          hostname: {{ ansible_hostname }}
+
+          # Configuration sections:
+          kernel_modules: {{ system_settings.kernel_modules is defined }}
+          sysctl_params: {{ system_settings.sysctl is defined }}
+          systemd_services: {{ system_settings.systemd_services is defined }}
+          network_optimization: {{ optimization.enable_network_optimization | default(false) }}
+          fs_optimization: {{ optimization.enable_fs_optimization | default(false) }}
+          auto_updates: {{ maintenance.enable_autoupdates | default(false) }}
+
+          # Modules to be loaded:
+          {% if system_settings is defined and system_settings.kernel_modules is defined %}
+          {% for module in system_settings.kernel_modules %}
+          - {{ module }}
+          {% endfor %}
+          {% endif %}
+
+          # Sysctl parameters to be changed:
+          {% if system_settings is defined and system_settings.sysctl is defined %}
+          {% for param in system_settings.sysctl %}
+          - {{ param.name }}: {{ param.value }}
+          {% endfor %}
+          {% endif %}
+
+          # Services to be managed:
+          {% if system_settings is defined and system_settings.systemd_services is defined %}
+          {% for service in system_settings.systemd_services %}
+          - {{ service.name }}: enabled={{ service.enabled }}, state={{ service.state }}
+          {% endfor %}
+          {% endif %}
+      dest: '/var/backups/ansible-system-settings/manifest.{{ backup_timestamp }}'
+      mode: '0600'
+
+- name: Log backup completion
+  debug:
+      msg: |
+          System settings backup completed:
+          - Timestamp: {{ backup_timestamp }}
+          - Kernel modules backup: {{ 'yes' if (system_settings is defined and system_settings.kernel_modules is defined) else 'no' }}
+          - Sysctl backup: {{ 'yes' if (system_settings is defined and system_settings.sysctl is defined) else 'no' }}
+          - Systemd services backup: {{ 'yes' if (system_settings is defined and system_settings.systemd_services is defined) else 'no' }}
+          - Optimization backup: {{ 'yes' if optimization is defined else 'no' }}

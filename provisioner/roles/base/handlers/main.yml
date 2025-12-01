@@ -1,0 +1,20 @@
+---
+# Base role handlers
+- name: restart rsyslog
+  systemd:
+      name: rsyslog
+      state: restarted
+      daemon_reload: true
+  listen: restart rsyslog
+
+- name: restart timesyncd
+  systemd:
+      name: systemd-timesyncd
+      state: restarted
+      daemon_reload: true
+  listen: restart timesyncd
+
+- name: reload systemd
+  systemd:
+      daemon_reload: true
+  listen: reload systemd

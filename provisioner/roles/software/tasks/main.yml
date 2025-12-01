@@ -1,0 +1,62 @@
+---
+# Software Role - Package Installation, Repositories, Dependencies
+# Implements 5-phase safety pattern: validate → backup → apply → test → rollback
+
+- name: Initialize software role status
+  set_fact:
+      software_validation_passed: false
+      software_backup_completed: false
+      software_configuration_applied: false
+      software_tests_passed: false
+      software_rollback_needed: false
+
+# Phase 1: VALIDATE
+- name: 'Validate software prerequisites'
+  include_tasks: validate.yml
+  register: validation_result
+  ignore_errors: true
+
+- name: Set validation status
+  set_fact:
+      software_validation_passed: '{{ validation_result is succeeded }}'
+
+# Phase 2: BACKUP
+- name: 'Backup software configurations'
+  include_tasks: backup.yml
+  when: software_validation_passed
+  register: backup_result
+  ignore_errors: true
+
+- name: Set backup status
+  set_fact:
+      software_backup_completed: '{{ backup_result is succeeded }}'
+  when: software_validation_passed
+
+# Phase 3: APPLY
+- name: 'Apply software configuration'
+  include_tasks: apply.yml
+  when: software_validation_passed and (software_backup_completed or backup_result is skipped)
+  register: apply_result
+  ignore_errors: true
+
+- name: Set apply status
+  set_fact:
+      software_configuration_applied: '{{ apply_result is succeeded }}'
+  when: software_validation_passed
+
+# Phase 4: TEST
+- name: 'Test software configuration'
+  include_tasks: test.yml
+  when: software_configuration_applied
+  register: test_result
+  ignore_errors: true
+
+- name: Set test status
+  set_fact:
+      software_tests_passed: '{{ test_result is succeeded }}'
+  when: software_configuration_applied
+
+# Phase 5: HANDLE RESULT
+- name: 'Handle software result'
+  include_tasks: result_handler.yml
+  when: software_validation_passed

@@ -1,0 +1,95 @@
+---
+# Identity & Users Configuration Playbook
+# Manages user accounts, SSH configuration, groups, and permissions
+# Part of Domain-Based Ansible Provisioning System
+
+- name: Identity & Users Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+      identity_status: 'unknown'
+
+  pre_tasks:
+      - name: Check prerequisite role status
+        fail:
+            msg: |
+                Base role must complete successfully before running Identity & Users role.
+                Current base_status: {{ base_status | default('undefined') }}
+                Please ensure base role has completed successfully.
+        when: base_status is not defined or base_status != 'success'
+
+      - name: Log Identity & Users role start
+        debug:
+            msg:
+                - '=== Starting Identity & Users Role ==='
+                - 'Target host: {{ inventory_hostname }}'
+                - "Role: {{ role_name | default('undefined') }}"
+                - "Users to configure: {{ users | length if users is defined else 'none' }}"
+                - 'Timestamp: {{ ansible_date_time.iso8601 }}'
+
+      - name: Validate users configuration is defined
+        fail:
+            msg: |
+                Users configuration is not defined for this host.
+                Please ensure 'users' variable is defined in inventory.
+        when: users is not defined or users | length == 0
+
+  roles:
+      - role: identity_users
+        when: users is defined and users | length > 0
+
+  post_tasks:
+      - name: Set identity completion status
+        set_fact:
+            identity_status: "{{ 'success' if ansible_failed_task is not defined else 'failed' }}"
+
+      - name: Log Identity & Users role completion
+        debug:
+            msg:
+                - '=== Identity & Users Role Completed ==='
+                - 'Status: {{ identity_status }}'
+                - 'Users processed: {{ users | length if users is defined else 0 }}'
+                - "SSH service configured: {{ identity_test_details.ssh_service_active | default('unknown') if identity_status == 'success' else 'N/A' }}"
+                - "System accounts secured: {{ identity_test_details.system_accounts_locked | default('unknown') if identity_status == 'success' else 'N/A' }}"
+                - 'Timestamp: {{ ansible_date_time.iso8601 }}'
+
+      - name: Write identity status to file
+        copy:
+            content: |
+                # Identity & Users Role Status
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: {{ identity_status }}
+                host: {{ inventory_hostname }}
+                users_count: {{ users | length if users is defined else 0 }}
+                role_name: {{ role_name | default('undefined') }}
+                {% if identity_status == 'success' %}
+                ssh_service_active: {{ identity_test_details.ssh_service_active | default('unknown') }}
+                ssh_config_valid: {{ identity_test_details.ssh_config_valid | default('unknown') }}
+                system_accounts_locked: {{ identity_test_details.system_accounts_locked | default('unknown') }}
+                ssh_port_accessible: {{ identity_test_details.ssh_port_accessible | default('unknown') }}
+                {% endif %}
+
+                dependencies_met:
+                - base_status: {{ base_status | default('undefined') }}
+
+                configured_users:
+                {% for user in users %}
+                - {{ user.username }}
+                {% endfor %}
+            dest: /var/lib/ansible/identity-users-playbook-status
+            mode: '0644'
+
+      - name: Display final status message
+        debug:
+            msg:
+                - 'Identity & Users playbook execution completed'
+                - 'Final status: {{ identity_status }}'
+                - 'Status file: /var/lib/ansible/identity-users-playbook-status'
+                - 'Role status file: /var/lib/ansible/identity-users-role-status'
+                - "{{ 'Next: Configure directories, networking, or security as needed' if identity_status == 'success' else 'Fix issues before proceeding with dependent roles' }}"
+
+  handlers:
+      - name: identity users handler notification
+        debug:
+            msg: 'Identity & Users configuration change detected'

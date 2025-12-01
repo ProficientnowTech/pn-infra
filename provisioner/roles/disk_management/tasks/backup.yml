@@ -1,0 +1,126 @@
+---
+# Phase 2: Backup existing disk configurations and partition tables
+- name: Create backup directory
+  file:
+      path: /var/backups/ansible-disk-management
+      state: directory
+      mode: '0700'
+      owner: root
+      group: root
+
+- name: Generate backup timestamp
+  set_fact:
+      backup_timestamp: '{{ ansible_date_time.epoch }}'
+
+- name: Backup current fstab
+  copy:
+      src: /etc/fstab
+      dest: '/var/backups/ansible-disk-management/fstab.{{ backup_timestamp }}'
+      remote_src: yes
+      mode: '0600'
+  register: fstab_backup
+
+- name: Backup current mount table
+  shell: mount > "/var/backups/ansible-disk-management/mount.{{ backup_timestamp }}"
+  changed_when: false
+
+- name: Backup partition information for target devices
+  block:
+      - name: Backup partition tables
+        shell: |
+            device="{{ item.device }}"
+            backup_file="/var/backups/ansible-disk-management/partition-table-$(basename $device).{{ backup_timestamp }}"
+
+            # Backup partition table with sfdisk
+            sfdisk -d "$device" > "${backup_file}.sfdisk" 2>/dev/null || echo "no partition table" > "${backup_file}.sfdisk"
+
+            # Backup with fdisk for reference
+            fdisk -l "$device" > "${backup_file}.fdisk" 2>/dev/null || echo "no partition table" > "${backup_file}.fdisk"
+
+            # Backup filesystem information
+            lsblk -f "$device" > "${backup_file}.lsblk" 2>/dev/null || echo "no filesystems" > "${backup_file}.lsblk"
+
+            # Backup disk geometry
+            fdisk -s "$device" > "${backup_file}.size" 2>/dev/null || echo "0" > "${backup_file}.size"
+        loop: '{{ disk_management.partitions | default([]) }}'
+        register: partition_backup
+
+      - name: Backup existing filesystem UUIDs
+        shell: |
+            blkid > "/var/backups/ansible-disk-management/blkid.{{ backup_timestamp }}"
+        changed_when: false
+
+  when: disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0
+
+- name: Backup current disk usage information
+  shell: |
+      df -h > "/var/backups/ansible-disk-management/df.{{ backup_timestamp }}"
+      lsblk > "/var/backups/ansible-disk-management/lsblk.{{ backup_timestamp }}"
+      pvs > "/var/backups/ansible-disk-management/pvs.{{ backup_timestamp }}" 2>/dev/null || echo "no LVM" > "/var/backups/ansible-disk-management/pvs.{{ backup_timestamp }}"
+      vgs > "/var/backups/ansible-disk-management/vgs.{{ backup_timestamp }}" 2>/dev/null || echo "no LVM" > "/var/backups/ansible-disk-management/vgs.{{ backup_timestamp }}"
+      lvs > "/var/backups/ansible-disk-management/lvs.{{ backup_timestamp }}" 2>/dev/null || echo "no LVM" > "/var/backups/ansible-disk-management/lvs.{{ backup_timestamp }}"
+  changed_when: false
+
+- name: Create comprehensive backup manifest
+  copy:
+      content: |
+          # Disk management backup manifest - {{ ansible_date_time.iso8601 }}
+          backup_timestamp: {{ backup_timestamp }}
+          hostname: {{ ansible_hostname }}
+
+          # Configuration to be applied:
+          partitions_count: {{ disk_management.partitions | default([]) | length }}
+
+          # Backup files created:
+          fstab_backup: {{ fstab_backup.dest }}
+          mount_table_backup: /var/backups/ansible-disk-management/mount.{{ backup_timestamp }}
+          blkid_backup: /var/backups/ansible-disk-management/blkid.{{ backup_timestamp }}
+          disk_usage_backup: /var/backups/ansible-disk-management/df.{{ backup_timestamp }}
+          lsblk_backup: /var/backups/ansible-disk-management/lsblk.{{ backup_timestamp }}
+
+          # Partitions to be created:
+          {% if disk_management is defined and disk_management.partitions is defined %}
+          {% for partition in disk_management.partitions %}
+          - device: {{ partition.device }}
+            partition: {{ partition.number }}
+            start: {{ partition.part_start }}
+            end: {{ partition.part_end }}
+            filesystem: {{ partition.filesystem }}
+            mount_point: {{ partition.mount_point }}
+            options: {{ partition.mount_options | default('defaults') }}
+            backup_files:
+              sfdisk: /var/backups/ansible-disk-management/partition-table-$(basename {{ partition.device }}).{{ backup_timestamp }}.sfdisk
+              fdisk: /var/backups/ansible-disk-management/partition-table-$(basename {{ partition.device }}).{{ backup_timestamp }}.fdisk
+              lsblk: /var/backups/ansible-disk-management/partition-table-$(basename {{ partition.device }}).{{ backup_timestamp }}.lsblk
+              size: /var/backups/ansible-disk-management/partition-table-$(basename {{ partition.device }}).{{ backup_timestamp }}.size
+          {% endfor %}
+          {% endif %}
+
+          # Important notes:
+          # - Partition operations are destructive and may cause data loss
+          # - This backup contains partition table information for recovery
+          # - fstab backup can be restored to revert mount configurations
+          # - Use sfdisk to restore partition tables if needed
+          # - Always verify backups before proceeding with destructive operations
+      dest: '/var/backups/ansible-disk-management/manifest.{{ backup_timestamp }}'
+      mode: '0600'
+
+- name: Backup critical directories that might be affected
+  block:
+      - name: Create directory structure backup
+        shell: |
+            find "{{ item.mount_point | dirname }}" -maxdepth 2 -type d > "/var/backups/ansible-disk-management/directories-{{ item.mount_point | basename }}.{{ backup_timestamp }}" 2>/dev/null || echo "parent directory not found" > "/var/backups/ansible-disk-management/directories-{{ item.mount_point | basename }}.{{ backup_timestamp }}"
+        loop: '{{ disk_management.partitions | default([]) }}'
+        when: item.mount_point != '/' and item.mount_point != '/tmp'
+
+  when: disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0
+
+- name: Log backup completion
+  debug:
+      msg: |
+          Disk management backup completed:
+          - Timestamp: {{ backup_timestamp }}
+          - fstab backed up: {{ fstab_backup.dest }}
+          - Partitions to modify: {{ disk_management.partitions | default([]) | length }}
+          - Partition tables backed up for devices: {{ disk_management.partitions | default([]) | map(attribute='device') | list | unique | join(', ') }}
+          - Complete manifest available at: /var/backups/ansible-disk-management/manifest.{{ backup_timestamp }}

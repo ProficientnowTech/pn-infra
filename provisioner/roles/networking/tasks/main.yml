@@ -1,0 +1,66 @@
+---
+# Networking Role - VLAN Configuration and Network Management
+# Implements 5-phase safety pattern: validate → backup → apply → test → rollback
+
+- name: Initialize networking role status
+  set_fact:
+      networking_validation_passed: false
+      networking_backup_completed: false
+      networking_configuration_applied: false
+      networking_tests_passed: false
+      networking_rollback_needed: false
+
+# Phase 1: VALIDATE
+- name: 'Validate networking prerequisites'
+  include_tasks: validate.yml
+  register: validation_result
+  ignore_errors: true
+
+- name: Set validation status
+  set_fact:
+      networking_validation_passed: '{{ validation_result is succeeded }}'
+
+- name: Log validation phase completion
+  debug:
+      msg: "Networking validation phase completed - Status: {{ 'PASSED' if networking_validation_passed else 'FAILED' }}"
+
+# Phase 2: BACKUP
+- name: 'Backup networking configurations'
+  include_tasks: backup.yml
+  when: networking_validation_passed
+  register: backup_result
+  ignore_errors: true
+
+- name: Set backup status
+  set_fact:
+      networking_backup_completed: '{{ backup_result is succeeded }}'
+  when: networking_validation_passed
+
+# Phase 3: APPLY
+- name: 'Apply networking configuration'
+  include_tasks: apply.yml
+  when: networking_validation_passed and (networking_backup_completed or backup_result is skipped)
+  register: apply_result
+  ignore_errors: true
+
+- name: Set apply status
+  set_fact:
+      networking_configuration_applied: '{{ apply_result is succeeded }}'
+  when: networking_validation_passed
+
+# Phase 4: TEST
+- name: 'Test networking configuration'
+  include_tasks: test.yml
+  when: networking_configuration_applied
+  register: test_result
+  ignore_errors: true
+
+- name: Set test status
+  set_fact:
+      networking_tests_passed: '{{ test_result is succeeded }}'
+  when: networking_configuration_applied
+
+# Phase 5: HANDLE RESULT
+- name: 'Handle networking result'
+  include_tasks: result_handler.yml
+  when: networking_validation_passed

@@ -1,0 +1,58 @@
+---
+# Base Configuration Playbook
+# Handles timezone, locale, time synchronization, and logging configuration
+# This is a foundational playbook with no dependencies
+- name: Base System Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+      base_status: 'unknown'
+
+  pre_tasks:
+      - name: Log base playbook start
+        debug:
+            msg: |
+                Starting base configuration playbook
+                Target timezone: {{ base_setup.timezone | default('not specified') }}
+                Target locale: {{ base_setup.locale | default('not specified') }}
+                Time sync: {{ base_setup.config_time_sync | default('not specified') }}
+                Logging: {{ base_setup.config_logging | default('not specified') }}
+
+  roles:
+      - role: base
+        when: base_setup is defined
+
+  post_tasks:
+      - name: Set base completion status for orchestrator
+        set_fact:
+            base_status: "{{ 'success' if ansible_failed_task is not defined else 'failed' }}"
+
+      - name: Log base playbook completion
+        debug:
+            msg: |
+                Base configuration playbook completed
+                Status: {{ base_status }}
+                {% if base_status == 'success' %}
+                ✓ Timezone configured: {{ base_setup.timezone }}
+                ✓ Locale configured: {{ base_setup.locale }}.UTF-8  
+                ✓ Time sync: {{ 'enabled' if base_setup.config_time_sync else 'disabled' }}
+                ✓ Logging: {{ 'configured' if base_setup.config_logging else 'disabled' }}
+                {% else %}
+                ✗ Base configuration failed - check role logs for details
+                {% endif %}
+
+      - name: Create base status file for orchestrator
+        copy:
+            content: |
+                # Base playbook status for orchestration
+                timestamp: {{ ansible_date_time.iso8601 }}
+                playbook: base.yml
+                status: {{ base_status }}
+                role_executed: {{ 'base' if base_setup is defined else 'skipped - no base config' }}
+            dest: /var/lib/ansible/playbook-base-status
+            mode: '0644'
+            owner: root
+            group: root
+        delegate_to: localhost
+        run_once: true

@@ -1,0 +1,91 @@
+---
+# Directories Role - Apply Phase
+# Creates directories with ownership, permissions, and cascade control
+
+- name: Create directories with proper structure
+  file:
+      path: '{{ item.path }}'
+      state: directory
+      owner: '{{ item.owner | default("root") }}'
+      group: '{{ item.group | default("root") }}'
+      mode: '{{ item.mode | default("0755") }}'
+  loop: '{{ directories }}'
+  when: directories | length > 0
+  register: directory_creation
+
+- name: Apply cascade ownership to directory paths
+  become: true
+  shell: |
+      # Split path into components and apply ownership to each
+      path="{{ item.path }}"
+      owner="{{ item.owner | default('root') }}"
+      group="{{ item.group | default('root') }}"
+
+      # Create array of path components
+      IFS='/' read -ra PARTS <<< "$path"
+      current_path=""
+
+      for part in "${PARTS[@]}"; do
+        if [ -n "$part" ]; then
+          current_path="$current_path/$part"
+          if [ -d "$current_path" ]; then
+            chown "$owner:$group" "$current_path"
+          fi
+        fi
+      done
+  args:
+      executable: /bin/bash
+  loop: '{{ directories }}'
+  when:
+      - directories | length > 0
+      - item.cascade_ownership | default(false)
+  register: cascade_ownership_result
+
+- name: Apply cascade permissions to directory paths
+  become: true
+  shell: |
+      # Split path into components and apply permissions to each
+      path="{{ item.path }}"
+      mode="{{ item.mode | default('0755') }}"
+
+      # Create array of path components
+      IFS='/' read -ra PARTS <<< "$path"
+      current_path=""
+
+      for part in "${PARTS[@]}"; do
+        if [ -n "$part" ]; then
+          current_path="$current_path/$part"
+          if [ -d "$current_path" ]; then
+            chmod "$mode" "$current_path"
+          fi
+        fi
+      done
+  args:
+      executable: /bin/bash
+  loop: '{{ directories }}'
+  when:
+      - directories | length > 0
+      - item.cascade_permissions | default(false)
+  register: cascade_permissions_result
+
+- name: Verify all directories were created successfully
+  stat:
+      path: '{{ item.path }}'
+  loop: '{{ directories }}'
+  when: directories | length > 0
+  register: creation_verification
+  failed_when: not creation_verification.stat.exists
+
+- name: Log apply phase completion
+  debug:
+      msg:
+          - 'Directories apply phase completed'
+          - 'Directories created: {{ directories | length }}'
+          - 'Cascade ownership applied: {{ directories | selectattr("cascade_ownership", "equalto", true) | list | length }}'
+          - 'Cascade permissions applied: {{ directories | selectattr("cascade_permissions", "equalto", true) | list | length }}'
+  when: directories | length > 0
+
+- name: Log skip message for empty directories
+  debug:
+      msg: 'No directories to create - directories list is empty'
+  when: directories | length == 0

@@ -1,0 +1,94 @@
+---
+# Networking Configuration Playbook
+# Manages VLAN configuration and network interface setup
+# Part of Domain-Based Ansible Provisioning System
+
+- name: Networking Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+      networking_status: 'unknown'
+
+  pre_tasks:
+      - name: Check prerequisite role status
+        fail:
+            msg: |
+                Base role must complete successfully before running Networking role.
+                Current base_status: {{ base_status | default('undefined') }}
+                Please ensure base role has completed successfully.
+        when: base_status is not defined or base_status != 'success'
+
+      - name: Log Networking role start
+        debug:
+            msg:
+                - '=== Starting Networking Role ==='
+                - 'Target host: {{ inventory_hostname }}'
+                - "Role: {{ role_name | default('undefined') }}"
+                - "VLANs to configure: {{ network_vlans | length if network_vlans is defined else 'none' }}"
+                - 'Timestamp: {{ ansible_date_time.iso8601 }}'
+
+      - name: Validate network_vlans configuration is defined
+        debug:
+            msg: |
+                Network VLANs configuration is empty or not defined for this host.
+                This is normal if no VLAN configuration is needed.
+                Network VLANs variable: {{ network_vlans | default('undefined') }}
+        when: network_vlans is not defined or network_vlans | length == 0
+
+  roles:
+      - role: networking
+        when: network_vlans is defined
+
+  post_tasks:
+      - name: Set networking completion status
+        set_fact:
+            networking_status: "{{ 'success' if ansible_failed_task is not defined else 'failed' }}"
+
+      - name: Log Networking role completion
+        debug:
+            msg:
+                - '=== Networking Role Completed ==='
+                - 'Status: {{ networking_status }}'
+                - 'VLANs processed: {{ network_vlans | length if network_vlans is defined else 0 }}'
+                - "VLAN module loaded: {{ networking_test_details.vlan_module_loaded | default('unknown') if networking_status == 'success' else 'N/A' }}"
+                - "Interfaces up: {{ networking_test_details.interfaces_up | default('unknown') if networking_status == 'success' else 'N/A' }}"
+                - 'Timestamp: {{ ansible_date_time.iso8601 }}'
+
+      - name: Write networking status to file
+        copy:
+            content: |
+                # Networking Role Status
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: {{ networking_status }}
+                host: {{ inventory_hostname }}
+                vlans_count: {{ network_vlans | length if network_vlans is defined else 0 }}
+                role_name: {{ role_name | default('undefined') }}
+                {% if networking_status == 'success' %}
+                vlan_module_loaded: {{ networking_test_details.vlan_module_loaded | default('unknown') }}
+                interfaces_up: {{ networking_test_details.interfaces_up | default('unknown') }}
+                {% endif %}
+
+                dependencies_met:
+                - base_status: {{ base_status | default('undefined') }}
+
+                configured_vlans:
+                {% for vlan in network_vlans %}
+                - {{ vlan.name }} (ID: {{ vlan.id }}, Gateway: {{ vlan.gateway }})
+                {% endfor %}
+            dest: /var/lib/ansible/networking-playbook-status
+            mode: '0644'
+
+      - name: Display final status message
+        debug:
+            msg:
+                - 'Networking playbook execution completed'
+                - 'Final status: {{ networking_status }}'
+                - 'Status file: /var/lib/ansible/networking-playbook-status'
+                - 'Role status file: /var/lib/ansible/networking-role-status'
+                - "{{ 'Next: Configure security hardening as needed' if networking_status == 'success' else 'Fix issues before proceeding with dependent roles' }}"
+
+  handlers:
+      - name: networking handler notification
+        debug:
+            msg: 'Networking configuration change detected'

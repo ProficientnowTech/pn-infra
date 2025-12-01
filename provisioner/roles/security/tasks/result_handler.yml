@@ -1,0 +1,300 @@
+---
+# Phase 5: Handle security role results - commit success or rollback on failure
+- name: Evaluate security role execution status
+  set_fact:
+      security_role_success: >-
+          {{ security_validation_passed and
+             (security_backup_completed or backup_result is skipped) and
+             security_configuration_applied and
+             security_tests_passed }}
+
+- name: Handle successful security configuration
+  block:
+      - name: Log successful security configuration
+        debug:
+            msg: |
+                Security role completed successfully:
+                - All validations passed ✓
+                - Configuration applied ✓
+                - All tests passed ✓
+                - SSH hardening: {{ 'enabled' if security.enable_ssh_hardening | default(false) else 'disabled' }}
+                - Kernel hardening: {{ 'enabled' if security.enable_kernel_hardening | default(false) else 'disabled' }}
+                - Firewall: configured and active
+                - fail2ban: {{ 'configured' if security.fail2ban is defined else 'disabled' }}
+                - Audit: {{ 'enabled' if (security.audit is defined and security.audit.enable_logging | default(false)) else 'disabled' }}
+
+      - name: Create success marker
+        copy:
+            content: |
+                # Security role completion marker
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: success
+                hostname: {{ ansible_hostname }}
+
+                # Security configuration applied:
+                ssh_hardening_enabled: {{ security.enable_ssh_hardening | default(false) }}
+                kernel_hardening_enabled: {{ security.enable_kernel_hardening | default(false) }}
+                firewall_configured: true
+                firewall_type: {{ 'UFW' if ansible_os_family == 'Debian' else 'firewalld' }}
+                fail2ban_configured: {{ security.fail2ban is defined }}
+                audit_logging_enabled: {{ security.audit.enable_logging | default(false) if security.audit is defined else false }}
+                filesystem_security_applied: {{ security.filesystem is defined }}
+                backup_timestamp: {{ backup_timestamp | default('none') }}
+
+                {% if security.fail2ban is defined %}
+                # fail2ban configuration:
+                fail2ban_bantime: {{ security.fail2ban.bantime_secs }}
+                fail2ban_findtime: {{ security.fail2ban.findtime_secs }}
+                fail2ban_maxretry: {{ security.fail2ban.max_retries }}
+                {% endif %}
+
+                {% if security.ssh is defined %}
+                # SSH configuration:
+                ssh_max_startups: {{ security.ssh.max_startups }}
+                ssh_login_grace_time: {{ security.ssh.login_grace_time_secs }}
+                ssh_weak_algorithms_disabled: {{ security.ssh.disable_weak_algorithms | default(false) }}
+                {% endif %}
+
+                # Security services status:
+                ssh_service: active
+                firewall_service: active
+                {% if security.fail2ban is defined %}
+                fail2ban_service: active
+                {% endif %}
+                {% if security.audit is defined and security.audit.enable_logging | default(false) %}
+                auditd_service: active
+                {% endif %}
+            dest: /var/lib/ansible/security-role-status
+            mode: '0644'
+            owner: root
+            group: root
+
+      - name: Ensure ansible state directory exists
+        file:
+            path: /var/lib/ansible
+            state: directory
+            mode: '0755'
+            owner: root
+            group: root
+
+      - name: Set global security status flag for dependent roles
+        set_fact:
+            security_status: 'success'
+
+      - name: Final security services verification
+        systemd:
+            name: '{{ item }}'
+        register: final_service_check
+        ignore_errors: true
+        loop:
+            - "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+            - "{{ 'ufw' if ansible_os_family == 'Debian' else 'firewalld' }}"
+
+      - name: Log final service status
+        debug:
+            msg: |
+                Final security services status:
+                {% for result in final_service_check.results %}
+                - {{ result.item }}: {{ result.status.ActiveState if result.status is defined else 'unknown' }}
+                {% endfor %}
+
+  when: security_role_success
+
+- name: Handle failed security configuration
+  block:
+      - name: Log security role failure details
+        debug:
+            msg: |
+                Security role failed with status:
+                - Validation passed: {{ security_validation_passed }}
+                - Backup completed: {{ security_backup_completed | default('skipped') }}
+                - Configuration applied: {{ security_configuration_applied }}
+                - Tests passed: {{ security_tests_passed }}
+
+      - name: Attempt rollback if configuration was applied
+        block:
+            - name: Read backup manifest
+              slurp:
+                  src: '/var/backups/ansible-security/manifest.{{ backup_timestamp }}'
+              register: backup_manifest
+              when: backup_timestamp is defined
+
+            - name: Rollback SSH configuration
+              copy:
+                  src: '/var/backups/ansible-security/sshd_config.{{ backup_timestamp }}'
+                  dest: /etc/ssh/sshd_config
+                  remote_src: yes
+                  backup: yes
+              ignore_errors: true
+              notify: restart ssh
+              when:
+                  - backup_manifest is succeeded
+                  - security.enable_ssh_hardening | default(false)
+
+            - name: Rollback firewall configuration (UFW)
+              block:
+                  - name: Disable UFW
+                    ufw:
+                        state: disabled
+                    ignore_errors: true
+
+                  - name: Reset UFW to defaults
+                    ufw:
+                        state: reset
+                    ignore_errors: true
+
+              when:
+                  - backup_manifest is succeeded
+                  - ansible_os_family == "Debian"
+
+            - name: Rollback firewall configuration (firewalld)
+              block:
+                  - name: Stop firewalld service
+                    systemd:
+                        name: firewalld
+                        state: stopped
+                    ignore_errors: true
+
+                  - name: Restore firewalld configuration
+                    shell: |
+                        if [ -f "/var/backups/ansible-security/firewalld-config.{{ backup_timestamp }}.tar.gz" ]; then
+                          tar -xzf "/var/backups/ansible-security/firewalld-config.{{ backup_timestamp }}.tar.gz" -C /etc/firewalld/
+                        fi
+                    ignore_errors: true
+
+              when:
+                  - backup_manifest is succeeded
+                  - ansible_os_family == "RedHat"
+
+            - name: Stop and disable fail2ban
+              systemd:
+                  name: fail2ban
+                  state: stopped
+                  enabled: no
+              ignore_errors: true
+              when:
+                  - backup_manifest is succeeded
+                  - security.fail2ban is defined
+
+            - name: Remove fail2ban jail configuration
+              file:
+                  path: /etc/fail2ban/jail.local
+                  state: absent
+              ignore_errors: true
+              when:
+                  - backup_manifest is succeeded
+                  - security.fail2ban is defined
+
+            - name: Rollback kernel security parameters
+              file:
+                  path: /etc/sysctl.d/99-ansible-security.conf
+                  state: absent
+              ignore_errors: true
+              when:
+                  - backup_manifest is succeeded
+                  - security.enable_kernel_hardening | default(false)
+
+            - name: Reload sysctl after rollback
+              command: sysctl --system
+              ignore_errors: true
+              when:
+                  - backup_manifest is succeeded
+                  - security.enable_kernel_hardening | default(false)
+
+            - name: Stop and disable auditd
+              systemd:
+                  name: auditd
+                  state: stopped
+                  enabled: no
+              ignore_errors: true
+              when:
+                  - backup_manifest is succeeded
+                  - security.audit is defined
+
+            - name: Log rollback completion
+              debug:
+                  msg: |
+                      Security configuration rollback attempted:
+                      - SSH configuration: {{ 'restored' if security.enable_ssh_hardening | default(false) else 'skipped' }}
+                      - Firewall: {{ 'reset' }}
+                      - fail2ban: {{ 'disabled' if security.fail2ban is defined else 'skipped' }}
+                      - Kernel parameters: {{ 'reverted' if security.enable_kernel_hardening | default(false) else 'skipped' }}
+                      - Audit: {{ 'disabled' if security.audit is defined else 'skipped' }}
+
+        when: security_configuration_applied and backup_timestamp is defined
+
+      - name: Create failure marker
+        copy:
+            content: |
+                # Security role failure marker
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: failed
+                hostname: {{ ansible_hostname }}
+                validation_passed: {{ security_validation_passed }}
+                backup_completed: {{ security_backup_completed | default('unknown') }}
+                configuration_applied: {{ security_configuration_applied }}
+                tests_passed: {{ security_tests_passed }}
+                rollback_attempted: {{ 'yes' if backup_timestamp is defined else 'no' }}
+
+                # Configuration attempted:
+                ssh_hardening_attempted: {{ security.enable_ssh_hardening | default(false) }}
+                kernel_hardening_attempted: {{ security.enable_kernel_hardening | default(false) }}
+                fail2ban_attempted: {{ security.fail2ban is defined }}
+                audit_attempted: {{ security.audit.enable_logging | default(false) if security.audit is defined else false }}
+
+                # Recovery information:
+                backup_location: /var/backups/ansible-security/
+                ssh_config_backup: /var/backups/ansible-security/sshd_config.{{ backup_timestamp | default('unknown') }}
+                firewall_backup: /var/backups/ansible-security/{{ 'ufw-config' if ansible_os_family == 'Debian' else 'firewalld-config' }}.{{ backup_timestamp | default('unknown') }}.tar.gz
+
+                # Manual recovery steps:
+                # 1. Check backup manifest: /var/backups/ansible-security/manifest.{{ backup_timestamp | default('unknown') }}
+                # 2. Restore SSH config: cp /var/backups/ansible-security/sshd_config.{{ backup_timestamp | default('unknown') }} /etc/ssh/sshd_config
+                # 3. Restart SSH service: systemctl restart {{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}
+                # 4. Reset firewall if needed
+                # 5. Check system connectivity before proceeding
+            dest: /var/lib/ansible/security-role-status
+            mode: '0644'
+            owner: root
+            group: root
+
+      - name: Ensure ansible state directory exists
+        file:
+            path: /var/lib/ansible
+            state: directory
+            mode: '0755'
+            owner: root
+            group: root
+
+      - name: Set global security status flag for dependent roles
+        set_fact:
+            security_status: 'failed'
+
+      - name: Fail the role if critical issues occurred
+        fail:
+            msg: |
+                Security role failed to complete successfully.
+
+                CRITICAL: Security configuration may have left the system in an inconsistent state.
+
+                Failure summary:
+                - SSH hardening: {{ 'attempted' if security.enable_ssh_hardening | default(false) else 'skipped' }}
+                - Kernel hardening: {{ 'attempted' if security.enable_kernel_hardening | default(false) else 'skipped' }}
+                - Firewall: attempted
+                - fail2ban: {{ 'attempted' if security.fail2ban is defined else 'skipped' }}
+                - Audit: {{ 'attempted' if (security.audit is defined and security.audit.enable_logging | default(false)) else 'skipped' }}
+
+                Recovery information:
+                - Check /var/lib/ansible/security-role-status for detailed recovery steps
+                - Backup files are available in /var/backups/ansible-security/
+                - Rollback has been attempted if configuration was applied
+
+                MANUAL INTERVENTION REQUIRED:
+                1. Verify SSH connectivity works
+                2. Check firewall rules don't block required services
+                3. Validate system security services are functioning
+                4. Consider restoring from full system backup if issues persist
+
+                TEST SSH CONNECTIVITY before disconnecting current session.
+
+  when: not security_role_success

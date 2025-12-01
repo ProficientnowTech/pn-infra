@@ -1,0 +1,118 @@
+---
+# Security Configuration Playbook
+# Handles system hardening, firewall, fail2ban, and security policies
+# Depends on multiple roles for comprehensive security hardening
+- name: Security Hardening Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+      security_status: 'unknown'
+
+  pre_tasks:
+      - name: Check multiple role dependencies
+        assert:
+            that:
+                - base_status is defined and base_status == "success"
+                - software_status is defined and software_status == "success"
+                - identity_status is defined and identity_status == "success"
+                - networking_status is defined and networking_status == "success"
+            fail_msg: |
+                Security playbook requires successful completion of multiple prerequisite roles:
+                Base status: {{ base_status | default('undefined') }}
+                Software status: {{ software_status | default('undefined') }}
+                Identity status: {{ identity_status | default('undefined') }}
+                Networking status: {{ networking_status | default('undefined') }}
+                All prerequisite playbooks must complete successfully before security hardening.
+            success_msg: 'All prerequisite role dependencies satisfied'
+
+      - name: Log security playbook start
+        debug:
+            msg: |
+                Starting security hardening configuration playbook
+                Dependencies satisfied:
+                - Base status: {{ base_status }}
+                - Software status: {{ software_status }}
+                - Identity status: {{ identity_status }}
+                - Networking status: {{ networking_status }}
+
+                Security features to configure:
+                - SSH hardening: {{ security.enable_ssh_hardening | default(false) }}
+                - Kernel hardening: {{ security.enable_kernel_hardening | default(false) }}
+                - Firewall: {{ 'enabled with ' + (security.firewall_rules | default([]) | length | string) + ' rules' if security.firewall_rules is defined else 'basic configuration only' }}
+                - fail2ban: {{ 'configured' if security.fail2ban is defined else 'disabled' }}
+                - Audit logging: {{ security.audit.enable_logging | default(false) if security.audit is defined else false }}
+                - Filesystem security: {{ 'enabled' if security.filesystem is defined else 'disabled' }}
+
+  roles:
+      - role: security
+        when: security is defined
+
+  post_tasks:
+      - name: Set security completion status for orchestrator
+        set_fact:
+            security_status: "{{ 'success' if ansible_failed_task is not defined else 'failed' }}"
+
+      - name: Log security playbook completion
+        debug:
+            msg: |
+                Security hardening configuration playbook completed
+                Status: {{ security_status }}
+                {% if security_status == 'success' %}
+                ✓ SSH hardening: {{ 'enabled and tested' if security.enable_ssh_hardening | default(false) else 'disabled as configured' }}
+                ✓ Kernel hardening: {{ 'enabled and tested' if security.enable_kernel_hardening | default(false) else 'disabled as configured' }}
+                ✓ Firewall ({{ 'UFW' if ansible_os_family == 'Debian' else 'firewalld' }}): configured and active
+                ✓ fail2ban: {{ 'configured and active' if security.fail2ban is defined else 'disabled as configured' }}
+                ✓ Audit logging: {{ 'enabled and active' if (security.audit is defined and security.audit.enable_logging | default(false)) else 'disabled as configured' }}
+                ✓ Filesystem security: {{ 'applied' if security.filesystem is defined else 'skipped as configured' }}
+                ✓ System security hardening complete
+                {% else %}
+                ✗ Security hardening failed - check role logs for details
+                ✗ System may be in inconsistent security state
+                ✗ Manual intervention required - check SSH connectivity
+                ✗ Check /var/lib/ansible/security-role-status for recovery information
+                {% endif %}
+
+      - name: Create security status file for orchestrator
+        copy:
+            content: |
+                # Security playbook status for orchestration
+                timestamp: {{ ansible_date_time.iso8601 }}
+                playbook: security.yml
+                status: {{ security_status }}
+                dependencies_satisfied: true
+                base_dependency: {{ base_status }}
+                software_dependency: {{ software_status }}
+                identity_dependency: {{ identity_status }}
+                networking_dependency: {{ networking_status }}
+                role_executed: {{ 'security' if security is defined else 'skipped - no security config' }}
+                hostname: {{ ansible_hostname }}
+                os_family: {{ ansible_os_family }}
+
+                # Security configuration summary:
+                ssh_hardening: {{ security.enable_ssh_hardening | default(false) }}
+                kernel_hardening: {{ security.enable_kernel_hardening | default(false) }}
+                firewall_type: {{ 'UFW' if ansible_os_family == 'Debian' else 'firewalld' }}
+                fail2ban_configured: {{ security.fail2ban is defined }}
+                audit_logging: {{ security.audit.enable_logging | default(false) if security.audit is defined else false }}
+                filesystem_security: {{ security.filesystem is defined }}
+
+                {% if security.fail2ban is defined %}
+                # fail2ban settings:
+                fail2ban_bantime: {{ security.fail2ban.bantime_secs }}
+                fail2ban_maxretry: {{ security.fail2ban.max_retries }}
+                {% endif %}
+
+                # Critical security warnings:
+                {% if security_status == 'failed' %}
+                warning: "SECURITY HARDENING FAILED - System may be in inconsistent state"
+                recovery_info: "Check /var/lib/ansible/security-role-status for recovery steps"
+                ssh_warning: "VERIFY SSH CONNECTIVITY before disconnecting current session"
+                backup_location: "/var/backups/ansible-security/"
+                {% endif %}
+            dest: /var/lib/ansible/playbook-security-status
+            mode: '0644'
+            owner: root
+            group: root
+        delegate_to: localhost
+        run_once: true

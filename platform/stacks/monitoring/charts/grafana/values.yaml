@@ -1,10 +1,31 @@
----
-grafana:
-  adminPassword: changeme
+secrets:
+  externalSecret:
+    enabled: true
+    refreshInterval: 1h
+    secretStoreRef:
+      name: vault-backend
+      kind: ClusterSecretStore
+    target:
+      name: grafana-admin-secret
+      creationPolicy: Merge
+    data:
+      - secretKey: admin-user
+        remoteRef:
+          key: applications/monitoring/grafana/admin
+          property: admin-user
+      - secretKey: admin-password
+        remoteRef:
+          key: applications/monitoring/grafana/admin
+          property: admin-password
 
+grafana:
+  admin:
+    existingSecret: grafana-admin-secret
+    userKey: admin-user
+    passwordKey: admin-password
   persistence:
     enabled: true
-    storageClassName: ceph-block
+    storageClassName: bulk-ec
     size: 10Gi
 
   ingress:
@@ -14,55 +35,55 @@ grafana:
       cert-manager.io/cluster-issuer: letsencrypt-production
       external-dns.alpha.kubernetes.io/ttl: "60"
     hosts:
-      - grafana.pnats.cloud
+    - grafana.pnats.cloud
     tls:
-      - secretName: grafana-tls
-        hosts:
-          - grafana.pnats.cloud
+    - secretName: grafana-tls
+      hosts:
+      - grafana.pnats.cloud
 
   datasources:
     datasources.yaml:
       apiVersion: 1
       datasources:
-        - name: Prometheus
-          type: prometheus
-          url: http://prometheus-kube-prometheus-prometheus.monitoring:9090
-          access: proxy
-          isDefault: true
-        - name: Loki
-          type: loki
-          url: http://loki.monitoring.svc.cluster.local:3100
-          access: proxy
-          jsonData:
-            derivedFields:
-              - datasourceUid: tempo
-                matcherRegex: "traceID=(\\w+)"
-                name: TraceID
-                url: "$${__value.raw}"
-        - name: Tempo
-          type: tempo
-          url: http://tempo.monitoring.svc.cluster.local:3200
-          access: proxy
-          jsonData:
-            tracesToLogsV2:
-              datasourceUid: loki
-            tracesToMetrics:
-              datasourceUid: prometheus
-            serviceMap:
-              datasourceUid: prometheus
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-kube-prometheus-prometheus.monitoring:9090
+        access: proxy
+        isDefault: true
+      - name: Loki
+        type: loki
+        url: http://loki.monitoring.svc.cluster.local:3100
+        access: proxy
+        jsonData:
+          derivedFields:
+          - datasourceUid: tempo
+            matcherRegex: "traceID=(\\w+)"
+            name: TraceID
+            url: "$${__value.raw}"
+      - name: Tempo
+        type: tempo
+        url: http://tempo.monitoring.svc.cluster.local:3200
+        access: proxy
+        jsonData:
+          tracesToLogsV2:
+            datasourceUid: loki
+          tracesToMetrics:
+            datasourceUid: prometheus
+          serviceMap:
+            datasourceUid: prometheus
 
   dashboardProviders:
     dashboardproviders.yaml:
       apiVersion: 1
       providers:
-        - name: 'default'
-          orgId: 1
-          folder: ''
-          type: file
-          disableDeletion: false
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/default
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
 
   dashboards:
     default:

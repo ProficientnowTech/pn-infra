@@ -1,0 +1,357 @@
+{{- range .Values.pgClusters }}
+---
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: database
+    app.kubernetes.io/managed-by: postgres-operator
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+spec:
+  teamId: {{ .teamId | default "platform" | quote }}
+
+  # High Availability Configuration
+  numberOfInstances: {{ .numberOfInstances | default 3 }}
+
+  # Enable load balancers
+  enableMasterLoadBalancer: {{ .lb.master.enabled | default true }}
+  enableReplicaLoadBalancer: {{ .lb.replica.enabled | default true }}
+
+  {{- if .lb.allowedSourceRanges }}
+  # Network security - restrict access to specific IP ranges
+  allowedSourceRanges:
+  {{- range .lb.allowedSourceRanges }}
+  - {{ . | quote }}
+  {{- end }}
+  {{- end }}
+
+  # Enable Connection Pooling
+  enableConnectionPooler: {{ .pooler.enabled | default true }}
+  enableReplicaConnectionPooler: {{ .pooler.replica.enabled | default true }}
+  enableMasterPoolerLoadBalancer: {{ .pooler.lb.master.enabled | default true }}
+  enableReplicaPoolerLoadBalancer: {{ .pooler.lb.replica.enabled | default true }}
+
+  # Storage configuration
+  volume:
+    size: {{ .size | default "50Gi" }}
+    storageClass: {{ .storageClass | default "plt-blk-hdd-repl" }}
+    {{- if .iops }}
+    iops: {{ .iops }}
+    {{- end }}
+    {{- if .throughput }}
+    throughput: {{ .throughput }}
+    {{- end }}
+
+  # PostgreSQL version and parameters (hardcoded for consistency)
+  postgresql:
+    version: {{ .pgVersion | default "16" | quote }}
+    parameters:
+      # Performance tuning
+      shared_buffers: "512MB"
+      effective_cache_size: "2GB"
+      maintenance_work_mem: "128MB"
+      work_mem: "16MB"
+
+      # Connection settings
+      max_connections: "200"
+
+      # WAL settings for PITR and streaming replication
+      wal_level: "replica"
+      archive_mode: "on"
+      archive_timeout: "300s" # 5 minutes
+      max_wal_senders: "10"
+      wal_keep_size: "1GB"
+      max_replication_slots: "10"
+
+      # Logging for audit and debugging
+      logging_collector: "on"
+      log_destination: "stderr"
+      log_statement: "ddl" # Log all DDL statements
+      log_min_duration_statement: "1000" # Log queries > 1s
+      log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+      log_connections: "on"
+      log_disconnections: "on"
+      log_lock_waits: "on"
+
+      # Checkpoint tuning for performance
+      checkpoint_timeout: "15min"
+      checkpoint_completion_target: "0.9"
+      max_wal_size: "4GB"
+      min_wal_size: "1GB"
+
+      # Security - use scram-sha-256 instead of md5
+      password_encryption: "scram-sha-256"
+
+      # Timeouts
+      idle_in_transaction_session_timeout: "600000" # 10 minutes
+      statement_timeout: "900000" # 15 minutes
+
+  # Resource allocation
+  resources:
+    requests:
+      cpu: {{ .resources.requests.cpu | default "500m" }}
+      memory: {{ .resources.requests.memory | default "1Gi" }}
+    limits:
+      cpu: {{ .resources.limits.cpu | default "2000m" }}
+      memory: {{ .resources.limits.memory | default "4Gi" }}
+
+  # Users and their permissions
+  # Always include platform_admin (from Keycloak) and postgres_exporter (for monitoring)
+  users:
+    # Platform admin user - synced from Keycloak, has superuser privileges
+    platform_admin:
+    - superuser
+    - createdb
+    - createrole
+
+    # Monitoring user - used by Prometheus postgres_exporter
+    postgres_exporter:
+    - login
+
+    {{- if .users }}
+    # Application-specific users
+    {{- range $username, $flags := .users }}
+    {{ $username }}:
+    {{- range $flags }}
+    - {{ . }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+
+  # Enable secret rotation for application users (not for infrastructure users)
+  {{- if .usersWithSecretRotation }}
+  usersWithSecretRotation:
+  {{- range .usersWithSecretRotation }}
+  - {{ . }}
+  {{- end }}
+  {{- end }}
+
+  # Databases and owners
+  databases:
+    {{- if .databases }}
+    {{- range $dbname, $owner := .databases }}
+    {{ $dbname }}: {{ $owner }}
+    {{- end }}
+    {{- end }}
+
+  # Connection pooler configuration
+  connectionPooler:
+    numberOfInstances: {{ .pooler.instances | default 2 }}
+    mode: {{ .pooler.mode | default "transaction" }}
+    schema: {{ .pooler.schema | default "pooler" }}
+    user: {{ .pooler.user | default "pooler" }}
+    resources:
+      requests:
+        cpu: {{ .pooler.resources.requests.cpu | default "100m" }}
+        memory: {{ .pooler.resources.requests.memory | default "128Mi" }}
+      limits:
+        cpu: {{ .pooler.resources.limits.cpu | default "500m" }}
+        memory: {{ .pooler.resources.limits.memory | default "256Mi" }}
+
+  # Patroni configuration for HA (hardcoded for consistency)
+  patroni:
+    initdb:
+      encoding: "UTF8"
+      locale: "en_US.UTF-8"
+      data-checksums: "true"
+
+    # pg_hba configuration (hardcoded as per requirements)
+    # Order matters: more specific rules first
+    pg_hba:
+    - local   all             all                                   trust
+    - hostssl all             +zalandos       127.0.0.1/32          pam
+    - hostssl all             platform_admin  10.0.0.0/8            scram-sha-256
+    - hostssl all             postgres_exporter 10.0.0.0/8          scram-sha-256
+    - hostssl all             all             10.0.0.0/8            scram-sha-256
+    - host    all             all             10.0.0.0/8            scram-sha-256
+    - hostssl replication     standby         10.0.0.0/8            scram-sha-256
+    - host    replication     standby         10.0.0.0/8            scram-sha-256
+
+    # Patroni DCS settings
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 33554432  # 32MB
+
+    # Synchronous replication (disabled by default for performance)
+    synchronous_mode: {{ .patroni.synchronousMode | default false }}
+    synchronous_mode_strict: {{ .patroni.synchronousModeStrict | default false }}
+    {{- if .patroni.synchronousNodeCount }}
+    synchronous_node_count: {{ .patroni.synchronousNodeCount }}
+    {{- end }}
+
+    # Slots for logical replication
+    {{- if .patroni.slots }}
+    slots:
+    {{- range $slotName, $slotConfig := .patroni.slots }}
+      {{ $slotName }}:
+        type: {{ $slotConfig.type | default "physical" }}
+        {{- if $slotConfig.database }}
+        database: {{ $slotConfig.database }}
+        {{- end }}
+        {{- if $slotConfig.plugin }}
+        plugin: {{ $slotConfig.plugin }}
+        {{- end }}
+    {{- end }}
+    {{- end }}
+
+  # Monitoring
+  enableShmVolume: true
+
+  # TLS configuration for encrypted connections
+  {{- if .tls }}
+  {{- if .tls.enabled }}
+  tls:
+    # Use cert-manager generated certificate (default) or custom secret
+    secretName: {{ .tls.secretName | default (printf "%s-tls-cert" .name) }}
+    # Certificate file names within the secret
+    certificateFile: {{ .tls.certificateFile | default "tls.crt" }}
+    privateKeyFile: {{ .tls.privateKeyFile | default "tls.key" }}
+    {{- if .tls.caFile }}
+    caFile: {{ .tls.caFile }}
+    {{- else if .tls.caEnabled }}
+    caFile: {{ .tls.caFileName | default "ca.crt" }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+
+  # Sidecars - Prometheus exporter for monitoring
+  sidecars:
+  - name: exporter
+    image: {{ .monitoring.exporterImage | default "quay.io/prometheuscommunity/postgres-exporter:v0.15.0" }}
+    ports:
+    - name: exporter
+      containerPort: 9187
+      protocol: TCP
+    resources:
+      requests:
+        cpu: {{ .monitoring.resources.requests.cpu | default "50m" }}
+        memory: {{ .monitoring.resources.requests.memory | default "64Mi" }}
+      limits:
+        cpu: {{ .monitoring.resources.limits.cpu | default "200m" }}
+        memory: {{ .monitoring.resources.limits.memory | default "128Mi" }}
+    env:
+    - name: DATA_SOURCE_URI
+      value: "localhost:5432/postgres?sslmode=disable"
+    - name: DATA_SOURCE_USER
+      value: "postgres_exporter"
+    - name: DATA_SOURCE_PASS
+      valueFrom:
+        secretKeyRef:
+          name: postgres-exporter.{{ .name }}.credentials.postgresql.acid.zalan.do
+          key: password
+    # Custom queries for detailed monitoring
+    {{- if .monitoring.customQueries }}
+    - name: PG_EXPORTER_EXTEND_QUERY_PATH
+      value: "/etc/postgres-exporter/queries.yaml"
+    {{- end }}
+
+  # Pod Anti-Affinity for HA - spread pods across nodes
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: {{ .name }}
+            app.kubernetes.io/component: database
+        topologyKey: kubernetes.io/hostname
+
+  # Node affinity for dedicated PostgreSQL nodes (if specified)
+  {{- if .nodeAffinity }}
+  nodeAffinity:
+    {{- toYaml .nodeAffinity | nindent 4 }}
+  {{- end }}
+
+  # Tolerations for dedicated PostgreSQL nodes (if specified)
+  {{- if .tolerations }}
+  tolerations:
+  {{- toYaml .tolerations | nindent 2 }}
+  {{- end }}
+
+  # Pod Disruption Budget for HA
+  podDisruptionBudget:
+    minAvailable: {{ .pdb.minAvailable | default 1 }}
+
+  # Maintenance windows (if specified)
+  {{- if .maintenanceWindows }}
+  maintenanceWindows:
+  {{- range .maintenanceWindows }}
+  - {{ . }}
+  {{- end }}
+  {{- end }}
+
+  # Logical backup configuration (if enabled)
+  {{- if .logicalBackup }}
+  {{- if .logicalBackup.enabled }}
+  enableLogicalBackup: true
+  logicalBackupSchedule: {{ .logicalBackup.schedule | default "30 00 * * *" | quote }}
+  {{- if .logicalBackup.s3Bucket }}
+  logicalBackupS3Bucket: {{ .logicalBackup.s3Bucket }}
+  {{- end }}
+  {{- if .logicalBackup.s3Region }}
+  logicalBackupS3Region: {{ .logicalBackup.s3Region }}
+  {{- end }}
+  {{- if .logicalBackup.s3Endpoint }}
+  logicalBackupS3Endpoint: {{ .logicalBackup.s3Endpoint }}
+  {{- end }}
+  {{- if .logicalBackup.s3AccessKeyId }}
+  logicalBackupS3AccessKeyId: {{ .logicalBackup.s3AccessKeyId }}
+  {{- end }}
+  {{- if .logicalBackup.s3SecretAccessKey }}
+  logicalBackupS3SecretAccessKey: {{ .logicalBackup.s3SecretAccessKey }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+
+  # Clone from existing cluster (if specified)
+  {{- if .clone }}
+  clone:
+    cluster: {{ .clone.cluster }}
+    {{- if .clone.timestamp }}
+    timestamp: {{ .clone.timestamp }}
+    {{- end }}
+    {{- if .clone.uid }}
+    uid: {{ .clone.uid }}
+    {{- end }}
+  {{- end }}
+
+  # Standby cluster configuration (if specified)
+  {{- if .standby }}
+  standby:
+    {{- if .standby.s3WalPath }}
+    s3_wal_path: {{ .standby.s3WalPath }}
+    {{- end }}
+    {{- if .standby.standbyHost }}
+    standby_host: {{ .standby.standbyHost }}
+    standby_port: {{ .standby.standbyPort | default "5432" }}
+    {{- end }}
+  {{- end }}
+
+  # Additional pod annotations (if specified)
+  {{- if .podAnnotations }}
+  podAnnotations:
+    {{- toYaml .podAnnotations | nindent 4 }}
+  {{- end }}
+
+  # Service annotations (if specified)
+  {{- if .serviceAnnotations }}
+  serviceAnnotations:
+    {{- toYaml .serviceAnnotations | nindent 4 }}
+  {{- end }}
+
+  # Additional environment variables for Postgres container
+  {{- if .env }}
+  env:
+  {{- range .env }}
+  - name: {{ .name }}
+    value: {{ .value | quote }}
+  {{- end }}
+  {{- end }}
+
+{{- end }}

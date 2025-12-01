@@ -1,11 +1,32 @@
 apiVersion: v2
 name: pn-tempo
-description: Tempo distributed tracing for PN Infrastructure  
+description: Tempo distributed tracing for PN Infrastructure
 type: application
 version: 0.1.0
 appVersion: "2.0.0"
 
+keywords:
+- tempo
+- traces
+- traces-storage
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: monitoring
+  platform.pnats.cloud/component: tempo
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'tempo'
+  platform.pnats.cloud/resource-type: application
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: tempo
+  platform.pnats.cloud/component-category: monitoring
+
 dependencies:
-  - name: tempo
-    version: 1.24.0
-    repository: https://grafana.github.io/helm-charts
+- name: tempo
+  version: 1.24.0
+  repository: https://grafana.github.io/helm-charts

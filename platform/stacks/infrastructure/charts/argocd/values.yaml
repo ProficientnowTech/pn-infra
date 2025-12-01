@@ -1,6 +1,22 @@
 # ArgoCD Helm chart values
 # Based on official ArgoCD Helm chart: https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
 ---
+bootstrapSecrets:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault-backend
+    kind: ClusterSecretStore
+
+providerTokenSync:
+  enabled: true
+  serviceAccountName: argocd-provider-token-sync
+  image: quay.io/argoproj/argocd:v2.10.7
+  serverAddr: argocd-server.argocd.svc
+  insecure: true
+  targetNamespace: crossplane-system
+  targetSecret: argocd-admin-token
+
 argo-cd:
   global:
     repoURL: https://github.com/pnow-devsupreme/pn-infra.git
@@ -52,16 +68,6 @@ argo-cd:
       create: false
       plugins: {}
     clusterCredentials: {}
-    credentialTemplates:
-      ssh-creds:
-        url: git@github.com:pnow-devsupreme/pn-infra.git
-        sshPrivateKey: |
-          -----BEGIN OPENSSH PRIVATE KEY-----
-          '''
-          -----END OPENSSH PRIVATE KEY-----
-    repositories:
-      pn-infra:
-        url: git@github.com:pnow-devsupreme/pn-infra.git
     secret:
       createSecret: true
 
@@ -260,18 +266,10 @@ argo-cd:
         memory: 512Mi
     cm:
       create: true
-    # Notification services secret (use sealed-secrets or external-secrets)
+    # Notification services secret managed via ExternalSecret/Vault
     secret:
-      create: true
-      # Secret items should be injected via sealed-secrets or vault
-      # Required secrets:
-      # - slack-token: Slack Bot OAuth token (xoxb-...)
-      # - email-username: SMTP username
-      # - email-password: SMTP password
+      create: false
       items: {}
-        # slack-token: ""  # Will be injected by sealed-secrets
-        # email-username: ""
-        # email-password: ""
 
     # Notification service providers
     notifiers:
@@ -544,3 +542,19 @@ argo-cd:
 # External Ingress for ArgoCD Server
 ingress:
   enabled: true
+  className: nginx
+  host: argocd.pnats.cloud
+  # TLS configuration
+  tls:
+    enabled: true
+    secretName: argocd.pnats.cloud-tls
+  # Annotations
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+  # Service configuration
+  service:
+    name: argocd-server
+    port: 80

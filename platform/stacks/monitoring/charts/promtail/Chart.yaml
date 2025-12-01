@@ -5,7 +5,29 @@ type: application
 version: 0.1.0
 appVersion: "3.0.0"
 
+keywords:
+- promtail
+- log-aggregation
+- log-delivery
+- logs
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: monitoring
+  platform.pnats.cloud/component: promtail
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'promtail'
+  platform.pnats.cloud/resource-type: application
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: promtail
+  platform.pnats.cloud/component-category: monitoring
+
 dependencies:
-  - name: promtail
-    version: 6.16.6
-    repository: https://grafana.github.io/helm-charts
+- name: promtail
+  version: 6.16.6
+  repository: https://grafana.github.io/helm-charts

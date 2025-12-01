@@ -1,0 +1,148 @@
+crossplane:
+  # Crossplane Core Configuration
+  replicas: 2
+
+  # Resource Limits
+  resourcesCrossplane:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  # RBAC
+  rbacManager:
+    deploy: true
+    managementPolicy: All
+    replicas: 1
+
+  # Metrics
+  metrics:
+    enabled: true
+
+  # Package Cache
+  packageCache:
+    medium: Memory
+    sizeLimit: 20Mi
+    pvc: ""
+
+  # Image Pull Policy
+  image:
+    pullPolicy: IfNotPresent
+
+  # Priority Class
+  priorityClassName: system-cluster-critical
+
+  # Args
+  args:
+    - --enable-composition-revisions
+    - --enable-environment-configs
+
+# Crossplane Providers Configuration
+# Providers will be installed via Provider CRDs in templates/
+providers:
+  # Keycloak Provider for declarative Keycloak management
+  keycloak:
+    enabled: true
+    version: "v0.5.0"
+    package: xpkg.upbound.io/crossplane-contrib/provider-keycloak
+
+  # Kubernetes Provider for in-cluster resource management
+  kubernetes:
+    enabled: true
+    version: "v0.14.0"
+    package: xpkg.upbound.io/crossplane-contrib/provider-kubernetes
+
+  # Helm Provider for Helm release management
+  helm:
+    enabled: true
+    version: "v0.19.0"
+    package: xpkg.upbound.io/crossplane-contrib/provider-helm
+
+  # Vault Provider for declarative Vault management
+  vault:
+    enabled: true
+    version: "v0.8.0"
+    package: xpkg.upbound.io/upbound/provider-vault
+
+  # Azure AD Provider for Azure Active Directory management
+  azuread:
+    enabled: true
+    version: "v1.4.1"
+    package: xpkg.upbound.io/upbound/provider-azuread
+
+  # ArgoCD Provider for declarative ArgoCD management
+  argocd:
+    enabled: true
+    version: "v0.7.0"
+    package: xpkg.upbound.io/crossplane-contrib/provider-argocd
+
+# Crossplane Functions Configuration
+functions:
+  # Environment Configs function for shared configuration injection
+  environmentConfigs:
+    enabled: true
+    version: "v0.3.0"
+    package: xpkg.upbound.io/crossplane-contrib/function-environment-configs
+
+# Monitoring Configuration
+monitoring:
+  # ServiceMonitor for Prometheus
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+
+  # Grafana Dashboard
+  grafanaDashboard:
+    enabled: true
+
+# ProviderConfig will be created for each enabled provider
+providerConfig:
+  # Kubernetes provider config (uses in-cluster authentication)
+  kubernetes:
+    enabled: true
+    identityType: Secret
+
+  # Helm provider config (uses in-cluster authentication)
+  helm:
+    enabled: true
+    identityType: Secret
+
+  # Vault provider config (uses token authentication)
+  vault:
+    enabled: true
+    # Vault address (internal cluster service)
+    address: "http://vault-active.vault.svc.cluster.local:8200"
+    # Skip TLS verification for internal communication
+    skipTlsVerify: true
+    # Token secret reference
+    tokenSecretName: "vault-admin-token"
+    tokenSecretKey: "token"
+
+  # Azure AD provider config (uses service principal)
+  azuread:
+    enabled: false  # Disabled by default - requires Azure credentials
+    # Azure tenant ID
+    tenantId: ""
+    # Service principal secret reference
+    credentialSecretName: "azuread-service-principal"
+    credentialSecretKey: "credentials"
+
+  # ArgoCD provider config (uses API token)
+  argocd:
+    enabled: true
+    # ArgoCD server address (internal cluster service)
+    serverAddr: "argocd-server.argocd.svc:443"
+    # Skip TLS verification for internal communication
+    insecure: true
+    plainText: false
+    # API token secret reference
+    tokenSecretName: "argocd-admin-token"
+    tokenSecretKey: "token"
+
+vault:
+  # Deprecated legacy secret seeding mechanism. Bootstrap secrets are now
+  # generated via SealedSecrets + PushSecrets (see docs/platform/security/secret-inventory.md).
+  secrets: []

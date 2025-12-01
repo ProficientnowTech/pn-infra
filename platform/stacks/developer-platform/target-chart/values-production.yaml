@@ -1,0 +1,59 @@
+# Production Environment
+# Platform Developer Platform applications with sync wave ordering
+applications:
+- name: backstage
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: backstage
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+
+- name: harbor
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  destinationNamespaceOverwrite: harbor
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+
+- name: verdaccio
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  destinationNamespaceOverwrite: verdaccio
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+
+- name: clusterapi
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+  destinationNamespaceOverride: cluster-api
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+
+- name: kubevirt
+  annotations:
+    argocd.argoproj.io/sync-wave: '40'
+  destinationNamespaceOverwrite: kubevirt
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+
+- name: kubevirt-cloud-controller-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: '50'
+  destinationNamespaceOverwrite: kubevirt
+  syncOptions:
+  - ServerSideApply=true
+
+- name: kubevirt-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  destinationNamespaceOverwrite: kubevirt
+  syncOptions:
+  - ServerSideApply=true
+
+commonLabels:
+  platform.pnats.cloud/environment: 'production'

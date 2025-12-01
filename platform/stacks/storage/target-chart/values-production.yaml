@@ -1,0 +1,69 @@
+# Production Environment
+# Platform Storage applications with sync wave ordering
+applications:
+- name: ceph-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: '-200'
+  destinationNamespaceOverwrite: 'ceph-operator'
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true
+
+- name: ceph-cluster-(pn-hyd-a)
+  annotations:
+    argocd.argoproj.io/sync-wave: '-100'
+  sources:
+  - repoUrl: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: main
+    path: platform/stacks/storage/charts/ceph-cluster
+  destinationNamespaceOverwrite: 'rook-ceph'
+  ignoreDifferences:
+  - group: ceph.rook.io
+    kind: CephCluster
+    jqPathExpressions:
+    - .status
+    - .spec.cephVersion.image
+    - .spec.placement
+  - group: ceph.rook.io
+    kind: CephBlockPool
+    jqPathExpressions:
+    - .status
+  - group: ceph.rook.io
+    kind: CephFilesystem
+    jqPathExpressions:
+    - .status
+  - group: ceph.rook.io
+    kind: CephObjectStore
+    jqPathExpressions:
+    - .status
+  - group: storage.k8s.io
+    kind: StorageClass
+    jqPathExpressions:
+    - .parameters
+
+- name: zalando-postgres-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: zalando-postgres-operator
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true
+
+- name: stackgres-postgres-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: stackgres-postgres-operator
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true
+
+- name: redis-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: redis-operator
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+
+commonLabels:
+  platform.pnats.cloud/environment: 'production'

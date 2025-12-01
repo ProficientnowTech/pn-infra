@@ -1,0 +1,50 @@
+# Production Environment
+# Platform Security applications with sync wave ordering
+applications:
+- name: argo-rollouts
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: argo-rollouts
+  syncOptions:
+  - CreateNamespace=true
+  - RespectIgnoreDifferences=true
+  - ServerSideApply=true
+  ignoreDifferences:
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    jqPathExpressions:
+    - .status
+    - .metadata.annotations
+    - .metadata.generation
+    - .spec.preserveUnknownFields
+
+- name: kargo
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  destinationNamespaceOverwrite: kargo
+  syncOptions:
+  - CreateNamespace=true
+
+- name: tekton
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  destinationNamespaceOverwrite: tekton
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+  - RespectIgnoreDifferences=true
+  ignoreDifferences:
+  - group: operator.tekton.dev
+    kind: TektonConfig
+    jqPathExpressions:
+    - '.spec.pipeline."enable-tekton-oci-bundles"'
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    jqPathExpressions:
+    - .status
+    - .metadata.annotations
+    - .metadata.generation
+    - .spec.preserveUnknownFields
+
+commonLabels:
+  platform.pnats.cloud/environment: 'production'

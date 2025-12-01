@@ -10,7 +10,7 @@ cluster-api-operator:
       tag: v0.14.0
       pullPolicy: IfNotPresent
 
-    replicas: 1  # Single replica for PoC
+    replicas: 1 # Single replica for PoC
 
     resources:
       requests:
@@ -49,7 +49,7 @@ cluster-api-operator:
     kubevirt:
       enabled: true
       namespace: capk-system
-      version: v0.2.0  # KubeVirt provider version
+      version: v0.2.0 # KubeVirt provider version
       # Provider configuration
       fetchConfig:
         url: https://github.com/kubernetes-sigs/cluster-api-provider-kubevirt/releases/download/v0.2.0/infrastructure-components.yaml
@@ -68,11 +68,11 @@ cluster-api-operator:
     enabled: true
     port: 9443
     certManager:
-      enabled: true  # Requires cert-manager (already deployed)
+      enabled: true # Requires cert-manager (already deployed)
 
   # Metrics
   metrics:
-    enabled: false  # Can enable later
+    enabled: true # Can enable later
 
   # Feature gates
   featureGates:
@@ -115,11 +115,11 @@ providerConfig:
       disk: 20Gi
 
     # Storage class for VM disks
-    storageClass: ceph-block
+    storageClass: plt-blk-hdd-repl
 
     # Network settings
     network:
-      cni: kube-ovn  # Use Kube-OVN for live migration
+      cni: kube-ovn # Use Kube-OVN for live migration
 
     # SSH key for cluster access (will be created separately)
     sshKeySecret: cluster-api-ssh-key

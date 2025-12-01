@@ -1,8 +1,25 @@
 ---
 # Backstage Developer Portal Configuration for PN Platform
 
-global:
-  imageRegistry: ""
+secrets:
+  externalSecret:
+    enabled: true
+    refreshInterval: 1h
+    secretStoreRef:
+      name: vault-backend
+      kind: ClusterSecretStore
+    target:
+      name: backstage-secrets
+      creationPolicy: Merge
+    data:
+    - secretKey: keycloak-client-secret
+      remoteRef:
+        key: applications/security/keycloak/clients/backstage
+        property: client-secret
+    - secretKey: github-token
+      remoteRef:
+        key: applications/developer-platform/backstage/app
+        property: githubToken
 
 backstage:
   # Image settings
@@ -28,7 +45,6 @@ backstage:
   # Environment variables from Secrets (CORRECTED - as array of secret names)
   extraEnvVarsSecrets:
   - backstage-secrets
-
   # Environment variables (if you need to specify individual env vars, use extraEnvVars)
   extraEnvVars:
   - name: KEYCLOAK_CLIENT_SECRET
@@ -41,23 +57,22 @@ backstage:
       secretKeyRef:
         name: backstage-secrets
         key: github-token
-
   # Backstage app configuration
   appConfig:
     app:
-      title: PN Platform Portal
-      baseUrl: https://backstage.pnats.cloud
+      title: ProficientNow Developer Platform Portal
+      baseUrl: https://developers.pnats.cloud
 
     organization:
       name: ProficientNow Technologies
 
     backend:
-      baseUrl: https://backstage.pnats.cloud
+      baseUrl: https://developers.pnats.cloud
       listen:
         port: 7007
         host: 0.0.0.0
       cors:
-        origin: https://backstage.pnats.cloud
+        origin: https://developers.pnats.cloud
         methods: [ GET, HEAD, PATCH, POST, PUT, DELETE ]
         credentials: true
       database:
@@ -157,7 +172,7 @@ ingress:
     external-dns.alpha.kubernetes.io/ttl: "60"
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
-  host: backstage.pnats.cloud
+  host: developers.pnats.cloud
   path: "/"
   tls:
     enabled: true
@@ -187,4 +202,4 @@ networkPolicy:
 # Metrics
 metrics:
   serviceMonitor:
-    enabled: false
+    enabled: true

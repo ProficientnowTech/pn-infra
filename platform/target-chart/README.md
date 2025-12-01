@@ -1,6 +1,6 @@
 # Target Chart - Platform Application Factory
 
-This chart implements the **Template-Driven Application Factory** pattern to generate ArgoCD applications for platform infrastructure components.
+This chart implements the **Template-Driven Application Factory** pattern to generate ArgoCD applications for platform infrastructure components. Apply it only after the infrastructure/provisioner/container-orchestration layers (driven by the `api` CLI) report success.
 
 ## Overview
 

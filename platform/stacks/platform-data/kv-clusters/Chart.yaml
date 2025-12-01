@@ -1,0 +1,25 @@
+apiVersion: v2
+name: pn-redis-clusters
+description: Multi-cluster Redis deployment with OpsTree operator - HA with Sentinel
+type: application
+version: 0.1.0
+appVersion: '7.0.12'
+
+keywords:
+- redis
+- cache
+- key-value
+- replication
+- sentinel
+- opstree
+- platform-data
+- high-availability
+
+maintainers:
+- name: Platform Team
+  email: platform-team@pnats.cloud
+
+annotations:
+  category: Database
+  platform.pnats.cloud/component: redis-clusters
+  platform.pnats.cloud/operator: opstree-redis

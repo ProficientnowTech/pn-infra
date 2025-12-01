@@ -17,8 +17,20 @@ metadata:
 spec:
   project: default
   sources:
+  - repoUrl: https://github.com/pnow-devsupreme/pn-infra.git
+    path: platform/project-chart
+    targetRevision: main
+    helm:
+      valuesFiles:
+      - values-production.yaml
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    path: v0.2.0/platform/target-chart
+    path: platform/stack-orchestrator
+    targetRevision: main
+    helm:
+      valueFiles:
+      - values-production.yaml
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    path: platform/target-chart
     targetRevision: main
     helm:
       valueFiles:

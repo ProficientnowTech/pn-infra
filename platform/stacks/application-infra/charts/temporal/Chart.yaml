@@ -1,10 +1,21 @@
 apiVersion: v2
-name: temporal
-description: Highly Available Temporal deployment with PostgreSQL backend
+name: pn-temporal
+description: Temporal workflow orchestration with PostgreSQL backend
 type: application
 version: 0.1.0
 appVersion: "1.24.2"
+
+keywords:
+  - temporal
+  - workflow
+  - orchestration
+  - distributed
+
+maintainers:
+  - name: Platform Team
+    email: snoorullah@proficientnowtech.com
+
 dependencies:
-- name: temporal
-  version: "0.72.0"
-  repository: https://go.temporal.io/helm-charts
+  - name: temporal
+    version: "0.72.0"
+    repository: https://go.temporal.io/helm-charts

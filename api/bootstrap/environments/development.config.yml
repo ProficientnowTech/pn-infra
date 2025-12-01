@@ -1,0 +1,11 @@
+env: development
+roles:
+  - name: 'k8s-master'
+    enabled: true
+    instances: 1
+  - name: 'k8s-worker'
+    enabled: true
+    instances: 2
+  - name: 'ans-controller'
+    enabled: true
+    instances: 1

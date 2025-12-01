@@ -1,0 +1,224 @@
+{{- range .Values.redisClusters }}
+{{- if .sentinel }}
+{{- if .sentinel.enabled }}
+---
+# ==============================================================================
+# RedisSentinel: {{ .name }}-sentinel
+# ==============================================================================
+# Sentinel cluster for monitoring and automatic failover
+# Monitors {{ .name }} RedisReplication cluster
+# ==============================================================================
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisSentinel
+metadata:
+  name: {{ .name }}-sentinel
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}-sentinel
+    app.kubernetes.io/component: redis-sentinel
+    app.kubernetes.io/part-of: platform-data
+    app.kubernetes.io/managed-by: helm
+    redis-cluster: {{ .name }}
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .sentinel.syncWave | default "1" | quote }}
+    description: "Sentinel cluster for {{ .name }} Redis automatic failover"
+    {{- if .annotations }}
+    {{- toYaml .annotations | nindent 4 }}
+    {{- end }}
+spec:
+  # ==============================================================================
+  # Sentinel Cluster Size
+  # ==============================================================================
+  # Number of sentinel instances
+  # For HA: minimum 3 sentinels with quorum of 2
+  clusterSize: {{ .sentinel.clusterSize | default 3 }}
+
+  # ==============================================================================
+  # Kubernetes Configuration
+  # ==============================================================================
+  kubernetesConfig:
+    image: {{ .sentinel.image | default "quay.io/opstree/redis-sentinel:v7.0.12" }}
+    imagePullPolicy: {{ .sentinel.imagePullPolicy | default "IfNotPresent" }}
+
+    {{- if .sentinel.imagePullSecrets }}
+    imagePullSecrets:
+    {{- toYaml .sentinel.imagePullSecrets | nindent 4 }}
+    {{- end }}
+
+    # Resource allocation for sentinel nodes
+    resources:
+      {{- if .sentinel.resources }}
+      {{- toYaml .sentinel.resources | nindent 6 }}
+      {{- else }}
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 256Mi
+      {{- end }}
+
+  # ==============================================================================
+  # Sentinel Configuration
+  # ==============================================================================
+  redisSentinelConfig:
+    # Reference to the RedisReplication cluster to monitor
+    redisReplicationName: {{ .name }}
+
+    # Master group name for sentinel configuration
+    masterGroupName: {{ .sentinel.masterGroupName | default (printf "%s-master" .name) }}
+
+    # Redis connection port
+    redisPort: {{ .sentinel.redisPort | default "6379" | quote }}
+
+    # Quorum: Number of sentinels that need to agree for failover
+    # With 3 sentinels, quorum of 2 provides fault tolerance
+    quorum: {{ .sentinel.quorum | default "2" | quote }}
+
+    # Failover timeout in milliseconds
+    # Time to wait before considering failover failed
+    failoverTimeout: {{ .sentinel.failoverTimeout | default "10000" | quote }}
+
+    # Down-after-milliseconds
+    # Time after which sentinel considers master down
+    downAfterMilliseconds: {{ .sentinel.downAfterMilliseconds | default "5000" | quote }}
+
+    # Parallel syncs during failover
+    # Number of replicas that can sync with new master simultaneously
+    parallelSyncs: {{ .sentinel.parallelSyncs | default "1" | quote }}
+
+  # ==============================================================================
+  # External Service Configuration
+  # ==============================================================================
+  {{- if .sentinel.externalService }}
+  {{- if .sentinel.externalService.enabled }}
+  externalService:
+    enabled: true
+    serviceType: {{ .sentinel.externalService.serviceType | default "ClusterIP" }}
+    port: {{ .sentinel.externalService.port | default 26379 }}
+  {{- end }}
+  {{- end }}
+
+  # ==============================================================================
+  # Monitoring - Service Monitor
+  # ==============================================================================
+  {{- if .sentinel.serviceMonitor }}
+  {{- if .sentinel.serviceMonitor.enabled }}
+  serviceMonitor:
+    enabled: true
+    interval: {{ .sentinel.serviceMonitor.interval | default "30s" }}
+    scrapeTimeout: {{ .sentinel.serviceMonitor.scrapeTimeout | default "10s" }}
+    {{- if .sentinel.serviceMonitor.labels }}
+    labels:
+      {{- toYaml .sentinel.serviceMonitor.labels | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+
+  # ==============================================================================
+  # Redis Exporter for Sentinel Metrics
+  # ==============================================================================
+  redisExporter:
+    enabled: {{ .sentinel.monitoring.enabled | default true }}
+    image: {{ .sentinel.monitoring.exporterImage | default "quay.io/opstree/redis-exporter:v1.45.0" }}
+    imagePullPolicy: {{ .sentinel.monitoring.imagePullPolicy | default "IfNotPresent" }}
+    {{- if .sentinel.monitoring.resources }}
+    resources:
+      {{- toYaml .sentinel.monitoring.resources | nindent 6 }}
+    {{- end }}
+
+  # ==============================================================================
+  # High Availability - Pod Anti-Affinity
+  # ==============================================================================
+  # Ensure sentinel pods are spread across different nodes
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - {{ .name }}-sentinel
+          topologyKey: kubernetes.io/hostname
+
+  # ==============================================================================
+  # Pod Disruption Budget
+  # ==============================================================================
+  {{- if .sentinel.pdb }}
+  pdb:
+    enabled: {{ .sentinel.pdb.enabled | default true }}
+    {{- if .sentinel.pdb.minAvailable }}
+    minAvailable: {{ .sentinel.pdb.minAvailable }}
+    {{- else if .sentinel.pdb.maxUnavailable }}
+    maxUnavailable: {{ .sentinel.pdb.maxUnavailable }}
+    {{- else }}
+    maxUnavailable: 1
+    {{- end }}
+  {{- else }}
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+  {{- end }}
+
+  # ==============================================================================
+  # Security Context
+  # ==============================================================================
+  podSecurityContext:
+    runAsUser: {{ .sentinel.podSecurityContext.runAsUser | default 1000 }}
+    runAsGroup: {{ .sentinel.podSecurityContext.runAsGroup | default 1000 }}
+    fsGroup: {{ .sentinel.podSecurityContext.fsGroup | default 1000 }}
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: false  # Sentinel needs write for state
+    runAsNonRoot: true
+
+  # ==============================================================================
+  # Health Checks
+  # ==============================================================================
+  livenessProbe:
+    failureThreshold: {{ .sentinel.livenessProbe.failureThreshold | default 3 }}
+    initialDelaySeconds: {{ .sentinel.livenessProbe.initialDelaySeconds | default 1 }}
+    periodSeconds: {{ .sentinel.livenessProbe.periodSeconds | default 10 }}
+    successThreshold: {{ .sentinel.livenessProbe.successThreshold | default 1 }}
+    timeoutSeconds: {{ .sentinel.livenessProbe.timeoutSeconds | default 1 }}
+
+  readinessProbe:
+    failureThreshold: {{ .sentinel.readinessProbe.failureThreshold | default 3 }}
+    initialDelaySeconds: {{ .sentinel.readinessProbe.initialDelaySeconds | default 1 }}
+    periodSeconds: {{ .sentinel.readinessProbe.periodSeconds | default 10 }}
+    successThreshold: {{ .sentinel.readinessProbe.successThreshold | default 1 }}
+    timeoutSeconds: {{ .sentinel.readinessProbe.timeoutSeconds | default 1 }}
+
+  # ==============================================================================
+  # Node Scheduling
+  # ==============================================================================
+  {{- if .sentinel.nodeSelector }}
+  nodeSelector:
+    {{- toYaml .sentinel.nodeSelector | nindent 4 }}
+  {{- end }}
+
+  {{- if .sentinel.tolerations }}
+  tolerations:
+  {{- toYaml .sentinel.tolerations | nindent 2 }}
+  {{- end }}
+
+  # ==============================================================================
+  # Priority
+  # ==============================================================================
+  {{- if .sentinel.priorityClassName }}
+  priorityClassName: {{ .sentinel.priorityClassName }}
+  {{- end }}
+
+{{- end }}
+{{- end }}
+{{- end }}

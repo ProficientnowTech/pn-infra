@@ -1,5 +1,31 @@
 apiVersion: v2
-name: redis-operator
-description: Wrapper chart for Spotahome Redis operator
+name: pn-redis-operator
+description: Redis Operator for Creating and Managing Redis Clusters
 type: application
-version: 0.1.0
+version: 1.0.0
+appVersion: 'v0.22.2'
+
+keywords:
+- redis-operator
+- opstree-redis-operator
+- kv-database
+- database-operator
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: storage
+  platform.pnats.cloud/component: redis-operator
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'redis-operator'
+  platform.pnats.cloud/resource-type: CRDs
+  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb"]'
+
+labels: []
+
+dependencies:
+- name: redis-operator
+  version: 0.22.2
+  repository: https://ot-container-kit.github.io/helm-charts

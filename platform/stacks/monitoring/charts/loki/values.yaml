@@ -10,15 +10,15 @@ loki:
       type: 'filesystem'
     schemaConfig:
       configs:
-        - from: 2024-01-01
-          store: tsdb
-          object_store: filesystem
-          schema: v13
-          index:
-            prefix: index_
-            period: 24h
+      - from: 2024-01-01
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
     limits_config:
-      retention_period: 168h  # 7 days
+      retention_period: 168h # 7 days
     compactor:
       working_directory: /var/loki/compactor
       compaction_interval: 10m
@@ -28,10 +28,10 @@ loki:
       delete_request_store: filesystem
 
   singleBinary:
-    replicas: 1
+    replicas: 3
     persistence:
       enabled: true
-      storageClass: ceph-block
+      storageClass: bulk-ec
       size: 50Gi
     resources:
       requests:
@@ -41,33 +41,33 @@ loki:
         cpu: 500m
         memory: 512Mi
     extraInitContainers:
-      - name: cleanup-corrupted-indexes
-        image: busybox:latest
-        command:
-          - sh
-          - -c
-          - |
-            echo "Checking for corrupted index directories..."
-            # Remove the specific corrupted index
-            if [ -d "/var/loki/data/tsdb-shipper-active/index_20406" ]; then
-              echo "Removing corrupted index_20406..."
-              rm -rf /var/loki/data/tsdb-shipper-active/index_20406
-            fi
-            if [ -d "/var/loki/data/tsdb-shipper-cache/index_20406" ]; then
-              echo "Removing cached index_20406..."
-              rm -rf /var/loki/data/tsdb-shipper-cache/index_20406
-            fi
-            echo "Cleanup complete"
-        volumeMounts:
-          - name: storage
-            mountPath: /var/loki/data
+    - name: cleanup-corrupted-indexes
+      image: busybox:latest
+      command:
+      - sh
+      - -c
+      - |
+        echo "Checking for corrupted index directories..."
+        # Remove the specific corrupted index
+        if [ -d "/var/loki/data/tsdb-shipper-active/index_20406" ]; then
+          echo "Removing corrupted index_20406..."
+          rm -rf /var/loki/data/tsdb-shipper-active/index_20406
+        fi
+        if [ -d "/var/loki/data/tsdb-shipper-cache/index_20406" ]; then
+          echo "Removing cached index_20406..."
+          rm -rf /var/loki/data/tsdb-shipper-cache/index_20406
+        fi
+        echo "Cleanup complete"
+      volumeMounts:
+      - name: storage
+        mountPath: /var/loki/data
 
   gateway:
-    enabled: false
+    enabled: true
 
   backend:
-    replicas: 0
+    replicas: 3
   read:
-    replicas: 0
+    replicas: 3
   write:
-    replicas: 0
+    replicas: 3

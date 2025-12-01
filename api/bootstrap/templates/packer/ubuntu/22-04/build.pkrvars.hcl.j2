@@ -1,0 +1,5 @@
+// Build Account Settings
+build_username           = "{{ build_account.username | default('deploy') }}"
+build_password           = "{{ build_account.password | default('deploy') }}"
+build_password_encrypted = "{{ build_account.password_encrypted }}"
+build_key                = "{{ build_account.public_key }}"

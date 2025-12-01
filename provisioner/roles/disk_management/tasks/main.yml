@@ -1,0 +1,62 @@
+---
+# Disk Management Role - Partitioning, Mounting, Fstab Management
+# Implements 5-phase safety pattern: validate → backup → apply → test → rollback
+
+- name: Initialize disk_management role status
+  set_fact:
+      disk_management_validation_passed: false
+      disk_management_backup_completed: false
+      disk_management_configuration_applied: false
+      disk_management_tests_passed: false
+      disk_management_rollback_needed: false
+
+# Phase 1: VALIDATE
+- name: 'Validate disk_management prerequisites'
+  include_tasks: validate.yml
+  register: validation_result
+  ignore_errors: true
+
+- name: Set validation status
+  set_fact:
+      disk_management_validation_passed: '{{ validation_result is succeeded }}'
+
+# Phase 2: BACKUP
+- name: 'Backup disk_management configurations'
+  include_tasks: backup.yml
+  when: disk_management_validation_passed
+  register: backup_result
+  ignore_errors: true
+
+- name: Set backup status
+  set_fact:
+      disk_management_backup_completed: '{{ backup_result is succeeded }}'
+  when: disk_management_validation_passed
+
+# Phase 3: APPLY
+- name: 'Apply disk_management configuration'
+  include_tasks: apply.yml
+  when: disk_management_validation_passed and (disk_management_backup_completed or backup_result is skipped)
+  register: apply_result
+  ignore_errors: true
+
+- name: Set apply status
+  set_fact:
+      disk_management_configuration_applied: '{{ apply_result is succeeded }}'
+  when: disk_management_validation_passed
+
+# Phase 4: TEST
+- name: 'Test disk_management configuration'
+  include_tasks: test.yml
+  when: disk_management_configuration_applied
+  register: test_result
+  ignore_errors: true
+
+- name: Set test status
+  set_fact:
+      disk_management_tests_passed: '{{ test_result is succeeded }}'
+  when: disk_management_configuration_applied
+
+# Phase 5: HANDLE RESULT
+- name: 'Handle disk_management result'
+  include_tasks: result_handler.yml
+  when: disk_management_validation_passed

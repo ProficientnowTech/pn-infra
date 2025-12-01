@@ -1,0 +1,98 @@
+---
+# Phase 1: Validate software prerequisites
+- name: Check if software configuration is defined
+  assert:
+      that:
+          - base_packages is defined
+          - base_packages | length > 0
+      fail_msg: 'Software configuration (base_packages) is not properly defined in inventory'
+      success_msg: 'Software configuration variables validated successfully'
+
+- name: Validate package list format
+  assert:
+      that:
+          - item.name is defined
+          - item.name | length > 0
+      fail_msg: "Invalid package format in base_packages - each package must have a 'name' field"
+      success_msg: 'Package {{ item.name }} format is valid'
+  loop: '{{ base_packages }}'
+
+- name: Check package manager availability
+  command: >
+      {% if ansible_os_family == "Debian" %}
+      apt --version
+      {% elif ansible_os_family == "RedHat" %}
+      yum --version
+      {% else %}
+      echo "unsupported"
+      {% endif %}
+  register: package_manager_check
+  changed_when: false
+  failed_when:
+      - package_manager_check.rc != 0
+      - ansible_os_family not in ["Debian", "RedHat"]
+
+- name: Verify we have sufficient privileges for package installation
+  command: id -u
+  register: user_id
+  changed_when: false
+  failed_when: user_id.stdout != "0"
+
+- name: Check internet connectivity for package downloads
+  uri:
+      url: "{{ 'http://archive.ubuntu.com/ubuntu' if ansible_os_family == 'Debian' else 'http://mirror.centos.org/centos' }}"
+      method: HEAD
+      timeout: 10
+  register: connectivity_check
+  ignore_errors: true
+
+- name: Warn about connectivity issues
+  debug:
+      msg: 'Warning: Internet connectivity check failed. Package installation may fail if repositories are not accessible.'
+  when: connectivity_check is failed
+
+- name: Check available disk space
+  shell: df --block-size=1M / | awk 'NR==2 {print $4}'
+  register: available_space
+  changed_when: false
+
+- name: Validate sufficient disk space
+  assert:
+      that:
+          - available_space.stdout | int > 1000
+      fail_msg: 'Insufficient disk space for package installation. Available: {{ available_space.stdout }}MB, Required: >1GB'
+      success_msg: 'Sufficient disk space available for package installation'
+
+- name: Check for active APT/dpkg lock (non-blocking)
+  command: bash -lc "flock -n /var/lib/dpkg/lock-frontend -c true"
+  register: apt_lock_check
+  changed_when: false
+  failed_when: apt_lock_check.rc != 0
+  when: ansible_os_family == "Debian"
+
+- name: Check for active yum/dnf PID
+  shell: 'pidfile=/var/run/yum.pid; [ -f "$pidfile" ] && ps -p "$(cat "$pidfile")" >/dev/null 2>&1'
+  register: yum_lock_check
+  changed_when: false
+  failed_when: yum_lock_check.rc == 0
+  when: ansible_os_family == "RedHat"
+
+- name: Validate system repositories are configured
+  shell: >
+      {% if ansible_os_family == "Debian" %}
+      apt-cache policy | grep -c "http"
+      {% else %}
+      yum repolist enabled | grep -c "enabled"
+      {% endif %}
+  register: repo_count
+  changed_when: false
+  failed_when: repo_count.stdout | int < 1
+
+- name: Log validation success
+  debug:
+      msg: |
+          Software role validation completed successfully:
+          - Package manager: {{ 'apt' if ansible_os_family == 'Debian' else 'yum/dnf' }}
+          - Package count: {{ base_packages | length }}
+          - Repository count: {{ repo_count.stdout }}
+          - Available space: {{ available_space.stdout }}MB

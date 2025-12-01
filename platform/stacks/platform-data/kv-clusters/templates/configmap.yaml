@@ -1,0 +1,167 @@
+{{- range .Values.redisClusters }}
+---
+# ==============================================================================
+# Redis ConfigMap: {{ .name }}-config
+# ==============================================================================
+# Additional Redis configuration for {{ .name }} cluster
+# HARDCODED configuration - not templated (as per user requirements)
+# ==============================================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .name }}-config
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: redis-config
+    app.kubernetes.io/part-of: platform-data
+    app.kubernetes.io/managed-by: helm
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .configMapSyncWave | default "-1" | quote }}
+    description: "Redis configuration for {{ .name }} cluster"
+data:
+  redis-additional.conf: |
+    # ==============================================================================
+    # MEMORY MANAGEMENT
+    # ==============================================================================
+    # Maximum memory allocation (leave ~10% for OS and overhead)
+    maxmemory {{ .config.maxmemory | default "896mb" }}
+
+    # Eviction policy when maxmemory is reached
+    # allkeys-lru: Evict any key using LRU (Least Recently Used)
+    # Other options: volatile-lru, allkeys-lfu, volatile-lfu, allkeys-random, volatile-random, volatile-ttl, noeviction
+    maxmemory-policy {{ .config.maxmemoryPolicy | default "allkeys-lru" }}
+
+    # ==============================================================================
+    # PERSISTENCE - RDB (Redis Database Snapshots)
+    # ==============================================================================
+    # Save snapshots at intervals (seconds, minimum changes)
+    # After 900 sec (15 min) if at least 1 key changed
+    save 900 1
+    # After 300 sec (5 min) if at least 10 keys changed
+    save 300 10
+    # After 60 sec if at least 10000 keys changed
+    save 60 10000
+
+    # RDB compression
+    rdbcompression yes
+    rdbchecksum yes
+
+    # ==============================================================================
+    # PERSISTENCE - AOF (Append Only File)
+    # ==============================================================================
+    # Enable AOF for better durability
+    appendonly {{ .config.appendonly | default "yes" }}
+
+    # AOF fsync policy
+    # everysec: fsync every second (good balance)
+    # always: fsync on every write (slow, safest)
+    # no: let OS decide when to fsync (fastest, least safe)
+    appendfsync {{ .config.appendfsync | default "everysec" }}
+
+    # Don't fsync during BGSAVE/BGREWRITEAOF
+    no-appendfsync-on-rewrite no
+
+    # Auto-rewrite AOF when it grows by percentage
+    auto-aof-rewrite-percentage 100
+    auto-aof-rewrite-min-size 64mb
+
+    # ==============================================================================
+    # REPLICATION SETTINGS
+    # ==============================================================================
+    # Diskless replication (send RDB over network instead of disk)
+    repl-diskless-sync yes
+    repl-diskless-sync-delay 5
+
+    # Replica read-only mode
+    replica-read-only yes
+
+    # Replica priority (lower number = higher priority for promotion)
+    replica-priority 100
+
+    # ==============================================================================
+    # PERFORMANCE TUNING
+    # ==============================================================================
+    # TCP keepalive (seconds)
+    # Send TCP ACKs to clients to detect dead connections
+    tcp-keepalive 300
+
+    # Client timeout (0 = never timeout)
+    timeout 0
+
+    # Slow log settings
+    # Log queries slower than microseconds
+    slowlog-log-slower-than 10000
+    slowlog-max-len 128
+
+    # Maximum concurrent clients
+    maxclients {{ .config.maxclients | default "10000" }}
+
+    # Stream node settings
+    stream-node-max-bytes 4096
+    stream-node-max-entries 100
+
+    # ==============================================================================
+    # SECURITY
+    # ==============================================================================
+    # Disable dangerous commands in production
+    rename-command FLUSHDB ""
+    rename-command FLUSHALL ""
+    rename-command CONFIG ""
+    rename-command SHUTDOWN ""
+
+    # Protected mode (requires password or bind to specific IPs)
+    protected-mode yes
+
+    # ==============================================================================
+    # LOGGING
+    # ==============================================================================
+    # Log level: debug, verbose, notice, warning
+    loglevel {{ .config.loglevel | default "notice" }}
+
+    # Log to stdout (Kubernetes will capture)
+    logfile ""
+
+    # ==============================================================================
+    # ADVANCED SETTINGS
+    # ==============================================================================
+    # Active defragmentation
+    activedefrag yes
+
+    # Lazy freeing
+    lazyfree-lazy-eviction yes
+    lazyfree-lazy-expire yes
+    lazyfree-lazy-server-del yes
+    replica-lazy-flush yes
+
+    # HyperLogLog sparse representation
+    hll-sparse-max-bytes 3000
+
+    # Lua script time limit (milliseconds)
+    lua-time-limit 5000
+
+    # Notify keyspace events (disabled by default for performance)
+    # notify-keyspace-events ""
+
+    # ==============================================================================
+    # CLIENT OUTPUT BUFFER LIMITS
+    # ==============================================================================
+    # Prevent slow clients from overwhelming the server
+    client-output-buffer-limit normal 0 0 0
+    client-output-buffer-limit replica 256mb 64mb 60
+    client-output-buffer-limit pubsub 32mb 8mb 60
+
+    # ==============================================================================
+    # CLUSTER/REPLICATION SPECIFIC
+    # ==============================================================================
+    # Cluster mode (disabled for replication mode)
+    cluster-enabled no
+
+    # Replication backlog
+    repl-backlog-size 1mb
+    repl-backlog-ttl 3600
+
+{{- end }}

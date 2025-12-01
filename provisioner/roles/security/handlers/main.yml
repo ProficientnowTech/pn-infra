@@ -1,0 +1,38 @@
+---
+# Security role handlers
+- name: restart ssh
+  systemd:
+      name: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+      state: restarted
+      daemon_reload: true
+  listen: restart ssh
+
+- name: restart fail2ban
+  systemd:
+      name: fail2ban
+      state: restarted
+      daemon_reload: true
+  listen: restart fail2ban
+
+- name: restart auditd
+  systemd:
+      name: auditd
+      state: restarted
+  listen: restart auditd
+
+- name: reload ufw
+  ufw:
+      state: reloaded
+  when: ansible_os_family == "Debian"
+  listen: reload firewall
+
+- name: reload firewalld
+  systemd:
+      name: firewalld
+      state: reloaded
+  when: ansible_os_family == "RedHat"
+  listen: reload firewall
+
+- name: reload sysctl
+  command: sysctl --system
+  listen: reload sysctl

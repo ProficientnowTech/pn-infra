@@ -1,0 +1,126 @@
+{{- range .Values.pgClusters }}
+{{- if .tls }}
+{{- if .tls.enabled }}
+---
+# TLS Certificate for PostgreSQL Cluster: {{ .name }}
+# Automatically provisions certificates via cert-manager
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ .name }}-tls
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: database-tls
+    app.kubernetes.io/managed-by: postgres-operator
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .tls.syncWave | default "-1" | quote }}
+spec:
+  # Secret name where certificate will be stored
+  secretName: {{ .name }}-tls-cert
+
+  # Certificate duration and renewal
+  duration: {{ .tls.duration | default "2160h" }}  # 90 days
+  renewBefore: {{ .tls.renewBefore | default "720h" }}  # 30 days before expiry
+
+  # Subject configuration
+  subject:
+    organizations:
+    - {{ .tls.organization | default "ProficientNow Cloud Platform" }}
+
+  # Common name (primary DNS name)
+  commonName: {{ .name }}.{{ .namespace }}.svc.cluster.local
+
+  # DNS names covered by this certificate
+  dnsNames:
+  # Master service
+  - {{ .name }}.{{ .namespace }}.svc.cluster.local
+  - {{ .name }}.{{ .namespace }}.svc
+  - {{ .name }}.{{ .namespace }}
+  - {{ .name }}
+
+  # Replica service
+  - {{ .name }}-repl.{{ .namespace }}.svc.cluster.local
+  - {{ .name }}-repl.{{ .namespace }}.svc
+  - {{ .name }}-repl.{{ .namespace }}
+
+  {{- if .pooler.enabled }}
+  # Connection pooler services
+  - {{ .name }}-pooler.{{ .namespace }}.svc.cluster.local
+  - {{ .name }}-pooler.{{ .namespace }}.svc
+  - {{ .name }}-pooler.{{ .namespace }}
+  {{- if .pooler.replica.enabled }}
+  - {{ .name }}-pooler-repl.{{ .namespace }}.svc.cluster.local
+  - {{ .name }}-pooler-repl.{{ .namespace }}.svc
+  - {{ .name }}-pooler-repl.{{ .namespace }}
+  {{- end }}
+  {{- end }}
+
+  {{- if .tls.additionalDNSNames }}
+  # Additional DNS names (e.g., external load balancer)
+  {{- range .tls.additionalDNSNames }}
+  - {{ . }}
+  {{- end }}
+  {{- end }}
+
+  # IP addresses (if needed for direct IP access)
+  {{- if .tls.ipAddresses }}
+  ipAddresses:
+  {{- range .tls.ipAddresses }}
+  - {{ . }}
+  {{- end }}
+  {{- end }}
+
+  # Issuer reference
+  issuerRef:
+    {{- if .tls.issuerRef }}
+    name: {{ .tls.issuerRef.name }}
+    kind: {{ .tls.issuerRef.kind | default "ClusterIssuer" }}
+    {{- if .tls.issuerRef.group }}
+    group: {{ .tls.issuerRef.group }}
+    {{- end }}
+    {{- else }}
+    # Default to platform-internal CA issuer
+    name: {{ .tls.issuer | default "platform-internal-ca" }}
+    kind: {{ .tls.issuerKind | default "ClusterIssuer" }}
+    {{- end }}
+
+  # Secret template - format for PostgreSQL compatibility
+  secretTemplate:
+    labels:
+      app.kubernetes.io/name: {{ .name }}
+      app.kubernetes.io/component: database-tls
+      postgres-cluster: {{ .name }}
+    annotations:
+      cert-manager.io/certificate-name: {{ .name }}-tls
+      cert-manager.io/common-name: {{ .name }}.{{ .namespace }}.svc.cluster.local
+
+  # Key settings
+  privateKey:
+    algorithm: {{ .tls.privateKey.algorithm | default "RSA" }}
+    {{- if eq (.tls.privateKey.algorithm | default "RSA") "RSA" }}
+    size: {{ .tls.privateKey.size | default 2048 }}
+    {{- else if eq (.tls.privateKey.algorithm | default "RSA") "ECDSA" }}
+    size: {{ .tls.privateKey.size | default 256 }}
+    {{- end }}
+    encoding: {{ .tls.privateKey.encoding | default "PKCS1" }}
+    rotationPolicy: {{ .tls.privateKey.rotationPolicy | default "Always" }}
+
+  # Key usages
+  usages:
+  - server auth
+  - client auth
+  - digital signature
+  - key encipherment
+
+  {{- if .tls.isCA }}
+  # If this is a CA certificate
+  isCA: true
+  {{- end }}
+
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,80 @@
+---
+# Directories Role - Result Handler Phase
+# Basic success/failure handling and simple rollback
+
+- name: Determine overall operation result
+  set_fact:
+      directories_operation_successful: '{{ directories_validation_passed and (directories_backup_completed or backup_result is skipped) and directories_configuration_applied and directories_tests_passed }}'
+
+- name: Handle successful configuration
+  block:
+      - name: Create success status file
+        copy:
+            content: |
+                # Directories Role - SUCCESS
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: success
+                directories_configured: {{ directories | length }}
+                cascade_ownership_applied: {{ directories | selectattr('cascade_ownership', 'equalto', true) | list | length }}
+                cascade_permissions_applied: {{ directories | selectattr('cascade_permissions', 'equalto', true) | list | length }}
+            dest: /var/lib/ansible/directories-role-status
+            mode: '0644'
+
+      - name: Set success status for dependent roles
+        set_fact:
+            directories_status: 'success'
+
+      - name: Log successful completion
+        debug:
+            msg: 'Directories Role completed successfully - {{ directories | length }} directories configured'
+
+  when: directories_operation_successful
+
+- name: Handle failed configuration
+  block:
+      - name: Attempt basic rollback if needed
+        block:
+            - name: Get backup timestamp
+              shell: ls -t /var/lib/ansible/backups/directories/manifest.*.txt | head -1 | grep -o '[0-9]\{10\}'
+              register: backup_timestamp_result
+              when: directories_configuration_applied and not directories_tests_passed
+
+            - name: Remove created directories that didn't exist before
+              shell: |
+                  manifest="/var/lib/ansible/backups/directories/manifest.{{ backup_timestamp_result.stdout }}.txt"
+                  if [ -f "$manifest" ]; then
+                    grep -A 10 "DIRECTORIES_TO_CONFIGURE:" "$manifest" | grep "existed_before: false" -B 1 | grep "path:" | cut -d: -f2 | while read -r dir_path; do
+                      dir_path=$(echo "$dir_path" | xargs)  # trim whitespace
+                      if [ -d "$dir_path" ]; then
+                        rmdir "$dir_path" 2>/dev/null || rm -rf "$dir_path"
+                      fi
+                    done
+                  fi
+              when: backup_timestamp_result is succeeded
+              ignore_errors: true
+
+        when: directories_configuration_applied and not directories_tests_passed
+        ignore_errors: true
+
+      - name: Create failure status file
+        copy:
+            content: |
+                # Directories Role - FAILED
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: failed
+                validation_passed: {{ directories_validation_passed }}
+                configuration_applied: {{ directories_configuration_applied }}
+                tests_passed: {{ directories_tests_passed }}
+                directories_attempted: {{ directories | length }}
+            dest: /var/lib/ansible/directories-role-status
+            mode: '0644'
+
+      - name: Set failure status for dependent roles
+        set_fact:
+            directories_status: 'failed'
+
+      - name: Log failure
+        debug:
+            msg: 'Directories Role failed - check /var/lib/ansible/directories-role-status'
+
+  when: not directories_operation_successful

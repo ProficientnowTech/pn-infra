@@ -1,0 +1,32 @@
+=== Deployment Script Log Started ===
+Timestamp: 2025-09-05 16:17:48 IST
+Script: ./test.sh
+Arguments: ./logs
+=========================================
+
+[2025-09-05 16:17:48] [INFO]: Checking Prerequisites...
+[2025-09-05 16:17:48] [DEBUG]: arch: x86_64
+[2025-09-05 16:17:48] [DEBUG]: os: Linux
+==================================================
+[2025-09-05 16:17:48] [INFO]: Checking OS and ARCH
+[2025-09-05 16:17:48] [INFO]: Checking variable OS...
+[2025-09-05 16:17:48] [SUCCESS]: Variable 'OS' is set to: Linux
+[2025-09-05 16:17:48] [INFO]: Checking variable ARCH...
+[2025-09-05 16:17:48] [SUCCESS]: Variable 'ARCH' is set to: x86_64
+[2025-09-05 16:17:48] [SUCCESS]: Operating System and Architecture are supported
+==================================================
+[2025-09-05 16:17:48] [INFO]: Validating script parameters
+[2025-09-05 16:17:48] [SUCCESS]: Parameters are valid
+==================================================
+[2025-09-05 16:17:48] [INFO]: Checking required tools
+[2025-09-05 16:17:48] [INFO]: Checking yq...
+[2025-09-05 16:17:48] [SUCCESS]: yq found with version: yq (https://github.com/mikefarah/yq/) version v4.47.1
+[2025-09-05 16:17:48] [INFO]: Checking yaml-validator-cli...
+[2025-09-05 16:17:48] [SUCCESS]: yaml-validator-cli found with version: yaml-validator-cli 0.1.1
+[2025-09-05 16:17:48] [INFO]: Checking python3...
+[2025-09-05 16:17:48] [SUCCESS]: python3 found with version: Python 3.13.5
+[2025-09-05 16:17:48] [INFO]: Checking jinja2...
+[2025-09-05 16:17:48] [SUCCESS]: jinja2 found with version: jinja2-cli v0.8.2
+ - Jinja2 v3.1.6
+[2025-09-05 16:17:48] [SUCCESS]: All required tools are installed
+[2025-09-05 16:17:48] [SUCCESS]: All prerequisites verified

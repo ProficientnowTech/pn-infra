@@ -1,6 +1,6 @@
 # Platform Infrastructure (Template-Driven Deployment)
 
-This directory contains the complete template-driven deployment system for platform infrastructure management.
+This directory contains the template-driven deployment system for platform infrastructure management. It now assumes clusters are provisioned via the `api → config → infrastructure → provisioner → container-orchestration` flow documented in the repo root; once Kubespray (or another provider) brings up Kubernetes, the platform layer can be applied as described below.
 
 ## Architecture Overview
 

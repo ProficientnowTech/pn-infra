@@ -1,0 +1,31 @@
+---
+# Networking Role - Handlers
+# Network service management for VLAN configuration changes
+
+- name: apply netplan configuration
+  shell: netplan apply
+  when: ansible_os_family == "Debian"
+
+- name: restart network service
+  systemd:
+      name: "{{ 'systemd-networkd' if ansible_os_family == 'Debian' else 'network' }}"
+      state: restarted
+  when: ansible_os_family in ["Debian", "RedHat"]
+
+- name: reload network configuration
+  shell: |
+      if command -v netplan >/dev/null 2>&1; then
+        netplan apply
+      elif command -v systemctl >/dev/null 2>&1; then
+        systemctl reload-or-restart systemd-networkd
+      else
+        service networking restart
+      fi
+  ignore_errors: true
+
+- name: restart networking
+  systemd:
+      name: networking
+      state: restarted
+  when: ansible_os_family == "Debian"
+  ignore_errors: true

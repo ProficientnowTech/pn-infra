@@ -1,0 +1,74 @@
+---
+# Software Configuration Playbook
+# Handles package installation, repositories, and dependencies
+# Depends on base role for foundational system configuration
+- name: Software Package Management
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+      software_status: 'unknown'
+
+  pre_tasks:
+      - name: Check base role dependency
+        assert:
+            that:
+                - base_status is defined
+                - base_status == "success"
+            fail_msg: |
+                Software playbook requires successful base configuration.
+                Base status: {{ base_status | default('undefined') }}
+                Run base.yml playbook first.
+            success_msg: 'Base role dependency satisfied'
+
+      - name: Log software playbook start
+        debug:
+            msg: |
+                Starting software configuration playbook
+                Base status: {{ base_status }}
+                Packages to install: {{ base_packages | length | default(0) }}
+                OS family: {{ ansible_os_family }}
+                Package manager: {{ 'apt' if ansible_os_family == 'Debian' else 'yum/dnf' }}
+
+  roles:
+      - role: software
+        when: base_packages is defined and base_packages | length > 0
+
+  post_tasks:
+      - name: Set software completion status for orchestrator
+        set_fact:
+            software_status: "{{ 'success' if ansible_failed_task is not defined else 'failed' }}"
+
+      - name: Log software playbook completion
+        debug:
+            msg: |
+                Software configuration playbook completed
+                Status: {{ software_status }}
+                {% if software_status == 'success' %}
+                ✓ Packages requested: {{ base_packages | length }}
+                ✓ Success rate: {{ installation_success_rate | default('unknown') }}%
+                ✓ Package manager: {{ 'apt' if ansible_os_family == 'Debian' else 'yum/dnf' }}
+                ✓ System ready for dependent roles
+                {% else %}
+                ✗ Software configuration failed - check role logs for details
+                ✗ Missing packages: {{ missing_packages | default([]) | join(', ') }}
+                {% endif %}
+
+      - name: Create software status file for orchestrator
+        copy:
+            content: |
+                # Software playbook status for orchestration
+                timestamp: {{ ansible_date_time.iso8601 }}
+                playbook: software.yml
+                status: {{ software_status }}
+                base_dependency: {{ base_status }}
+                role_executed: {{ 'software' if base_packages is defined and base_packages | length > 0 else 'skipped - no packages defined' }}
+                packages_requested: {{ base_packages | length | default(0) }}
+                os_family: {{ ansible_os_family }}
+                package_manager: {{ 'apt' if ansible_os_family == 'Debian' else 'yum/dnf' }}
+            dest: /var/lib/ansible/playbook-software-status
+            mode: '0644'
+            owner: root
+            group: root
+        delegate_to: localhost
+        run_once: true

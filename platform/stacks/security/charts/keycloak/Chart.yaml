@@ -1,9 +1,35 @@
 apiVersion: v2
 name: pn-keycloak
-description: Keycloak Identity Provider for PN Infrastructure
+description: Enterprise identity and access management with OIDC, SAML, and OAuth support
+namespace: keycloak
 type: application
-version: 0.1.0
-appVersion: "25.2.0"
+version: 1.0.0
+appVersion: "26.0.7"
+
+keywords:
+- identity-management
+- authentication
+- authorization
+- oidc
+- saml
+- oauth
+- sso
+- security
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: identity-management
+  platform.pnats.cloud/component: identity-provider
+  platform.pnats.cloud/docs: 'https://www.keycloak.org/documentation'
+  platform.pnats.cloud/deploys: 'keycloak'
+  platform.pnats.cloud/dependencies: '[{"name":"postgresql","type":"database"},{"name":"sealed-secrets","type":"secret-management"}]'
+
+labels:
+  platform.pnats.cloud/component: identity-provider
+  platform.pnats.cloud/component-category: 'security/identity-management'
 
 dependencies:
 - name: keycloak

@@ -1,0 +1,4 @@
+configPackage: core
+applications:
+  - name: fuma-docs
+    chartPath: docs/fuma-docs/chart

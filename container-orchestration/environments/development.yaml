@@ -1,0 +1,4 @@
+configPackage: core
+provider: kubespray
+cluster:
+  name: development

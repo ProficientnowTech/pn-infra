@@ -1,0 +1,68 @@
+---
+# External Secrets Operator Configuration
+# Integrates with Vault for centralized secret management
+
+external-secrets:
+  # Install CRDs
+  installCRDs: true
+
+  # Replicas for high availability
+  replicaCount: 2
+
+  # Service account
+  serviceAccount:
+    create: true
+    name: external-secrets
+
+  # RBAC
+  rbac:
+    create: true
+
+  # Webhook for validating/mutating
+  webhook:
+    enabled: true
+    port: 10250
+    replicaCount: 2
+
+  # Cert controller
+  certController:
+    enabled: true
+    replicaCount: 2
+
+  # Resources
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+  # Security context
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  # Metrics
+  metrics:
+    enabled: true
+    service:
+      enabled: true
+      port: 8080
+
+  # Service monitor for Prometheus
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+
+  # Priority class
+  priorityClassName: system-cluster-critical

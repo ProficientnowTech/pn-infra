@@ -1,0 +1,16 @@
+apiVersion: v2
+name: application-infra-stack
+description: ArgoCD Application factory for application infrastructure components
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - argocd
+  - applications
+  - workflow
+  - temporal
+
+maintainers:
+  - name: Platform Team
+    email: snoorullah@proficientnowtech.com

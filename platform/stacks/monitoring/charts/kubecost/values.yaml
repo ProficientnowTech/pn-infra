@@ -2,16 +2,16 @@
 cost-analyzer:
   global:
     prometheus:
-      enabled: false
-      fqdn: http://pn-prometheus-kube-prometheus-prometheus.monitoring:9090
+      enabled: true
+      fqdn: http://prometheus-kube-prometheus-prometheus.monitoring:9090
 
   prometheus:
     server:
-      enabled: false
+      enabled: true
     nodeExporter:
-      enabled: false
+      enabled: true
     kubeStateMetrics:
-      enabled: false
+      enabled: true
 
   kubecostProductConfigs:
     clusterName: "pn-infrastructure"
@@ -24,17 +24,17 @@ cost-analyzer:
       cert-manager.io/cluster-issuer: letsencrypt-production
       external-dns.alpha.kubernetes.io/ttl: "60"
     hosts:
-      - cost.pnats.cloud
+    - cost.pnats.cloud
     paths:
-      - /
+    - /
     tls:
-      - secretName: kubecost-tls
-        hosts:
-          - cost.pnats.cloud
+    - secretName: kubecost-tls
+      hosts:
+      - cost.pnats.cloud
 
   persistentVolume:
     enabled: true
-    storageClass: ceph-block
+    storageClass: bulk-ec
     size: 50Gi
 
   resources:
@@ -46,7 +46,7 @@ cost-analyzer:
       memory: 2Gi
 
   grafana:
-    enabled: false
+    enabled: true
     sidecar:
       dashboards:
         enabled: true

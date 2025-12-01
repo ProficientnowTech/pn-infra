@@ -1,0 +1,79 @@
+---
+uri: partition
+schema:
+    type: object
+    items:
+        name:
+            type: string
+            pattern: ^[a-zA-Z0-9-_]+$
+        size_gb:
+            type: integer
+            minimum: 10
+            maximum: 2048
+        mount_point:
+            type: string
+            pattern: ^(/|/[a-zA-Z0-9]+(/?[a-zA-Z0-9-_]*)*)$
+        filesystem:
+            type: string
+            pattern: ^(ext4|xfs|btrfs)$
+        purpose:
+            type: string
+    required:
+        - name
+        - size_gb
+        - mount_point
+        - filesystem
+---
+uri: disk
+schema:
+    type: object
+    items:
+        device:
+            type: string
+            pattern: ^/dev/[a-z]+$
+        disk_size_gb:
+            type: integer
+            minimum: 10
+            maximum: 4096
+        partition_layout:
+            type: array
+            items:
+                $ref: partition
+        purpose:
+            type: string
+    required:
+        - device
+        - disk_size_gb
+        - partition_layout
+---
+uri: disks_schema
+schema:
+    type: object
+    items:
+        name:
+            type: string
+        description:
+            type: string
+        disk_layouts:
+            type: array
+            minItems: 1
+            maxItems: 4
+            items:
+                type: object
+                items:
+                    name:
+                        type: string
+                    description:
+                        type: string
+                    disks:
+                        type: array
+                        minItems: 1
+                        maxItems: 4
+                        items:
+                            $ref: disk
+                required:
+                    - name
+                    - description
+                    - disks
+        metadata:
+            $ref: metadata

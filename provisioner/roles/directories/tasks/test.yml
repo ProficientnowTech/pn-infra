@@ -1,0 +1,129 @@
+---
+# Directories Role - Test Phase
+# Basic validation of directory creation, ownership, and permissions
+
+- name: Test directories were created
+  become: true
+  stat:
+      path: '{{ item.path }}'
+  loop: '{{ directories }}'
+  when: directories | length > 0
+  register: directory_tests
+  failed_when: not (directory_tests.stat.exists | default(false))
+
+- name: Test directory ownership
+  stat:
+      path: '{{ item.path }}'
+  loop: '{{ directories }}'
+  when: directories | length > 0
+  register: ownership_tests
+  failed_when:
+      - ownership_tests.stat.pw_name != (item.owner | default('root'))
+      - ownership_tests.stat.gr_name != (item.group | default('root'))
+
+- name: Test directory permissions
+  become: true
+  stat:
+      path: '{{ item.path }}'
+  loop: '{{ directories }}'
+  when: directories | length > 0
+  register: permission_tests
+  failed_when: permission_tests.stat.mode != (item.mode | default('0755'))
+
+- name: Test cascade ownership if configured
+  become: true
+  shell: |
+      path="{{ item.path }}"
+      owner="{{ item.owner | default('root') }}"
+      group="{{ item.group | default('root') }}"
+
+      # Check all parent directories
+      IFS='/' read -ra PARTS <<< "$path"
+      current_path=""
+
+      for part in "${PARTS[@]}"; do
+        if [ -n "$part" ]; then
+          current_path="$current_path/$part"
+          if [ -d "$current_path" ]; then
+            actual_owner=$(stat -c "%U" "$current_path")
+            actual_group=$(stat -c "%G" "$current_path")
+            if [ "$actual_owner" != "$owner" ] || [ "$actual_group" != "$group" ]; then
+              echo "FAILED: $current_path has $actual_owner:$actual_group, expected $owner:$group"
+              exit 1
+            fi
+          fi
+        fi
+      done
+      echo "OK"
+  args:
+      executable: /bin/bash
+  loop: '{{ directories }}'
+  when:
+      - directories | length > 0
+      - item.cascade_ownership | default(false)
+  register: cascade_ownership_tests
+  failed_when: cascade_ownership_tests.rc != 0
+  changed_when: false
+
+- name: Test cascade permissions if configured
+  become: true
+  shell: |
+      path="{{ item.path }}"
+      mode="{{ item.mode | default('0755') }}"
+
+      # Check all parent directories
+      IFS='/' read -ra PARTS <<< "$path"
+      current_path=""
+
+      for part in "${PARTS[@]}"; do
+        if [ -n "$part" ]; then
+          current_path="$current_path/$part"
+          if [ -d "$current_path" ]; then
+            actual_mode=$(stat -c "%a" "$current_path")
+            if [ "$actual_mode" != "${mode#0}" ]; then
+              echo "FAILED: $current_path has mode $actual_mode, expected ${mode#0}"
+              exit 1
+            fi
+          fi
+        fi
+      done
+      echo "OK"
+  args:
+      executable: /bin/bash
+  loop: '{{ directories }}'
+  when:
+      - directories | length > 0
+      - item.cascade_permissions | default(false)
+  register: cascade_permission_tests
+  failed_when: cascade_permission_tests.rc != 0
+  changed_when: false
+
+- name: Test directory write access
+  become: true
+  file:
+      path: '{{ item.path }}/.ansible_test'
+      state: touch
+  loop: '{{ directories }}'
+  when: directories | length > 0
+  register: write_tests
+
+- name: Clean up test files
+  file:
+      path: '{{ item.path }}/.ansible_test'
+      state: absent
+  loop: '{{ directories }}'
+  when: directories | length > 0
+  ignore_errors: true
+
+- name: Set test success marker
+  set_fact:
+      directories_tests_passed: true
+      directories_test_details:
+          directories_created: '{{ directories | length }}'
+          cascade_ownership_configured: '{{ directories | selectattr("cascade_ownership", "equalto", true) | list | length }}'
+          cascade_permissions_configured: '{{ directories | selectattr("cascade_permissions", "equalto", true) | list | length }}'
+
+- name: Log skip message for empty directories
+  debug:
+      msg: 'No directories to test - directories list is empty'
+  when: directories | length == 0

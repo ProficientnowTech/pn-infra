@@ -1,0 +1,73 @@
+---
+# Networking Role - Test Phase
+# Basic validation of VLAN configuration and network setup
+
+- name: Test VLAN kernel module is loaded
+  shell: lsmod | grep 8021q
+  register: vlan_module_test
+  failed_when: vlan_module_test.rc != 0
+  changed_when: false
+  when: network_vlans | length > 0
+
+- name: Test VLAN interfaces were created
+  shell: ip link show | grep "{{ ansible_default_ipv4.interface }}.{{ item.id }}"
+  loop: '{{ network_vlans }}'
+  when: network_vlans | length > 0
+  register: vlan_interface_tests
+  failed_when: vlan_interface_tests.rc != 0
+  changed_when: false
+
+- name: Test network configuration files exist (netplan)
+  stat:
+      path: /etc/netplan/99-ansible-vlans.yaml
+  when:
+      - network_vlans | length > 0
+      - ansible_os_family == "Debian"
+  register: netplan_config_test
+  failed_when: not netplan_config_test.stat.exists
+
+- name: Test network configuration files exist (RedHat)
+  stat:
+      path: '/etc/sysconfig/network-scripts/ifcfg-{{ item.name }}.{{ item.id }}'
+  loop: '{{ network_vlans }}'
+  when:
+      - network_vlans | length > 0
+      - ansible_os_family == "RedHat"
+  register: network_scripts_test
+  failed_when: not network_scripts_test.results[ansible_loop.index0].stat.exists
+
+- name: Test VLAN interfaces are up
+  shell: ip link show {{ ansible_default_ipv4.interface }}.{{ item.id }} | grep "state UP"
+  loop: '{{ network_vlans }}'
+  when: network_vlans | length > 0
+  register: vlan_status_tests
+  failed_when: vlan_status_tests.rc != 0
+  changed_when: false
+
+- name: Test basic network connectivity
+  ping:
+      data: test
+  delegate_to: localhost
+  register: connectivity_test
+  when: network_vlans | length > 0
+
+- name: Test routing table has VLAN routes
+  shell: ip route show | grep "{{ ansible_default_ipv4.interface }}.{{ item.id }}"
+  loop: '{{ network_vlans }}'
+  when: network_vlans | length > 0
+  register: routing_tests
+  failed_when: false
+  changed_when: false
+
+- name: Set test success marker
+  set_fact:
+      networking_tests_passed: true
+      networking_test_details:
+          vlans_configured: '{{ network_vlans | length }}'
+          vlan_module_loaded: '{{ vlan_module_test is succeeded if network_vlans | length > 0 else false }}'
+          interfaces_up: '{{ (vlan_status_tests.results | selectattr("rc", "equalto", 0) | list | length) if network_vlans | length > 0 else 0 }}'
+
+- name: Log skip message for empty VLANs
+  debug:
+      msg: 'No VLANs to test - network_vlans list is empty'
+  when: network_vlans | length == 0

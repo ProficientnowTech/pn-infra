@@ -1,0 +1,16 @@
+apiVersion: v2
+name: stack-orchestrator
+description: ArgoCD Application factory responsible for orchestrating platform stacks with dependency-aware sequencing
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - argocd
+  - platform
+  - orchestrator
+  - stacks
+
+maintainers:
+  - name: Platform Team
+    email: platform-admin@pnats.cloud

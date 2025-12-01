@@ -1,0 +1,89 @@
+---
+# Networking Role - Backup Phase
+# Records current network configuration before making changes
+
+- name: Create backup directory
+  file:
+      path: /var/lib/ansible/backups/networking
+      state: directory
+      mode: '0700'
+      owner: root
+      group: root
+
+- name: Get current timestamp for backup naming
+  set_fact:
+      backup_timestamp: '{{ ansible_date_time.epoch }}'
+
+- name: Backup current network interfaces
+  shell: ip addr show > /var/lib/ansible/backups/networking/interfaces.{{ backup_timestamp }}.bak
+  register: interfaces_backup
+  changed_when: false
+
+- name: Backup current routing table
+  shell: ip route show > /var/lib/ansible/backups/networking/routes.{{ backup_timestamp }}.bak
+  register: routes_backup
+  changed_when: false
+
+- name: Backup netplan configuration (Ubuntu/Debian)
+  shell: |
+      if [ -d "/etc/netplan" ]; then
+        tar -czf /var/lib/ansible/backups/networking/netplan.{{ backup_timestamp }}.tar.gz -C /etc netplan/
+      fi
+  when: ansible_os_family == "Debian"
+  register: netplan_backup
+  changed_when: false
+
+- name: Backup network-scripts (RedHat family)
+  shell: |
+      if [ -d "/etc/sysconfig/network-scripts" ]; then
+        tar -czf /var/lib/ansible/backups/networking/network-scripts.{{ backup_timestamp }}.tar.gz -C /etc/sysconfig network-scripts/
+      fi
+  when: ansible_os_family == "RedHat"
+  register: network_scripts_backup
+  changed_when: false
+
+- name: Create networking backup manifest
+  copy:
+      content: |
+          # Networking Role Backup Manifest
+          # Created: {{ ansible_date_time.iso8601 }}
+          # Timestamp: {{ backup_timestamp }}
+
+          VLANS_TO_CONFIGURE:
+          {% for vlan in network_vlans %}
+          - name: {{ vlan.name }}
+            id: {{ vlan.id }}
+            gateway: {{ vlan.gateway }}
+          {% endfor %}
+
+          BACKUP_FILES:
+          - interfaces: /var/lib/ansible/backups/networking/interfaces.{{ backup_timestamp }}.bak
+          - routes: /var/lib/ansible/backups/networking/routes.{{ backup_timestamp }}.bak
+          {% if ansible_os_family == "Debian" %}
+          - netplan: /var/lib/ansible/backups/networking/netplan.{{ backup_timestamp }}.tar.gz
+          {% endif %}
+          {% if ansible_os_family == "RedHat" %}
+          - network_scripts: /var/lib/ansible/backups/networking/network-scripts.{{ backup_timestamp }}.tar.gz
+          {% endif %}
+
+          ROLLBACK_INSTRUCTIONS:
+          1. Restore network configuration files from backup
+          2. Restart networking service
+          3. Verify network connectivity
+      dest: '/var/lib/ansible/backups/networking/manifest.{{ backup_timestamp }}.txt'
+      mode: '0600'
+  when: network_vlans | length > 0
+
+- name: Log backup completion
+  debug:
+      msg:
+          - 'Networking backup completed successfully'
+          - 'Backup timestamp: {{ backup_timestamp }}'
+          - 'VLANs to configure: {{ network_vlans | length }}'
+          - 'Manifest: /var/lib/ansible/backups/networking/manifest.{{ backup_timestamp }}.txt'
+  when: network_vlans | length > 0
+
+- name: Log skip message for empty VLANs
+  debug:
+      msg: 'No VLANs to backup - network_vlans list is empty'
+  when: network_vlans | length == 0

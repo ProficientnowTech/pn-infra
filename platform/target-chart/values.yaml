@@ -24,8 +24,8 @@ global:
       prune: true
       selfHeal: true
     syncOptions:
-      - 'CreateNamespace=true'
-      - 'RespectIgnoreDifferences=true'
+    - 'CreateNamespace=true'
+    - 'RespectIgnoreDifferences=true'
 
   # Default retry configuration
   retry:

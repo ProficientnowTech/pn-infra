@@ -1,0 +1,117 @@
+---
+# Phase 4: Test base configuration
+- name: Test timezone configuration
+  block:
+      - name: Check current timezone
+        command: timedatectl show --property=Timezone --value
+        register: current_timezone
+        changed_when: false
+
+      - name: Verify timezone is correctly set
+        assert:
+            that:
+                - current_timezone.stdout == base_setup.timezone
+            fail_msg: 'Timezone test failed. Expected: {{ base_setup.timezone }}, Got: {{ current_timezone.stdout }}'
+            success_msg: 'Timezone correctly set to {{ base_setup.timezone }}'
+
+- name: Test locale configuration
+  block:
+      - name: Check current locale
+        command: locale
+        register: current_locale
+        changed_when: false
+
+      - name: Verify locale is correctly set
+        assert:
+            that:
+                - base_setup.locale + '.UTF-8' in current_locale.stdout or base_setup.locale + '.utf8' in current_locale.stdout
+            fail_msg: 'Locale test failed. Expected locale containing {{ base_setup.locale }}, but got: {{ current_locale.stdout }}'
+            success_msg: 'Locale correctly configured'
+
+- name: Test time synchronization
+  block:
+      - name: Check NTP synchronization status
+        command: timedatectl show --property=NTPSynchronized --value
+        register: ntp_sync_status
+        changed_when: false
+
+      - name: Check timesyncd service status
+        systemd:
+            name: systemd-timesyncd
+        register: timesyncd_status
+
+      - name: Verify time sync is working
+        assert:
+            that:
+                - timesyncd_status.status.ActiveState == "active"
+                - ntp_sync_status.stdout == "yes" or ntp_sync_status.stdout == "true"
+            fail_msg: 'Time synchronization test failed. Service active: {{ timesyncd_status.status.ActiveState }}, NTP sync: {{ ntp_sync_status.stdout }}'
+            success_msg: 'Time synchronization is working correctly'
+
+  when: base_setup.config_time_sync
+
+- name: Test logging configuration
+  block:
+      - name: Check rsyslog service status
+        systemd:
+            name: rsyslog
+        register: rsyslog_status
+
+      - name: Test log file creation
+        shell: logger "Ansible base role test message - {{ ansible_date_time.iso8601 }}"
+        changed_when: false
+
+      - name: Wait for log message to be written
+        wait_for:
+            timeout: 5
+
+      - name: Check if test message appears in syslog
+        command: journalctl --since "1 minute ago" --grep "Ansible base role test message"
+        register: log_test
+        changed_when: false
+
+      - name: Verify logging is working
+        assert:
+            that:
+                - rsyslog_status.status.ActiveState == "active"
+                - log_test.stdout | length > 0
+            fail_msg: 'Logging test failed. Rsyslog active: {{ rsyslog_status.status.ActiveState }}, Log message found: {{ log_test.stdout | length > 0 }}'
+            success_msg: 'Logging is working correctly'
+
+  when: base_setup.config_logging
+
+- name: Test system time accuracy
+  block:
+      - name: Get current system time
+        command: date +%s
+        register: system_time
+        changed_when: false
+
+      # - name: Get time from reliable source
+      #   uri:
+      #       url: 'https://worldtimeapi.org/api/timezone/{{ base_setup.timezone }}'
+      #       return_content: yes
+      #       timeout: 15
+      #       status_code: 200
+      #   register: world_time
+      #   retries: 3
+      #   delay: 2
+      #   until: world_time is succeeded and (world_time.json is defined) and (world_time.json.unixtime is defined)
+      #   ignore_errors: true
+
+      # - name: Compare time accuracy (if world time available)
+      #   assert:
+      #       that:
+      #           - (system_time.stdout | int - (world_time.json.unixtime | int)) | abs < 300
+      #       fail_msg: 'System time appears to be more than 5 minutes off from world time'
+      #       success_msg: 'System time is reasonably accurate'
+      #   when: world_time is succeeded and world_time.json.unixtime is defined
+
+- name: Final verification
+  debug:
+      msg: |
+          Base configuration tests completed successfully:
+          - Timezone: {{ base_setup.timezone }} ✓
+          - Locale: {{ base_setup.locale }}.UTF-8 ✓
+          - Time sync: {{ 'enabled and working ✓' if base_setup.config_time_sync else 'disabled as requested ✓' }}
+          - Logging: {{ 'configured and working ✓' if base_setup.config_logging else 'disabled as requested ✓' }}

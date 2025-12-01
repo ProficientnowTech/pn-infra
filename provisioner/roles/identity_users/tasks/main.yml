@@ -1,0 +1,66 @@
+---
+# Identity & Users Role - User Management, SSH Configuration, Groups, Permissions
+# Implements 5-phase safety pattern: validate → backup → apply → test → rollback
+
+- name: Initialize identity_users role status
+  set_fact:
+      identity_validation_passed: false
+      identity_backup_completed: false
+      identity_configuration_applied: false
+      identity_tests_passed: false
+      identity_rollback_needed: false
+
+# Phase 1: VALIDATE
+- name: 'Validate identity_users prerequisites'
+  include_tasks: validate.yml
+  register: validation_result
+  ignore_errors: true
+
+- name: Set validation status
+  set_fact:
+      identity_validation_passed: '{{ validation_result is succeeded }}'
+
+- name: Log validation phase completion
+  debug:
+      msg: "Identity & Users validation phase completed - Status: {{ 'PASSED' if identity_validation_passed else 'FAILED' }}"
+
+# Phase 2: BACKUP
+- name: 'Backup identity_users configurations'
+  include_tasks: backup.yml
+  when: identity_validation_passed
+  register: backup_result
+  ignore_errors: true
+
+- name: Set backup status
+  set_fact:
+      identity_backup_completed: '{{ backup_result is succeeded }}'
+  when: identity_validation_passed
+
+# Phase 3: APPLY
+- name: 'Apply identity_users configuration'
+  include_tasks: apply.yml
+  when: identity_validation_passed and (identity_backup_completed or backup_result is skipped)
+  register: apply_result
+  ignore_errors: true
+
+- name: Set apply status
+  set_fact:
+      identity_configuration_applied: '{{ apply_result is succeeded }}'
+  when: identity_validation_passed
+
+# Phase 4: TEST
+- name: 'Test identity_users configuration'
+  include_tasks: test.yml
+  when: identity_configuration_applied
+  register: test_result
+  ignore_errors: true
+
+- name: Set test status
+  set_fact:
+      identity_tests_passed: '{{ test_result is succeeded }}'
+  when: identity_configuration_applied
+
+# Phase 5: HANDLE RESULT
+- name: 'Handle identity_users result'
+  include_tasks: result_handler.yml
+  when: identity_validation_passed

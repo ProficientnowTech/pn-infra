@@ -1,0 +1,16 @@
+apiVersion: v2
+name: platform-data
+description: Application factory for shared data services (PostgreSQL, Redis, platform databases)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - argocd
+  - data
+  - postgres
+  - redis
+
+maintainers:
+  - name: Platform Team
+    email: platform-admin@pnats.cloud

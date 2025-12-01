@@ -1,6 +1,6 @@
 # Platform Hooks
 
-ArgoCD hooks for automated validation, health checks, and failure notifications in the template-driven platform.
+ArgoCD hooks for automated validation, health checks, and failure notifications in the template-driven platform. These assume the upstream API/config/infrastructure layers have already produced inventories, tfvars, and secrets.
 
 ## Directory Structure
 

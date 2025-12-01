@@ -1,0 +1,106 @@
+---
+# Networking Role - Apply Phase
+# Configures VLAN interfaces and network settings
+
+- name: Create VLAN interfaces using netplan (Ubuntu/Debian)
+  template:
+      src: netplan-vlans.j2
+      dest: /etc/netplan/99-ansible-vlans.yaml
+      owner: root
+      group: root
+      mode: '0644'
+  when:
+      - network_vlans | length > 0
+      - ansible_os_family == "Debian"
+  register: netplan_config
+  notify: apply netplan configuration
+
+- name: Create VLAN interface scripts (RedHat family)
+  template:
+      src: ifcfg-vlan.j2
+      dest: '/etc/sysconfig/network-scripts/ifcfg-{{ item.name }}.{{ item.id }}'
+      owner: root
+      group: root
+      mode: '0644'
+  loop: '{{ network_vlans }}'
+  when:
+      - network_vlans | length > 0
+      - ansible_os_family == "RedHat"
+  register: network_scripts_config
+  notify: restart network service
+
+- name: Load VLAN kernel module
+  modprobe:
+      name: 8021q
+      state: present
+  when: network_vlans | length > 0
+  register: vlan_module_loaded
+
+- name: Ensure VLAN module loads at boot
+  lineinfile:
+      path: /etc/modules
+      line: '8021q'
+      create: true
+  when:
+      - network_vlans | length > 0
+      - ansible_os_family == "Debian"
+
+- name: Ensure VLAN module loads at boot (RedHat)
+  lineinfile:
+      path: /etc/modules-load.d/vlan.conf
+      line: '8021q'
+      create: true
+  when:
+      - network_vlans | length > 0
+      - ansible_os_family == "RedHat"
+
+- name: Create VLAN interfaces manually (fallback method)
+  shell: |
+      # Get the primary interface
+      primary_if=$(ip route | grep default | awk '{print $5}' | head -1)
+
+      # Create VLAN interface
+      ip link add link ${primary_if} name ${primary_if}.{{ item.id }} type vlan id {{ item.id }}
+      ip link set ${primary_if}.{{ item.id }} up
+
+      # Configure IP if specified in gateway (assuming /24 subnet)
+      gateway_network=$(echo "{{ item.gateway }}" | cut -d'.' -f1-3)
+      ip addr add ${gateway_network}.10/24 dev ${primary_if}.{{ item.id }} || true
+  loop: '{{ network_vlans }}'
+  when:
+      - network_vlans | length > 0
+      - netplan_config is skipped and network_scripts_config is skipped
+  register: manual_vlan_creation
+  ignore_errors: true
+
+- name: Configure VLAN routing
+  shell: |
+      # Add route for VLAN network if needed
+      gateway_network=$(echo "{{ item.gateway }}" | cut -d'.' -f1-3)
+      ip route add ${gateway_network}.0/24 via {{ item.gateway }} || true
+  loop: '{{ network_vlans }}'
+  when: network_vlans | length > 0
+  register: vlan_routing
+  ignore_errors: true
+
+- name: Force network configuration application
+  meta: flush_handlers
+
+- name: Wait for network interfaces to be ready
+  wait_for:
+      timeout: 10
+  when: network_vlans | length > 0
+
+- name: Log apply phase completion
+  debug:
+      msg:
+          - 'Networking apply phase completed'
+          - 'VLANs configured: {{ network_vlans | length }}'
+          - 'Configuration method: {{ "netplan" if ansible_os_family == "Debian" else "network-scripts" }}'
+          - 'VLAN module loaded: {{ vlan_module_loaded is succeeded }}'
+  when: network_vlans | length > 0
+
+- name: Log skip message for empty VLANs
+  debug:
+      msg: 'No VLANs to configure - network_vlans list is empty'
+  when: network_vlans | length == 0

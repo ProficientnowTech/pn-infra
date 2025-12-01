@@ -1,0 +1,92 @@
+environment: production
+stacks:
+  - name: platform-infrastructure
+    description: "Core infrastructure (ingress, cert-manager, external-dns, argocd bootstrap)"
+    project: infrastructure
+    syncWave: "-30"
+    chart:
+      path: platform/stacks/infrastructure/target-chart
+      valuesFile: platform/stacks/infrastructure/target-chart/values-production.yaml
+    dependencies: []
+  - name: platform-storage
+    description: "Rook, PostgreSQL operator, Redis"
+    project: storage
+    syncWave: "-20"
+    chart:
+      path: platform/stacks/storage/target-chart
+      valuesFile: platform/stacks/storage/target-chart/values-production.yaml
+    dependencies:
+      - platform-infrastructure
+  - name: platform-security
+    description: "Crossplane, Vault, External Secrets, Keycloak, ArgoCD self-management"
+    project: security
+    syncWave: "-10"
+    chart:
+      path: platform/stacks/security/target-chart
+      valuesFile: platform/stacks/security/target-chart/values-production.yaml
+    dependencies:
+      - platform-infrastructure
+      - platform-storage
+  - name: platform-monitoring
+    description: "Prometheus, Loki, Tempo, Grafana, Uptime, Kubecost"
+    project: monitoring
+    syncWave: "0"
+    chart:
+      path: platform/stacks/monitoring/target-chart
+      valuesFile: platform/stacks/monitoring/target-chart/values-production.yaml
+    dependencies:
+      - platform-security
+  - name: platform-data-streaming
+    description: "Kafka/Strimzi and related streaming services"
+    project: data-streaming
+    syncWave: "10"
+    chart:
+      path: platform/stacks/data-streaming/target-chart
+      valuesFile: platform/stacks/data-streaming/target-chart/values-production.yaml
+    dependencies:
+      - platform-monitoring
+  - name: platform-data
+    description: "PostgreSQL clusters, Redis KV, other data services"
+    project: platform-data
+    syncWave: "20"
+    chart:
+      path: platform/stacks/platform-data/target-chart
+      valuesFile: platform/stacks/platform-data/target-chart/values-production.yaml
+    dependencies:
+      - platform-data-streaming
+  - name: platform-developer-platform
+    description: "Harbor, Backstage, Verdaccio, KubeVirt, ClusterAPI"
+    project: developer-platform
+    syncWave: "30"
+    chart:
+      path: platform/stacks/developer-platform/target-chart
+      valuesFile: platform/stacks/developer-platform/target-chart/values-production.yaml
+    dependencies:
+      - platform-data
+  - name: platform-development-workloads
+    description: "Kargo, Tekton, Argo Rollouts, CI/CD toolchain"
+    project: development-workloads
+    syncWave: "40"
+    chart:
+      path: platform/stacks/development-workloads/target-chart
+      valuesFile: platform/stacks/development-workloads/target-chart/values-production.yaml
+    dependencies:
+      - platform-developer-platform
+  - name: platform-application-infra
+    description: "Temporal and supporting runtime infra"
+    project: application-infra
+    syncWave: "50"
+    chart:
+      path: platform/stacks/application-infra/target-chart
+      valuesFile: platform/stacks/application-infra/target-chart/values-production.yaml
+    dependencies:
+      - platform-development-workloads
+  - name: platform-backup-dr
+    description: "Backup and DR tooling (Velero, etc.)"
+    project: backup-dr
+    syncWave: "60"
+    chart:
+      path: platform/stacks/backup-and-disaster-recovery/target-chart
+      valuesFile: platform/stacks/backup-and-disaster-recovery/target-chart/values-production.yaml
+    dependencies:
+      - platform-application-infra

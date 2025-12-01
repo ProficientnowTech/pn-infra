@@ -1,0 +1,62 @@
+---
+# Security Role - System Hardening, Firewall, Fail2ban, Security Policies
+# Implements 5-phase safety pattern: validate → backup → apply → test → rollback
+
+- name: Initialize security role status
+  set_fact:
+      security_validation_passed: false
+      security_backup_completed: false
+      security_configuration_applied: false
+      security_tests_passed: false
+      security_rollback_needed: false
+
+# Phase 1: VALIDATE
+- name: 'Validate security prerequisites'
+  include_tasks: validate.yml
+  register: validation_result
+  ignore_errors: true
+
+- name: Set validation status
+  set_fact:
+      security_validation_passed: '{{ validation_result is succeeded }}'
+
+# Phase 2: BACKUP
+- name: 'Backup security configurations'
+  include_tasks: backup.yml
+  when: security_validation_passed
+  register: backup_result
+  ignore_errors: true
+
+- name: Set backup status
+  set_fact:
+      security_backup_completed: '{{ backup_result is succeeded }}'
+  when: security_validation_passed
+
+# Phase 3: APPLY
+- name: 'Apply security configuration'
+  include_tasks: apply.yml
+  when: security_validation_passed and (security_backup_completed or backup_result is skipped)
+  register: apply_result
+  ignore_errors: true
+
+- name: Set apply status
+  set_fact:
+      security_configuration_applied: '{{ apply_result is succeeded }}'
+  when: security_validation_passed
+
+# Phase 4: TEST
+- name: 'Test security configuration'
+  include_tasks: test.yml
+  when: security_configuration_applied
+  register: test_result
+  ignore_errors: true
+
+- name: Set test status
+  set_fact:
+      security_tests_passed: '{{ test_result is succeeded }}'
+  when: security_configuration_applied
+
+# Phase 5: HANDLE RESULT
+- name: 'Handle security result'
+  include_tasks: result_handler.yml
+  when: security_validation_passed

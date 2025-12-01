@@ -1,0 +1,16 @@
+
+// Storage Configuration
+vm_disk_use_swap = {{ disk.use_swap | default('true') | lower }}
+{% if disk.partitions is defined %}
+vm_disk_partitions = {{ disk.partitions | tojson }}
+{% endif %}
+{% if disk.lvm is defined %}
+vm_disk_lvm = {{ disk.lvm | tojson }}
+{% endif %}
+
+vm_disk_size            = "{{ vm.disk.size | default('20G') }}"
+vm_disk_type            = "{{ vm.disk.type | default('virtio') }}"
+vm_disk_format          = "{{ vm.disk.format | default('raw') }}"
+vm_disk_controller_type = "{{ vm.disk.controller | default('virtio-scsi-pci') }}"
+vm_disk_device          = "{{ vm.disk.device | default('vda') }}"
+vm_storage_pool         = "{{ vm.storage_pool | default('local-lvm') }}"

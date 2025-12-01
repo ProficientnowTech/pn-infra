@@ -5,6 +5,26 @@ type: application
 version: 0.1.0
 appVersion: "0.48.0"
 
+keywords:
+- data-streaming
+- kafka
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: data-streaming
+  platform.pnats.cloud/component: kafka
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'kafka'
+  platform.pnats.cloud/resource-type: Operator
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: kafka
+  platform.pnats.cloud/component-category: data-streaming
+
 dependencies:
 - name: strimzi-kafka-operator
   version: 0.48.0

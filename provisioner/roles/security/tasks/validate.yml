@@ -1,0 +1,222 @@
+---
+# Phase 1: Validate security prerequisites
+- name: Check if security configuration is defined
+  assert:
+      that:
+          - security is defined
+      fail_msg: 'Security configuration is not defined in inventory'
+      success_msg: 'Security configuration found'
+
+- name: Validate fail2ban configuration (if enabled)
+  block:
+      - name: Check fail2ban parameters format
+        assert:
+            that:
+                - security.fail2ban.max_retries is defined
+                - security.fail2ban.bantime_secs is defined
+                - security.fail2ban.findtime_secs is defined
+            fail_msg: 'Invalid fail2ban configuration - missing required parameters'
+            success_msg: 'Fail2ban configuration is valid'
+
+      - name: Validate fail2ban numeric parameters
+        assert:
+            that:
+                - security.fail2ban.max_retries | int > 0
+                - security.fail2ban.bantime_secs | int > 0
+                - security.fail2ban.findtime_secs | int > 0
+            fail_msg: 'Fail2ban parameters must be positive integers'
+            success_msg: 'Fail2ban parameters are within valid ranges'
+
+  when: security.fail2ban is defined
+
+- name: Validate SSH configuration (if enabled)
+  block:
+      - name: Check SSH hardening parameters
+        assert:
+            that:
+                - security.ssh.max_startups is defined
+                - security.ssh.login_grace_time_secs is defined
+            fail_msg: 'Invalid SSH configuration - missing required parameters'
+            success_msg: 'SSH configuration is valid'
+
+  when: security.ssh is defined
+
+- name: Validate firewall rules configuration (if defined)
+  block:
+      - name: Check firewall rules structure
+        assert:
+            that:
+                - item.direction is defined
+                - item.protocol is defined
+                - item.port is defined
+                - item.source is defined
+                - item.description is defined
+            fail_msg: 'Invalid firewall rule structure: {{ item }}'
+            success_msg: 'Firewall rule structure is valid'
+        loop: '{{ security.firewall_rules }}'
+
+      - name: Validate firewall rule values
+        assert:
+            that:
+                - item.direction in ['in', 'out', 'inbound', 'outbound']
+                - item.protocol in ['tcp', 'udp', 'icmp']
+            fail_msg: 'Invalid firewall rule values: {{ item }}'
+            success_msg: 'Firewall rule values are valid'
+        loop: '{{ security.firewall_rules }}'
+
+      - name: Validate port numbers/ranges
+        assert:
+            that:
+                - item.port | string | regex_search('^[0-9]+$|^[0-9]+:[0-9]+$')
+            fail_msg: 'Invalid port format in firewall rule: {{ item.port }}'
+            success_msg: 'Port formats are valid'
+        loop: '{{ security.firewall_rules }}'
+
+  when: security.firewall_rules is defined and security.firewall_rules | length > 0
+
+- name: Validate firewall rules network dependencies
+  block:
+      - name: Check if networking_status is successful
+        assert:
+            that:
+                - networking_status is defined
+                - networking_status == "success"
+            fail_msg: |
+                Firewall rules require successful networking configuration.
+                Current networking status: {{ networking_status | default('undefined') }}
+                Firewall rules cannot be applied without proper VLAN configuration.
+            success_msg: 'Networking dependency satisfied for firewall rules'
+
+      - name: Validate VLAN names exist for firewall sources
+        assert:
+            that:
+                - item.source in (network_vlans | map(attribute='name') | list + ['any', 'localhost'])
+            fail_msg: |
+                Firewall rule source '{{ item.source }}' does not match any configured VLAN.
+                Available VLANs: {{ network_vlans | map(attribute='name') | list | join(', ') if network_vlans is defined else 'none' }}
+                Rule: {{ item }}
+            success_msg: 'Firewall rule sources match configured VLANs'
+        loop: '{{ security.firewall_rules }}'
+
+  when: security.firewall_rules is defined and security.firewall_rules | length > 0
+
+- name: Check system prerequisites for security hardening
+  block:
+      - name: Verify sufficient privileges
+        command: id -u
+        register: user_id
+        changed_when: false
+        failed_when: user_id.stdout != "0"
+
+      - name: Check if ufw is available (Ubuntu/Debian)
+        command: ufw --version
+        register: ufw_check
+        changed_when: false
+        failed_when: false
+        when: ansible_os_family == "Debian"
+
+      - name: Check if firewalld is available (RedHat)
+        command: firewall-cmd --version
+        register: firewalld_check
+        changed_when: false
+        failed_when: false
+        when: ansible_os_family == "RedHat"
+
+      - name: Verify firewall tools availability
+        assert:
+            that:
+                - (ansible_os_family == "Debian" and ufw_check.rc == 0) or (ansible_os_family == "RedHat" and firewalld_check.rc == 0)
+            fail_msg: 'No suitable firewall management tool found'
+            success_msg: 'Firewall management tools available'
+
+- name: Check if security-related packages are available
+  block:
+      - name: Check if fail2ban package exists
+        package_facts:
+            manager: auto
+
+      - name: Verify required security packages availability
+        command: '{{ item }}'
+        register: security_tools_check
+        changed_when: false
+        failed_when: false
+        loop:
+            - 'which auditd'
+            - 'which aide'
+            - 'which rkhunter'
+
+- name: Validate system state prerequisites
+  block:
+      - name: Check if SSH service is running
+        systemd:
+            name: ssh
+        register: ssh_service_check
+        failed_when: false
+        when: ansible_os_family == "Debian"
+
+      - name: Check if SSH service is running (RedHat)
+        systemd:
+            name: sshd
+        register: sshd_service_check
+        failed_when: false
+        when: ansible_os_family == "RedHat"
+
+      - name: Verify SSH service availability
+        assert:
+            that:
+                - (ansible_os_family == "Debian" and ssh_service_check.status.ActiveState == "active") or (ansible_os_family == "RedHat" and sshd_service_check.status.ActiveState == "active")
+            fail_msg: 'SSH service must be running before applying security hardening'
+            success_msg: 'SSH service is active and ready for configuration'
+
+- name: Validate kernel parameters for security features
+  block:
+      - name: Check if required kernel modules can be loaded
+        command: modprobe --dry-run "{{ item }}"
+        register: kernel_module_check
+        changed_when: false
+        failed_when: false
+        loop:
+            - 'nf_conntrack'
+            - 'xt_recent'
+            - 'xt_limit'
+        when: security.kernel is defined
+
+      - name: Check current kernel security parameters
+        shell: sysctl -n "{{ item }}"
+        register: kernel_security_check
+        changed_when: false
+        failed_when: false
+        loop:
+            - 'kernel.dmesg_restrict'
+            - 'kernel.kptr_restrict'
+            - 'net.ipv4.conf.all.log_martians'
+        when: security.kernel is defined
+
+- name: Check for conflicting security configurations
+  block:
+      - name: Check if other firewall services are running
+        shell: systemctl is-active --quiet "{{ item }}" && echo "active" || echo "inactive"
+        register: conflicting_services
+        changed_when: false
+        loop:
+            - 'iptables'
+            - 'ip6tables'
+            - 'nftables'
+
+      - name: Warn about potential conflicts
+        debug:
+            msg: |
+                Warning: Found active firewall service {{ item.item }}
+                This may conflict with UFW/firewalld configuration
+        loop: '{{ conflicting_services.results }}'
+        when: item.stdout == "active"
+
+- name: Log validation success
+  debug:
+      msg: |
+          Security role validation completed successfully:
+          - Fail2ban config: {{ 'valid' if security.fail2ban is defined else 'not configured' }}
+          - SSH hardening: {{ 'enabled' if security.enable_ssh_hardening | default(false) else 'disabled' }}
+          - Kernel hardening: {{ 'enabled' if security.enable_kernel_hardening | default(false) else 'disabled' }}
+          - Firewall tools: available ✓
+          - SSH service: active ✓

@@ -15,7 +15,7 @@ kube-prometheus-stack:
       storageSpec:
         volumeClaimTemplate:
           spec:
-            storageClassName: ceph-block
+            storageClassName: bulk-ec
             accessModes: [ "ReadWriteOnce" ]
             resources:
               requests:
@@ -35,7 +35,7 @@ kube-prometheus-stack:
       storage:
         volumeClaimTemplate:
           spec:
-            storageClassName: ceph-block
+            storageClassName: bulk-ec
             accessModes: [ "ReadWriteOnce" ]
             resources:
               requests:

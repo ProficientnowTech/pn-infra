@@ -1,0 +1,16 @@
+apiVersion: v2
+name: platform-backup-dr
+description: Application factory for backup and disaster recovery components
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - backup
+  - velero
+  - dr
+  - argocd
+
+maintainers:
+  - name: Platform Team
+    email: platform-admin@pnats.cloud

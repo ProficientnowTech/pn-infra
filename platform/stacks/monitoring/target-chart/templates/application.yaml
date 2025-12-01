@@ -1,0 +1,130 @@
+{{- range .Values.applications }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.argocdNamespace | default "argocd" }}
+  annotations:
+    {{- /* Merge common annotations with app-specific annotations */ -}}
+    {{- $annotations := dict }}
+    {{- if $.Values.commonAnnotations }}
+    {{- $annotations = merge $annotations $.Values.commonAnnotations }}
+    {{- end }}
+    {{- if .annotations }}
+    {{- $annotations = merge $annotations .annotations }}
+    {{- end }}
+    {{- if $annotations }}
+    {{- toYaml $annotations | nindent 4 }}
+    {{- end }}
+  labels:
+    {{- /* Standard Kubernetes labels */ -}}
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    app.kubernetes.io/part-of: {{ $.Values.stackName | default "platform" }}
+    {{- /* Merge common labels with app-specific labels */ -}}
+    {{- if $.Values.commonLabels }}
+    {{- toYaml $.Values.commonLabels | nindent 4 }}
+    {{- end }}
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+spec:
+  project: {{ .project | default $.Values.global.project | default "default" }}
+  {{- if .sources }}
+  sources:
+    {{- range .sources }}
+    - repoURL: {{ .repoURL }}
+      {{- if .chart }}
+      chart: {{ .chart }}
+      targetRevision: {{ .targetRevision }}
+      {{- if .helm }}
+      helm:
+        {{- if .helm.releaseName }}
+        releaseName: {{ .helm.releaseName }}
+        {{- end }}
+        {{- if .helm.valueFiles }}
+        valueFiles:
+          {{- range .helm.valueFiles }}
+          - {{ . }}
+          {{- end }}
+        {{- end }}
+        {{- if .helm.parameters }}
+        parameters:
+          {{- range .helm.parameters }}
+          - name: {{ .name }}
+            value: {{ .value | quote }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- else }}
+      targetRevision: {{ .targetRevision | default "main" }}
+      {{- if .path }}
+      path: {{ .path }}
+      {{- else if .ref }}
+      ref: {{ .ref }}
+      {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- else }}
+  source:
+    repoURL: {{ .repoURL | default $.Values.default.repoURL }}
+    targetRevision: {{ .targetRevision | default $.Values.default.targetRevision | default "main" }}
+    {{- if .chart }}
+    chart: {{ .chart }}
+    {{- if .helm }}
+    helm:
+      {{- if .helm.releaseName }}
+      releaseName: {{ .helm.releaseName }}
+      {{- end }}
+      {{- if .helm.valueFiles }}
+      valueFiles:
+        {{- range .helm.valueFiles }}
+        - {{ . }}
+        {{- end }}
+      {{- end }}
+      {{- if .helm.parameters }}
+      parameters:
+        {{- range .helm.parameters }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- else }}
+    path: {{ .path | default (printf "platform/stacks/monitoring/charts/%s" .name) }}
+    {{- end }}
+  {{- end }}
+  destination:
+    server: {{ .destinationServer | default "https://kubernetes.default.svc" }}
+    {{- if .destinationNamespaceOverwrite }}
+    namespace: {{ .destinationNamespaceOverwrite }}
+    {{- else }}
+    namespace: {{ .namespace | default .name }}
+    {{- end }}
+  syncPolicy:
+    {{- if .syncPolicy }}
+    {{- toYaml .syncPolicy | nindent 4 }}
+    {{- else }}
+    automated:
+      prune: {{ $.Values.global.automated.prune | default true }}
+      selfHeal: {{ $.Values.global.automated.selfHeal | default true }}
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+      {{- if .syncOptions }}
+      {{- range .syncOptions }}
+      - {{ . }}
+      {{- end }}
+      {{- end }}
+    {{- if $.Values.global.retry }}
+    retry:
+      {{- toYaml $.Values.global.retry | nindent 6 }}
+    {{- end }}
+    {{- end }}
+  {{- if .ignoreDifferences }}
+  ignoreDifferences:
+    {{- toYaml .ignoreDifferences | nindent 4 }}
+  {{- end }}
+{{- end }}

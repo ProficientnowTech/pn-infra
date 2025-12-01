@@ -1,24 +1,21 @@
 apiVersion: v2
-name: argocd
-description: ArgoCD self-management via template-driven pattern
+name: pn-argocd
+description: ArgoCD GitOps controller with notifications and SSO configuration
 type: application
 version: 0.1.0
 appVersion: "v3.2.0"
 
 keywords:
-- argocd
-- gitops
-- self-management
-- bootstrap
-- template-driven
+  - argocd
+  - gitops
+  - continuous-delivery
+  - kubernetes
 
-annotations:
-  category: GitOps
-  platform.pn-infra.io/component: argocd
-  platform.pn-infra.io/sync-wave: "0"
-  platform.pn-infra.io/self-managed: "true"
+maintainers:
+  - name: Platform Team
+    email: snoorullah@proficientnowtech.com
 
 dependencies:
-- name: argo-cd
-  version: 9.1.3
-  repository: https://argoproj.github.io/argo-helm
+  - name: argo-cd
+    version: 9.1.3
+    repository: https://argoproj.github.io/argo-helm

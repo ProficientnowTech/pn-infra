@@ -38,6 +38,16 @@ log_error() {
 	echo -e "${RED}[ERROR]   [$(date +'%H:%M:%S')] [Orchestrator]${NC} $1"
 }
 
+render_bootstrap_secrets() {
+	local script="${SCRIPT_DIR}/bootstrap/scripts/render-secrets.sh"
+	if [[ ! -x "$script" ]]; then
+		log_error "Bootstrap secret renderer not found: $script"
+		return 1
+	fi
+	log_info "Rendering sealed secrets from specs..."
+	"$script" --apply
+}
+
 usage() {
 	cat <<EOF
 Usage: $0 [OPERATION] [OPTIONS]
@@ -46,7 +56,7 @@ OPERATIONS:
     validate        Run platform validation only
     deploy          Deploy platform applications (includes validation)
     reset           Reset platform (remove all platform applications and ArgoCD)
-    setup-secrets   Setup required secrets (Cloudflare, etc.)
+    setup-secrets   Render and apply bootstrap sealed secrets
     status          Check platform deployment status
 
 OPTIONS:
@@ -58,7 +68,7 @@ EXAMPLES:
     $0 validate                    # Run platform validation
     $0 deploy                      # Validate then deploy platform
     $0 reset                       # Reset platform (remove all apps and ArgoCD)
-    $0 setup-secrets               # Setup required secrets only
+    $0 setup-secrets               # Render bootstrap sealed secrets only
     $0 deploy --env staging        # Deploy staging environment
     $0 status                      # Check platform status
 EOF
@@ -74,246 +84,12 @@ run_validation() {
 	"$VALIDATE_SCRIPT" "$ENVIRONMENT"
 }
 
-setup_required_secrets() {
-	log_info "Checking and setting up required secrets..."
-
-	# Check if cluster is accessible
-	if ! kubectl cluster-info >/dev/null 2>&1; then
-		log_warning "Cluster not accessible - skipping secret setup"
-		return 0
-	fi
-
-	echo
-	echo "🔐 Setting up required secrets for platform services..."
-	echo "   You can skip any secret setup by typing 'skip'"
-	echo
-
-	# Setup Cloudflare API token for cert-manager
-	setup_cloudflare_secret || {
-		log_error "Failed to setup required secrets"
-		return 1
-	}
-
-	# Setup additional secrets as needed
-	# setup_slack_webhook_secret
-
-	echo
-	log_success "Secret setup completed!"
-}
-
-setup_cloudflare_secret() {
-	local secret_name="cloudflare-api-token"
-	local namespaces=("cert-manager" "external-dns")
-	local cloudflare_token=""
-	local needs_creation=false
-
-	# Check if secret exists in any namespace
-	for ns in "${namespaces[@]}"; do
-		if ! kubectl get secret "$secret_name" -n "$ns" >/dev/null 2>&1; then
-			needs_creation=true
-			break
-		fi
-	done
-
-	if [[ "$needs_creation" == "false" ]]; then
-		log_success "Cloudflare API token secret already exists in all required namespaces"
-		return 0
-	fi
-
-	log_info "Cloudflare API token secret needed for cert-manager and external-dns"
-	echo
-	echo "🔑 Cert-Manager and External-DNS require a Cloudflare API token."
-	echo "   The token needs the following permissions:"
-	echo "   - Zone:Zone:Read"
-	echo "   - Zone:DNS:Edit"
-	echo "   - Include: All zones"
-	echo "   You can type 'skip' to skip this step"
-	echo
-
-	# Prompt for API token (hidden input)
-	while true; do
-		read -r -s -p "Enter your Cloudflare API Token (input hidden, or 'skip'): " cloudflare_token
-		echo
-
-		# Allow skipping
-		if [[ "$cloudflare_token" == "skip" || -z "$cloudflare_token" ]]; then
-			log_warning "Skipping Cloudflare secret creation - cert-manager and external-dns may not work properly"
-			return 0
-		fi
-
-		# Validate token format
-		if [[ ! "$cloudflare_token" =~ ^[a-zA-Z0-9_-]{40,}$ ]]; then
-			log_warning "Token format looks invalid (should be 40+ alphanumeric characters)"
-			read -p "Continue anyway? (y/N): " -r
-			echo
-			if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-				continue
-			fi
-		fi
-
-		break
-	done
-
-	# Create secret in all required namespaces
-	local success=true
-	for ns in "${namespaces[@]}"; do
-		# Skip if secret already exists in this namespace
-		if kubectl get secret "$secret_name" -n "$ns" >/dev/null 2>&1; then
-			log_success "Cloudflare API token secret already exists in namespace: $ns"
-			continue
-		fi
-
-		# Create namespace if it doesn't exist
-		kubectl create namespace "$ns" >/dev/null 2>&1 || true
-
-		# Create the secret
-		if kubectl create secret generic "$secret_name" \
-			--from-literal=api-token="$cloudflare_token" \
-			-n "$ns" >/dev/null 2>&1; then
-			log_success "Cloudflare API token secret created in namespace: $ns"
-		else
-			log_error "Failed to create Cloudflare API token secret in namespace: $ns"
-			success=false
-		fi
-	done
-
-	if [[ "$success" == "true" ]]; then
-		log_success "Cloudflare API token secrets created successfully"
-		return 0
-	else
-		log_error "Failed to create Cloudflare API token secrets in some namespaces"
-		return 1
-	fi
-}
-
-setup_ssh_private_key_secret() {
-	local secret_name="argocd-private-repo"
-	local namespace="argocd"
-
-	# Check if secret already exists
-	if kubectl get secret "$secret_name" -n "$namespace" >/dev/null 2>&1; then
-		log_success "SSH private key secret already exists"
-		return 0
-	fi
-
-	log_info "SSH private key secret not found in namespace: $namespace"
-	echo
-	echo "🔑 ArgoCD requires an SSH private key to access private Git repositories."
-	echo "   The key should have read access to your private repository."
-	echo
-
-	local ssh_key_path=""
-
-	# Use provided SSH key path if available
-	if [[ -n "$SSH_PRIVATE_KEY_PATH" && -f "$SSH_PRIVATE_KEY_PATH" ]]; then
-		ssh_key_path="$SSH_PRIVATE_KEY_PATH"
-		log_info "Using provided SSH key: $ssh_key_path"
-	else
-		# Try default locations
-		local default_keys=(
-			"$HOME/.ssh/id_rsa"
-			"$HOME/.ssh/id_ed25519"
-			"$HOME/.ssh/github_rsa"
-		)
-
-		for key in "${default_keys[@]}"; do
-			if [[ -f "$key" ]]; then
-				ssh_key_path="$key"
-				log_info "Found SSH key at default location: $ssh_key_path"
-				break
-			fi
-		done
-
-		# Prompt if no key found
-		if [[ -z "$ssh_key_path" ]]; then
-			read -p "Enter the path to your SSH private key (or 'skip' to continue without): " ssh_key_path
-			if [[ "$ssh_key_path" == "skip" || -z "$ssh_key_path" ]]; then
-				log_warning "Skipping SSH secret creation - private repos may not be accessible"
-				return 0
-			fi
-		fi
-	fi
-
-	# Expand path (handle ~)
-	ssh_key_path="${ssh_key_path/#\~/$HOME}"
-
-	if [[ ! -f "$ssh_key_path" ]]; then
-		log_error "SSH private key not found at: $ssh_key_path"
-		return 1
-	fi
-
-	# Create namespace if it doesn't exist
-	kubectl create namespace "$namespace" >/dev/null 2>&1 || true
-
-	# Create the repository secret with proper ArgoCD format
-	if kubectl create secret generic "$secret_name" \
-		--from-literal=type=git \
-		--from-literal=url=git@github.com:pnow-devsupreme/pn-infra.git \
-		--from-file=sshPrivateKey="$ssh_key_path" \
-		-n "$namespace" >/dev/null 2>&1; then
-		log_success "SSH private key secret created successfully"
-
-		# Label the secret for ArgoCD
-		kubectl label secret "$secret_name" \
-			--namespace "$namespace" \
-			argocd.argoproj.io/secret-type=repository \
-			--overwrite >/dev/null 2>&1
-	else
-		log_error "Failed to create SSH private key secret"
-		return 1
-	fi
-}
-
-update_configuration_values() {
-	log_info "Checking configuration values..."
-
-	# Check if important values need to be updated
-	local needs_update=false
-
-	# Check cert-manager email configuration
-	if grep -q "admin@example.com" "$SCRIPT_DIR/charts/cert-manager/values.yaml" 2>/dev/null; then
-		echo
-		log_warning "⚠️  Cert-Manager is using default email (admin@example.com)"
-		echo "   This should be updated to your actual email address for Let's Encrypt notifications."
-		echo "   File: charts/cert-manager/values.yaml"
-		needs_update=true
-	fi
-
-	# Check MetalLB IP configuration
-	if grep -q "192.168.102.50-192.168.102.80" "$SCRIPT_DIR/charts/metallb/values.yaml" 2>/dev/null; then
-		echo
-		log_warning "⚠️  MetalLB is using default IP range (192.168.102.50-80)"
-		echo "   This should be updated to match your network's available IP range."
-		echo "   File: charts/metallb/values.yaml"
-		needs_update=true
-	fi
-
-	if [[ "$needs_update" == "true" ]]; then
-		echo
-		echo "📝 Please review and update the configuration files mentioned above"
-		echo "   before deploying to production. You can continue for now, but"
-		echo "   some services may not work properly with default values."
-		echo
-		read -p "Continue with deployment? (y/N): " continue_deploy
-		if [[ ! "$continue_deploy" =~ ^[Yy]$ ]]; then
-			log_info "Deployment cancelled by user"
-			exit 0
-		fi
-	fi
-}
 
 run_deployment() {
 	if [[ ! -x "$DEPLOY_SCRIPT" ]]; then
 		log_error "Platform deployment script not found: $DEPLOY_SCRIPT"
 		return 1
 	fi
-
-	# Setup secrets and check configuration before deployment
-	setup_cloudflare_secret || {
-		log_error "Failed to setup required secrets"
-		return 1
-	}
-	update_configuration_values
 
 	log_info "Starting platform deployment for environment: $ENVIRONMENT"
 	# Pass SSH key path if available
@@ -406,7 +182,7 @@ reset)
 	reset_platform
 	;;
 setup-secrets)
-	setup_required_secrets
+	render_bootstrap_secrets
 	;;
 status)
 	if command -v kubectl &>/dev/null && kubectl cluster-info &>/dev/null; then

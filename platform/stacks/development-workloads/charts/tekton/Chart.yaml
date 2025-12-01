@@ -1,6 +1,27 @@
 apiVersion: v2
-name: tekton
+name: pn-tekton
 description: Tekton Operator with full components
 type: application
-version: 0.1.0
-appVersion: "latest"
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+- tekton
+- continuous-integration
+- ci-platform
+- ci-pipelines
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: 'ci/cd'
+  platform.pnats.cloud/component: tekton
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'tekton'
+  platform.pnats.cloud/resource-type: operator
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: tekton
+  platform.pnats.cloud/component-category: 'ci/cd'

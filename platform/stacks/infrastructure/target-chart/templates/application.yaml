@@ -5,18 +5,33 @@ kind: Application
 metadata:
   name: {{ .name }}
   namespace: {{ $.Values.argocdNamespace | default "argocd" }}
-  {{- if .annotations }}
   annotations:
-    {{- toYaml .annotations | nindent 4 }}
-  {{- end }}
+    {{- /* Merge common annotations with app-specific annotations */ -}}
+    {{- $annotations := dict }}
+    {{- if $.Values.commonAnnotations }}
+    {{- $annotations = merge $annotations $.Values.commonAnnotations }}
+    {{- end }}
+    {{- if .annotations }}
+    {{- $annotations = merge $annotations .annotations }}
+    {{- end }}
+    {{- if $annotations }}
+    {{- toYaml $annotations | nindent 4 }}
+    {{- end }}
   labels:
+    {{- /* Standard Kubernetes labels */ -}}
     app.kubernetes.io/name: {{ .name }}
     app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    app.kubernetes.io/part-of: {{ $.Values.stackName | default "platform" }}
+    {{- /* Merge common labels with app-specific labels */ -}}
+    {{- if $.Values.commonLabels }}
+    {{- toYaml $.Values.commonLabels | nindent 4 }}
+    {{- end }}
     {{- if .labels }}
     {{- toYaml .labels | nindent 4 }}
     {{- end }}
 spec:
-  project: {{ .project | default "default" }}
+  project: {{ .project | default $.Values.global.project | default "default" }}
   {{- if .sources }}
   sources:
     {{- range .sources }}
@@ -49,8 +64,6 @@ spec:
       path: {{ .path }}
       {{- else if .ref }}
       ref: {{ .ref }}
-      {{- else }}
-      path: platform-apps/charts/{{ .name }}
       {{- end }}
       {{- end }}
     {{- end }}
@@ -80,7 +93,7 @@ spec:
       {{- end }}
     {{- end }}
     {{- else }}
-    path: {{ .path | default (printf "v0.2.0/platform/charts/%s" .name) }}
+    path: {{ .path | default (printf "platform/stacks/infrastructure/charts/%s" .name) }}
     {{- end }}
   {{- end }}
   destination:

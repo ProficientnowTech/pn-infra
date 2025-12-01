@@ -1,0 +1,501 @@
+# Production Environment PostgreSQL Clusters
+# Full HA configuration with maximum resources and backups
+
+# Global TLS Configuration
+tls:
+  # Don't create issuer - use existing letsencrypt-production
+  createIssuer: false
+  # Use Let's Encrypt for public TLS certificates
+  issuerName: letsencrypt-production
+  issuerType: acme
+
+# Global External Access Configuration
+# SHARED IPs for all databases (different ports per database)
+externalAccess:
+  sharedIPs:
+    write: 103.110.174.19  # All write endpoints share this IP (different ports)
+    read: 103.110.174.20   # All read endpoints share this IP (different ports)
+    admin: 103.110.174.21  # All admin endpoints share this IP (different ports)
+
+pgClusters:
+  # Temporal database for workflow engine
+  - name: temporal-db
+    namespace: temporal
+    teamId: temporal
+
+    # Full HA with 3 replicas
+    numberOfInstances: 3
+
+    # Storage - large capacity for production
+    size: 100Gi
+    storageClass: plt-blk-hdd-repl
+    # For AWS gp3 with higher IOPS:
+    # iops: 5000
+    # throughput: 250
+
+    # PostgreSQL version
+    pgVersion: "16"
+
+    # Load Balancer with network restrictions
+    lb:
+      master:
+        enabled: true
+      replica:
+        enabled: true
+      # Restrict access to internal network only
+      allowedSourceRanges:
+        - 10.0.0.0/8
+
+    # Connection Pooler - production settings
+    pooler:
+      enabled: true
+      instances: 3
+      mode: transaction
+      replica:
+        enabled: true
+      lb:
+        master:
+          enabled: true
+        replica:
+          enabled: true
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 512Mi
+
+    # Production resources
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+
+    # Application users
+    users:
+      temporal:
+        - login
+        - createdb
+
+    # Enable password rotation
+    usersWithSecretRotation:
+      - temporal
+
+    # Databases
+    databases:
+      temporal: temporal
+      temporal_visibility: temporal
+
+    # Patroni - enable synchronous replication for data safety
+    patroni:
+      synchronousMode: true
+      synchronousModeStrict: false  # Allow async if sync replicas unavailable
+      synchronousNodeCount: 1  # At least one sync replica
+
+    # Monitoring
+    monitoring:
+      exporterImage: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
+    # PDB - maintain 2 pods during updates
+    pdb:
+      minAvailable: 2
+
+    # TLS encryption - Let's Encrypt certificates via DNS01
+    tls:
+      enabled: true
+      duration: 2160h  # 90 days
+      renewBefore: 720h  # 30 days before expiry
+      # Additional DNS names for external access
+      additionalDNSNames:
+        - temporal-db-write.pnats.cloud
+        - temporal-db-read.pnats.cloud
+        - temporal-db-admin.pnats.cloud
+
+    # External Access - Public LoadBalancer services with SHARED IPs
+    externalAccess:
+      enabled: true
+      syncWave: "1"
+
+      # Port for this database on shared IPs (standard PostgreSQL port)
+      port: 5432
+
+      # SECURITY: Allow all for now - MUST restrict in production!
+      allowedSourceRanges:
+        - 0.0.0.0/0  # TODO: Restrict to office/VPN IPs before production deployment!
+
+      # Write endpoint - For application writes (uses pooler in transaction mode)
+      # Uses shared IP: 103.110.174.19:5432
+      write:
+        enabled: true
+        hostname: temporal-db-write.pnats.cloud
+
+      # Read endpoint - For application reads (uses pooler in transaction mode)
+      # Uses shared IP: 103.110.174.20:5432
+      read:
+        enabled: true
+        hostname: temporal-db-read.pnats.cloud
+
+      # Admin endpoint - For migrations and maintenance (direct connection, no pooler)
+      # Uses shared IP: 103.110.174.21:5432
+      admin:
+        enabled: true
+        hostname: temporal-db-admin.pnats.cloud
+        # SECURITY: Allow all for now - MUST restrict in production!
+        allowedSourceRanges:
+          - 0.0.0.0/0  # TODO: Restrict to office/VPN IPs before production deployment!
+          # Example restrictions:
+          # - 103.110.174.0/24  # Office network
+          # - x.x.x.x/32  # VPN IP
+          # - y.y.y.y/32  # Admin workstation
+
+    # Logical backups to S3
+    logicalBackup:
+      enabled: true
+      schedule: "30 02 * * *"  # Daily at 02:30 AM
+      # S3 configuration should be in operator config
+      # s3Bucket: prod-postgres-backups
+      # s3Region: us-east-1
+
+    # Maintenance windows - weekends only
+    maintenanceWindows:
+      - "Sat:02:00-06:00"
+      - "Sun:02:00-06:00"
+
+    # Additional labels
+    labels:
+      environment: production
+      backup-policy: daily
+      critical: "true"
+
+    # Pod annotations for backup
+    podAnnotations:
+      backup.velero.io/backup-volumes: pgdata
+      backup.velero.io/backup-volumes-excludes: shm
+
+  # Platform shared services database
+  - name: platform-db
+    namespace: platform
+    teamId: platform
+
+    # Full HA with 3 replicas
+    numberOfInstances: 3
+
+    # Storage
+    size: 50Gi
+    storageClass: plt-blk-hdd-repl
+
+    # PostgreSQL version
+    pgVersion: "16"
+
+    # Load Balancer
+    lb:
+      master:
+        enabled: true
+      replica:
+        enabled: true
+      allowedSourceRanges:
+        - 10.0.0.0/8
+
+    # Connection Pooler
+    pooler:
+      enabled: true
+      instances: 3
+      mode: transaction
+      replica:
+        enabled: true
+      lb:
+        master:
+          enabled: true
+        replica:
+          enabled: true
+      resources:
+        requests:
+          cpu: 200m
+          memory: 256Mi
+        limits:
+          cpu: 1000m
+          memory: 512Mi
+
+    # Production resources
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+
+    # Application users
+    users:
+      backstage:
+        - login
+        - createdb
+      argocd:
+        - login
+        - createdb
+      harbor:
+        - login
+        - createdb
+
+    # Enable password rotation
+    usersWithSecretRotation:
+      - backstage
+      - argocd
+      - harbor
+
+    # Databases
+    databases:
+      backstage: backstage
+      argocd: argocd
+      harbor: harbor
+
+    # Patroni - async replication (not as critical as temporal)
+    patroni:
+      synchronousMode: false
+      synchronousModeStrict: false
+
+    # Monitoring
+    monitoring:
+      exporterImage: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
+    # PDB
+    pdb:
+      minAvailable: 2
+
+    # TLS encryption - Let's Encrypt certificates via DNS01
+    tls:
+      enabled: true
+      duration: 2160h  # 90 days
+      renewBefore: 720h  # 30 days before expiry
+      additionalDNSNames:
+        - platform-db-write.pnats.cloud
+        - platform-db-admin.pnats.cloud
+
+    # External Access - Uses SHARED IPs with port 5433
+    externalAccess:
+      enabled: true
+
+      # Port for this database on shared IPs (custom port to avoid conflicts)
+      port: 5433
+
+      # SECURITY: Allow all for now - MUST restrict in production!
+      allowedSourceRanges:
+        - 0.0.0.0/0  # TODO: Restrict to office/VPN IPs before production deployment!
+
+      # Write endpoint - Uses shared IP: 103.110.174.19:5433
+      write:
+        enabled: true
+        hostname: platform-db-write.pnats.cloud
+
+      # Read endpoint - Disabled (internal only for platform services)
+      read:
+        enabled: false
+
+      # Admin endpoint - Uses shared IP: 103.110.174.21:5433
+      admin:
+        enabled: true
+        hostname: platform-db-admin.pnats.cloud
+        # SECURITY: Allow all for now - MUST restrict in production!
+        allowedSourceRanges:
+          - 0.0.0.0/0  # TODO: Restrict to office/VPN IPs before production deployment!
+
+    # Logical backups
+    logicalBackup:
+      enabled: true
+      schedule: "45 02 * * *"  # Daily at 02:45 AM
+
+    # Maintenance windows
+    maintenanceWindows:
+      - "Sat:02:00-06:00"
+      - "Sun:02:00-06:00"
+
+    # Labels
+    labels:
+      environment: production
+      backup-policy: daily
+
+    # Pod annotations
+    podAnnotations:
+      backup.velero.io/backup-volumes: pgdata
+
+  # Application database cluster (example for multi-tenant apps)
+  - name: applications-db
+    namespace: applications
+    teamId: platform
+
+    # Full HA
+    numberOfInstances: 3
+
+    # Large storage for application data
+    size: 200Gi
+    storageClass: plt-blk-hdd-repl
+
+    # PostgreSQL version
+    pgVersion: "16"
+
+    # Load Balancer
+    lb:
+      master:
+        enabled: true
+      replica:
+        enabled: true
+      allowedSourceRanges:
+        - 10.0.0.0/8
+
+    # Connection Pooler - session mode for apps needing session features
+    pooler:
+      enabled: true
+      instances: 4
+      mode: session  # Session mode for prepared statements
+      replica:
+        enabled: true
+      lb:
+        master:
+          enabled: true
+        replica:
+          enabled: true
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: 2000m
+          memory: 1Gi
+
+    # High resources for application database
+    resources:
+      requests:
+        cpu: 2000m
+        memory: 4Gi
+      limits:
+        cpu: 8000m
+        memory: 16Gi
+
+    # Application users
+    users:
+      app_service:
+        - login
+        - createdb
+      analytics_service:
+        - login
+      migration_user:
+        - login
+        - createdb
+
+    # Password rotation
+    usersWithSecretRotation:
+      - app_service
+      - analytics_service
+
+    # Databases
+    databases:
+      app_production: app_service
+      app_analytics: analytics_service
+
+    # Patroni - critical data, use synchronous replication
+    patroni:
+      synchronousMode: true
+      synchronousModeStrict: false
+      synchronousNodeCount: 1
+
+      # Logical replication slot for CDC
+      slots:
+        analytics_cdc:
+          type: logical
+          database: app_production
+          plugin: pgoutput
+
+    # Monitoring
+    monitoring:
+      exporterImage: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
+    # PDB - maintain 2 replicas minimum
+    pdb:
+      minAvailable: 2
+
+    # TLS encryption - automatic certificate via cert-manager
+    tls:
+      enabled: true
+      duration: 2160h  # 90 days
+      renewBefore: 720h  # 30 days before expiry
+      additionalDNSNames:
+        - applications-db-write.pnats.cloud
+        - applications-db-read.pnats.cloud
+        - applications-db-admin.pnats.cloud
+
+    # External Access - Uses SHARED IPs with port 5434
+    externalAccess:
+      enabled: true
+
+      # Port for this database on shared IPs (custom port to avoid conflicts)
+      port: 5434
+
+      # SECURITY: Allow all for now - MUST restrict in production!
+      allowedSourceRanges:
+        - 0.0.0.0/0  # TODO: Restrict to office/VPN IPs before production deployment!
+
+      # Write endpoint - Uses shared IP: 103.110.174.19:5434
+      write:
+        enabled: true
+        hostname: applications-db-write.pnats.cloud
+
+      # Read endpoint - Uses shared IP: 103.110.174.20:5434
+      read:
+        enabled: true
+        hostname: applications-db-read.pnats.cloud
+
+      # Admin endpoint - Uses shared IP: 103.110.174.21:5434
+      admin:
+        enabled: true
+        hostname: applications-db-admin.pnats.cloud
+        # SECURITY: Allow all for now - MUST restrict in production!
+        allowedSourceRanges:
+          - 0.0.0.0/0  # TODO: Restrict to office/VPN IPs before production deployment!
+
+    # Logical backups
+    logicalBackup:
+      enabled: true
+      schedule: "15 02 * * *"  # Daily at 02:15 AM
+
+    # Maintenance windows
+    maintenanceWindows:
+      - "Sat:03:00-06:00"
+      - "Sun:03:00-06:00"
+
+    # Labels
+    labels:
+      environment: production
+      backup-policy: hourly
+      critical: "true"
+      cost-center: engineering
+
+    # Pod annotations
+    podAnnotations:
+      backup.velero.io/backup-volumes: pgdata
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9187"

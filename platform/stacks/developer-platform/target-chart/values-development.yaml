@@ -1,0 +1,19 @@
+# Development Environment
+applications:
+- name: prometheus
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+
+- name: grafana
+  annotations:
+    argocd.argoproj.io/sync-wave: '10'
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+
+commonLabels:
+  platform.pnats.cloud/environment: 'development'

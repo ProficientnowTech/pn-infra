@@ -1,0 +1,15 @@
+apiVersion: v2
+name: platform-data-streaming
+description: ArgoCD Application factory for data streaming services (Kafka/Strimzi, connectors)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+keywords:
+  - argocd
+  - data-streaming
+  - kafka
+
+maintainers:
+  - name: Platform Team
+    email: platform-admin@pnats.cloud

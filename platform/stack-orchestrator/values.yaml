@@ -1,0 +1,29 @@
+argocdNamespace: argocd
+environment: production
+
+default:
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: main
+  destinationServer: https://kubernetes.default.svc
+  project: platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+  retry:
+    limit: 3
+    backoff:
+      duration: 5s
+      factor: 2
+      maxDuration: 3m
+
+commonLabels:
+  app.kubernetes.io/managed-by: platform-root
+  platform.pnats.cloud/component: stack-orchestrator
+commonAnnotations:
+  platform.pnats.cloud/generated-by: platform-root
+
+stacks: []

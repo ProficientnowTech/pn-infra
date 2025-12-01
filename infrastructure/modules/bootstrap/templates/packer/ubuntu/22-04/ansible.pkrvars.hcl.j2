@@ -1,3 +1,0 @@
-// Ansible Account Settings (if different from build account)
-ansible_username = "{{ ansible.username | default(build_account.username) }}"
-ansible_key     = "{{ ansible.public_key | default(build_account.public_key) }}"

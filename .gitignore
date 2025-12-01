@@ -18,6 +18,10 @@ CLAUDE.md
 archive
 *tar.gz
 
+# Helm chart dependencies (downloaded by helm dependency build)
+*.tgz
+charts/
+
 # Ansible
 *.retry
 
@@ -62,5 +66,8 @@ kubeconfig
 *.pub
 *.secret
 *.env
+
+platform/bootstrap/.generated/
+platform/bootstrap/secrets/.env.local
 
 inventory

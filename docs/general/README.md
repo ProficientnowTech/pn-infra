@@ -1,5 +1,7 @@
 # Production Kubernetes Infrastructure Deployment
 
+> **Status:** This document captures the previous 2-phase narrative. The repository now follows the module map described in the root `README.md` (api → config → infrastructure → provisioner → container-orchestration → platform → business). Keep that flow in mind while reading the historical context below.
+
 A comprehensive, production-grade Kubernetes cluster deployment system that implements GitOps principles with a clean 2-phase architecture. This system deploys a complete cluster with all components, then enables template-driven application deployment through ArgoCD.
 
 ## 🎯 System Overview

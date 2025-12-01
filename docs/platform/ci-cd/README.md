@@ -1,5 +1,7 @@
 # Complete GitOps CI/CD Pipeline Documentation
 
+> **Context:** These notes focus on the platform/business layers. The repo now routes all lower-level provisioning through the `api → config → infrastructure → provisioner → container-orchestration` pipeline summarized in the root README. Use this doc alongside that module map.
+
 ## 📖 Table of Contents
 
 This comprehensive documentation set covers a complete GitOps CI/CD pipeline using Tekton, Harbor, Verdaccio, Kargo, ArgoCD, and Argo Rollouts.
@@ -369,4 +371,3 @@ All files are available in the outputs directory:
 - complete-integration.md
 
 **Total: 17 comprehensive files covering every aspect of the pipeline!**
-

@@ -1,0 +1,13 @@
+{
+  "id": "core",
+  "version": "v0.1.0",
+  "description": "Base configuration shared across modules (ansible, infra, orchestration)",
+  "environments": [
+    {
+      "name": "development",
+      "files": {
+        "ansible": "environments/development.ansible.yml"
+      }
+    }
+  ]
+}

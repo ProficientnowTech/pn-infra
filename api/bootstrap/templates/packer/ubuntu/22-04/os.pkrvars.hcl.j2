@@ -1,0 +1,42 @@
+/*
+    DESCRIPTION:
+    {{ os.family }} {{ os.name }} {{ os.version }} {{role_name}} variables for Packer build.
+    Generated from template.
+*/
+
+// BIOS Settings
+vm_bios = "{{ vm.bios | default('seabios') }}"
+{% if vm.bios == "ovmf" %}
+vm_firmware_path        = "{{ vm.firmware_path | default('/usr/share/pve-edk2-firmware/OVMF_CODE.fd') }}"
+vm_efi_storage_pool     = "{{ vm.efi.storage_pool | default('local-lvm') }}"
+vm_efi_type             = "{{ vm.efi.type | default('4m') }}"
+vm_efi_pre_enrolled_keys = {{ vm.efi.pre_enrolled_keys | default('false') | lower }}
+{% endif %}
+
+// Boot Settings
+vm_boot      = {{ vm.boot.enabled | default('true') | lower }}
+vm_boot_wait = "{{ vm.boot.wait | default('10s') }}"
+
+// ISO Settings
+iso_path     = "{{ iso.path | default('template/iso') }}"
+iso_file     = "{{ iso.file }}"
+iso_checksum = "{{ iso.checksum }}"
+
+// HTTP Settings for Cloud-Init
+common_data_source      = "{{ cloudinit.data_source | default('http') }}"
+common_http_interface   = "{{ cloudinit.http.interface | default('') }}"
+common_http_bind_address = "{{ cloudinit.http.bind_address | default('') }}"
+common_http_port_min    = {{ cloudinit.http.port_min | default(8802) }}
+common_http_port_max    = {{ cloudinit.http.port_max | default(8812) }}
+
+// ISO Storage Settings
+common_iso_storage = "{{ cloudinit.iso_storage | default('local') }}"
+
+// Cloud-Init Settings
+vm_cloudinit = {{ vm.cloudinit | default('true') | lower }}
+
+// Timeout Settings
+timeout = "{{ vm.timeout | default('30m') }}"
+
+// Additional packages to install
+additional_packages = {{ additional_packages | default([]) | tojson }}

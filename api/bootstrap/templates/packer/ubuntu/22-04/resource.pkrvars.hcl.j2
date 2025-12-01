@@ -1,0 +1,5 @@
+// Virtual Machine Hardware Settings
+vm_cpu_sockets           = {{ vm.cpu.sockets | default(1) }}
+vm_cpu_count            = {{ vm.cpu.cores | default(2) }}
+vm_cpu_type             = "{{ vm.cpu.type | default('host') }}"
+vm_mem_size             = {{ vm.memory | default(2048) }}

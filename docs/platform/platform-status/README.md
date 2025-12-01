@@ -1,5 +1,7 @@
 # Platform Status Documentation
 
+> **Reminder:** Platform status sits on top of the new module flow (`api → config → infrastructure → provisioner → container-orchestration → platform → business`). Ensure upstream modules are green before triaging chart issues listed here.
+
 Last Updated: 2025-11-19
 
 ## Overview

@@ -168,6 +168,12 @@ vault:
                     kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
                 fi
 
+                # kv v2 secrets engine
+                if ! vault secrets list | grep -q "^secret/"; then
+                  vault secrets enable -path=secret kv-v2
+                  echo "KV v2 secrets engine enabled at path 'secret'"
+                fi
+
                 # crossplane role
                 if ! vault read auth/kubernetes/role/crossplane >/dev/null 2>&1; then
                   CROSSPLANETOKEN="$(vault token create -display-name=crossplane-token -policy=root -format=json \
@@ -181,6 +187,28 @@ vault:
                     policies=crossplane \
                     ttl=24h \
                     audience=crossplane
+                fi
+
+                # external-secrets operator policy and role
+                if ! vault policy read external-secrets-policy >/dev/null 2>&1; then
+                  vault policy write external-secrets-policy - <<EOF
+path "secret/data/*" {
+  capabilities = ["read", "list"]
+}
+path "secret/metadata/*" {
+  capabilities = ["read", "list"]
+}
+EOF
+                  echo "External Secrets Operator policy created"
+                fi
+
+                if ! vault read auth/kubernetes/role/external-secrets >/dev/null 2>&1; then
+                  vault write auth/kubernetes/role/external-secrets \
+                    bound_service_account_names=external-secrets \
+                    bound_service_account_namespaces=external-secrets \
+                    policies=external-secrets-policy \
+                    ttl=1h
+                  echo "External Secrets Operator role created"
                 fi
               else
                 echo "setup complete"
@@ -204,6 +232,16 @@ vault:
           - ALL
         privileged: false
         runAsNonRoot: true
+
+rootTokenSync:
+  enabled: true
+  sourceNamespace: vault
+  sourceSecret: vault-init
+  targetNamespace: crossplane-system
+  targetSecret: vault-admin-token
+  serviceAccountName: vault-root-token-sync
+  image: docker.io/bitnami/kubectl:1.30.3
+
     # Readiness probe
     readinessProbe:
       enabled: true
@@ -219,7 +257,7 @@ vault:
     auditStorage:
       enabled: true
       size: 10Gi
-      storageClass: ceph-block
+      storageClass: plt-blk-hdd-repl
 
     # Volumes and mounts
     volumes:
@@ -237,7 +275,7 @@ vault:
     dataStorage:
       enabled: true
       size: 10Gi
-      storageClass: ceph-block # High Availability with Raft integrated storage
+      storageClass: plt-blk-hdd-repl # High Availability with Raft integrated storage
 
     ha:
       enabled: true
@@ -274,11 +312,35 @@ vault:
 
   serverTelemetry:
     serviceMonitor:
-      enabled: false
+      enabled: true
+      interval: 30s
+      scrapeTimeout: 10s
 
   prometheusRules:
-    enabled: false
+    enabled: true
+    rules:
+      - alert: VaultSealed
+        expr: vault_core_unsealed == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vault is sealed"
+          description: "Vault instance {{ $labels.instance }} is sealed and cannot serve requests"
+      - alert: VaultDown
+        expr: up{job="vault"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Vault is down"
+          description: "Vault instance {{ $labels.instance }} is down"
 
   ui:
     enabled: true
     serviceType: ClusterIP
+
+# Monitoring Configuration
+monitoring:
+  grafanaDashboard:
+    enabled: true

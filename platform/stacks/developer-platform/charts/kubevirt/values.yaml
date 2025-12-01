@@ -4,7 +4,7 @@ cdi:
   version: v1.62.0
 datasources:
   enabled: true
-  storageClassName: ceph-block
+  storageClassName: app-critical-replicated
   sources:
   - name: ubuntu-jammy-server
     url: http://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img

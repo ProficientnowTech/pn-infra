@@ -1,0 +1,162 @@
+role:
+    name: k8s-worker
+    role_id: 120
+    display_name: Kubernetes Worker Node
+    description: Kubernetes worker node for running application workloads.
+    category: kubernetes
+vm_size: l.1
+operating_system:
+    name: ubuntu
+    version: '22.04'
+    architecture: amd64
+    image_format: qcow2
+disks:
+    - general_layout
+network:
+    vlans:
+        - management
+        - internal_traffic
+        - public_traffic
+        - storage_public
+        - nested_cluster_data
+        - nested_cluster_apps
+software:
+    base_packages:
+        - name: curl
+        - name: apt-transport-https
+        - name: ca-certificates
+        - name: gnupg
+        - name: lsb-release
+        - name: containerd
+        - name: runc
+        - name: nfs-common
+        - name: open-iscsi
+        - name: jq
+        - name: socat
+        - name: conntrack
+        - name: ipset
+        - name: htop
+        - name: iotop
+        - name: stress
+        - name: tree
+        - name: vim
+        - name: git
+        - name: wget
+        - name: unzip
+        - name: python3
+        - name: python3-pip
+        - name: build-essential
+configuration:
+    base_setup:
+        timezone: Asia/Kolkata
+        locale: en_US
+        config_time_sync: true
+        config_logging: true
+    security:
+        setup_banner: true
+        lock_root_account: false
+        configure_password_policies: false
+        configure_account_lockout_policy: false
+        enable_ssh_hardening: false
+        enable_kernel_hardening: false
+        fail2ban:
+            max_retries: 3
+            bantime_secs: 3600
+            findtime_secs: 600
+            maxretry_attempts: 6
+            destemail: snoorullah@proficientnowtech.com
+        ssh:
+            max_startups: 3
+            login_grace_time_secs: 60
+            permit_user_environment: true
+            compression: false
+            tcp_keep_alive: true
+            allow_tcp_forwarding: true
+            allow_stream_local_forwarding: true
+            gateway_ports: false
+            permit_tunnel: true
+            disable_weak_algorithms: true
+        kernel:
+            secure_ipv4: true
+            secure_ipv6: true
+            disable_ipv6: false
+            secure_memory: true
+            restrict_insecure_processes: true
+        filesystem:
+            set_secure_permissions: true
+            remove_world_readable_perms_from_sensitive_dirs: true
+            set_sticky_bit_on_tmp_dirs: true
+        audit:
+            enable_logging: true
+            monitor_auth: true
+            monitor_login_logout_events: true
+            monitor_network_config: true
+            monitor_ssh_config: true
+            monitor_sys_calls: true
+            monitor_file_access: true
+            lock_config: true
+    maintenance:
+        enable_autoupdates: true
+    optimization:
+        enable_network_optimization: true
+        enable_fs_optimization: true
+    users:
+        - username: ansible
+          groups:
+              - sudo
+          sudo: true
+          shell: /bin/bash
+          lock_passwd: false
+          hashed_passwd: $6$rounds=500000$7mvgcck9UMiYIh6I$UqhEkEgyqEKhUP/NeoE979MAR9/cx/qAHG5JdCifbeVy33yZG11j2ILjyRTIMAUnNg7z6yCdFCU7SfpqI1QqJ1
+          ssh_authorized_keys:
+              - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPRWgKRmCzgC1JM2PPJkb8rhkyHyyeOoWEer0k+LQ+A2 proxmox-hyd (pn-production-k8s) created by ssh-manager
+          ssh_client_config:
+              strict_host_key_checking: true
+              user_known_hosts_file: ~/.ssh/known_hosts
+              pass_authentication: true
+              pubkey_authentication: true
+              identities_only: false
+              log_level: INFO
+              server_alive_interval: 60
+              server_alive_count_max: 3
+              connect_timeout: 10
+        - username: ubuntu
+          groups:
+              - sudo
+              - ansible
+              - adm
+          sudo: true
+          shell: /bin/bash
+          lock_passwd: false
+          hashed_passwd: $6$rounds=500000$7mvgcck9UMiYIh6I$UqhEkEgyqEKhUP/NeoE979MAR9/cx/qAHG5JdCifbeVy33yZG11j2ILjyRTIMAUnNg7z6yCdFCU7SfpqI1QqJ1
+          ssh_authorized_keys:
+              - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPRWgKRmCzgC1JM2PPJkb8rhkyHyyeOoWEer0k+LQ+A2 proxmox-hyd (pn-production-k8s) created by ssh-manager
+          ssh_client_config:
+              strict_host_key_checking: true
+              user_known_hosts_file: ~/.ssh/known_hosts
+              pass_authentication: true
+              pubkey_authentication: true
+              identities_only: false
+              log_level: INFO
+              server_alive_interval: 60
+              server_alive_count_max: 3
+              connect_timeout: 10
+scripts:
+    startup:
+        - check_k8s_services.sh
+    validation:
+        - validate_k8s_worker.sh
+        - verify_network_connectivity.sh
+metadata:
+    created_by: Shaik Noorullah Shareef
+    created_at: 2025-09-04
+    last_modified_by: Shaik Noorullah Shareef
+    last_modified_at: 2025-09-04
+    revision: v1.0.0
+    tags:
+        - kubernetes
+        - worker
+        - compute
+        - general-purpose
+        - flexible
+    documentation_url: https://docs.pnats.cloud/infrastructure/nodes/k8s-worker

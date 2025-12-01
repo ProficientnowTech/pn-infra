@@ -5,7 +5,29 @@ type: application
 version: 0.1.0
 appVersion: "2.0"
 
+keywords:
+- monitoring
+- cost-analyzer
+- cost-monitoring
+- cost
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: monitoring
+  platform.pnats.cloud/component: kubecost
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'kubecost'
+  platform.pnats.cloud/resource-type: application
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: kubecost
+  platform.pnats.cloud/component-category: monitoring
+
 dependencies:
-  - name: cost-analyzer
-    version: 2.4.3
-    repository: https://kubecost.github.io/cost-analyzer
+- name: cost-analyzer
+  version: 2.4.3
+  repository: https://kubecost.github.io/cost-analyzer

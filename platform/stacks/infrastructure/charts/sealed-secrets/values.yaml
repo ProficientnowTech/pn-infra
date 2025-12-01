@@ -1,0 +1,32 @@
+# Sealed Secrets Helm Chart Values
+# https://github.com/bitnami-labs/sealed-secrets
+
+sealed-secrets:
+  # Controller configuration
+  controller:
+    create: true
+
+  # Resources
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+  # Replicas
+  replicas: 2
+
+  # Service account
+  serviceAccount:
+    create: true
+
+  # RBAC
+  rbac:
+    create: true
+
+  # Metrics
+  metrics:
+    serviceMonitor:
+      enabled: true

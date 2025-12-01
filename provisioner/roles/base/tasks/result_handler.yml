@@ -1,0 +1,153 @@
+---
+# Phase 5: Handle base role results - commit success or rollback on failure
+- name: Evaluate base role execution status
+  set_fact:
+      base_role_success: >-
+          {{ base_validation_passed and
+             (base_backup_completed or backup_result is skipped) and
+             base_configuration_applied and
+             base_tests_passed }}
+
+- name: Handle successful base configuration
+  block:
+      - name: Log successful base configuration
+        debug:
+            msg: |
+                Base role completed successfully:
+                - All validations passed ✓
+                - Configuration applied ✓
+                - All tests passed ✓
+                - System ready for dependent roles
+
+      - name: Ensure ansible state directory exists
+        file:
+            path: /var/lib/ansible
+            state: directory
+            mode: '0755'
+            owner: root
+            group: root
+
+      - name: Create success marker
+        copy:
+            content: |
+                # Base role completion marker
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: success
+                timezone: {{ base_setup.timezone }}
+                locale: {{ base_setup.locale | default('en_US') }}.UTF-8
+                time_sync: {{ base_setup.config_time_sync | default(false) }}
+                logging: {{ base_setup.config_logging | default(false) }}
+                backup_timestamp: {{ backup_timestamp | default('none') }}
+            dest: /var/lib/ansible/base-role-status
+            mode: '0644'
+            owner: root
+            group: root
+
+      - name: Set global base status flag for dependent roles
+        set_fact:
+            base_status: 'success'
+
+  when: base_role_success
+
+- name: Handle failed base configuration
+  block:
+      - name: Log base role failure details
+        debug:
+            msg: |
+                Base role failed with status:
+                - Validation passed: {{ base_validation_passed }}
+                - Backup completed: {{ base_backup_completed | default('skipped') }}
+                - Configuration applied: {{ base_configuration_applied }}
+                - Tests passed: {{ base_tests_passed }}
+
+      - name: Attempt rollback if configuration was applied
+        block:
+            - name: Read backup manifest
+              slurp:
+                  src: '/var/backups/ansible-base/manifest.{{ backup_timestamp }}'
+              register: backup_manifest
+              when: backup_timestamp is defined
+
+            - name: Restore timezone configuration
+              copy:
+                  src: '/var/backups/ansible-base/timezone.{{ backup_timestamp }}'
+                  dest: /etc/timezone
+                  remote_src: yes
+              ignore_errors: true
+              when: backup_manifest is succeeded
+
+            - name: Restore locale configuration (RedHat)
+              copy:
+                  src: '/var/backups/ansible-base/locale.conf.{{ backup_timestamp }}'
+                  dest: /etc/locale.conf
+                  remote_src: yes
+              ignore_errors: true
+              when: backup_manifest is succeeded and ansible_os_family == "RedHat"
+
+            - name: Restore locale configuration (Debian)
+              copy:
+                  src: '/var/backups/ansible-base/locale.{{ backup_timestamp }}'
+                  dest: /etc/default/locale
+                  remote_src: yes
+              ignore_errors: true
+              when: backup_manifest is succeeded and ansible_os_family == "Debian"
+
+            - name: Restore rsyslog configuration
+              copy:
+                  src: '/var/backups/ansible-base/rsyslog.conf.{{ backup_timestamp }}'
+                  dest: /etc/rsyslog.conf
+                  remote_src: yes
+              ignore_errors: true
+              notify: restart rsyslog
+              when: backup_manifest is succeeded and base_setup.config_logging
+
+            - name: Restore timesyncd configuration
+              copy:
+                  src: '/var/backups/ansible-base/timesyncd.conf.{{ backup_timestamp }}'
+                  dest: /etc/systemd/timesyncd.conf
+                  remote_src: yes
+              ignore_errors: true
+              notify: restart timesyncd
+              when: backup_manifest is succeeded and base_setup.config_time_sync
+
+            - name: Log rollback completion
+              debug:
+                  msg: 'Rollback attempted for base configuration'
+
+        when: base_configuration_applied and backup_timestamp is defined
+
+      - name: Ensure ansible state directory exists
+        file:
+            path: /var/lib/ansible
+            state: directory
+            mode: '0755'
+            owner: root
+            group: root
+      - name: Create failure marker
+        copy:
+            content: |
+                # Base role failure marker
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: failed
+                validation_passed: {{ base_validation_passed }}
+                backup_completed: {{ base_backup_completed | default('unknown') }}
+                configuration_applied: {{ base_configuration_applied }}
+                tests_passed: {{ base_tests_passed }}
+                rollback_attempted: {{ 'yes' if backup_timestamp is defined else 'no' }}
+            dest: /var/lib/ansible/base-role-status
+            mode: '0644'
+            owner: root
+            group: root
+
+      - name: Set global base status flag for dependent roles
+        set_fact:
+            base_status: 'failed'
+
+      - name: Fail the role if critical issues occurred
+        fail:
+            msg: |
+                Base role failed to complete successfully.
+                Check /var/lib/ansible/base-role-status for details.
+                System may be in inconsistent state - manual intervention required.
+
+  when: not base_role_success

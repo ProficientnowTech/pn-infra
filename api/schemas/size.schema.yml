@@ -1,0 +1,49 @@
+---
+uri: size
+schema:
+    type: object
+    items:
+        name:
+            type: string
+            pattern: ^(xs|s|m|l|xl)\.(1|2)$
+        display_name:
+            type: string
+        description:
+            type: string
+        cpu_cores:
+            type: integer
+            minimum: 2
+            maximum: 64
+        memory:
+            type: integer
+            minimum: 1024
+            maximum: 32786
+        ballooning_enabled:
+            type: boolean
+    required:
+        - name
+        - display_name
+        - cpu_cores
+        - memory
+---
+uri: sizes_schema
+schema:
+    type: object
+    items:
+        name:
+            type: string
+        description:
+            type: string
+        sizes:
+            type: array
+            items:
+                $ref: size
+            minItems: 5
+            maxItems: 20
+        metadata:
+            $ref: metadata
+    required:
+        - name
+        - description
+        - sizes
+        - metadata

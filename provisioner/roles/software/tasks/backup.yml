@@ -1,0 +1,83 @@
+---
+# Phase 2: Backup existing software configurations
+- name: Create backup directory
+  file:
+      path: /var/backups/ansible-software
+      state: directory
+      mode: '0700'
+      owner: root
+      group: root
+
+- name: Generate backup timestamp
+  set_fact:
+      backup_timestamp: '{{ ansible_date_time.epoch }}'
+
+- name: Backup current package list (Debian)
+  shell: dpkg --get-selections > "/var/backups/ansible-software/dpkg-selections.{{ backup_timestamp }}"
+  when: ansible_os_family == "Debian"
+  register: dpkg_backup
+
+- name: Backup current package list (RedHat)
+  shell: rpm -qa > "/var/backups/ansible-software/rpm-list.{{ backup_timestamp }}"
+  when: ansible_os_family == "RedHat"
+  register: rpm_backup
+
+- name: Backup apt sources list (Debian)
+  copy:
+      src: /etc/apt/sources.list
+      dest: '/var/backups/ansible-software/sources.list.{{ backup_timestamp }}'
+      remote_src: yes
+  ignore_errors: true
+  when: ansible_os_family == "Debian"
+  register: apt_sources_backup
+
+- name: Backup apt sources directory (Debian)
+  shell: tar -czf "/var/backups/ansible-software/sources.list.d.{{ backup_timestamp }}.tar.gz" -C /etc/apt sources.list.d/
+  ignore_errors: true
+  when: ansible_os_family == "Debian"
+  register: apt_sources_dir_backup
+
+- name: Backup yum repositories (RedHat)
+  shell: tar -czf "/var/backups/ansible-software/yum.repos.d.{{ backup_timestamp }}.tar.gz" -C /etc yum.repos.d/
+  ignore_errors: true
+  when: ansible_os_family == "RedHat"
+  register: yum_repos_backup
+
+- name: Get current package cache size
+  shell: >
+      {% if ansible_os_family == "Debian" %}
+      du -sh /var/cache/apt/archives/ | cut -f1
+      {% else %}
+      du -sh /var/cache/yum/ | cut -f1
+      {% endif %}
+  register: cache_size
+  changed_when: false
+  ignore_errors: true
+
+- name: Create software backup manifest
+  copy:
+      content: |
+          # Software role backup manifest - {{ ansible_date_time.iso8601 }}
+          backup_timestamp: {{ backup_timestamp }}
+          os_family: {{ ansible_os_family }}
+          package_manager: {{ 'apt' if ansible_os_family == 'Debian' else 'yum/dnf' }}
+          packages_to_install: {{ base_packages | length }}
+          package_list_backup: {{ dpkg_backup.stdout if ansible_os_family == 'Debian' else rpm_backup.stdout if ansible_os_family == 'RedHat' else 'none' }}
+          sources_backup: {{ apt_sources_backup.dest if apt_sources_backup.dest is defined else yum_repos_backup.stdout if yum_repos_backup.stdout is defined else 'none' }}
+          cache_size_before: {{ cache_size.stdout | default('unknown') }}
+
+          # Package list to be installed:
+          {% for package in base_packages %}
+          - {{ package.name }}
+          {% endfor %}
+      dest: '/var/backups/ansible-software/manifest.{{ backup_timestamp }}'
+      mode: '0600'
+
+- name: Log backup completion
+  debug:
+      msg: |
+          Software configuration backup completed:
+          - Timestamp: {{ backup_timestamp }}
+          - Package manager: {{ 'apt' if ansible_os_family == 'Debian' else 'yum/dnf' }}
+          - Packages to install: {{ base_packages | length }}
+          - Current cache size: {{ cache_size.stdout | default('unknown') }}

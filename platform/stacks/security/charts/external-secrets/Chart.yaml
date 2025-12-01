@@ -1,31 +1,35 @@
 apiVersion: v2
-name: external-secrets
-description: A Helm chart for ESO
+name: pn-external-secrets
+description: Kubernetes Operator to sync secrets from external secret management systems
 namespace: external-secrets
-
-# A chart can be either an 'application' or a 'library' chart.
-#
-# Application charts are a collection of templates that can be packaged into versioned archives
-# to be deployed.
-#
-# Library charts provide useful utilities or functions for the chart developer. They're included as
-# a dependency of application charts to inject those utilities and functions into the rendering
-# pipeline. Library charts do not define any templates and therefore cannot be deployed.
 type: application
+version: 1.0.0
+appVersion: "0.11.0"
 
-# This is the chart version. This version number should be incremented each time you make changes
-# to the chart and its templates, including the app version.
-# Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.1.0
+keywords:
+- secret-management
+- secrets-sync
+- vault-integration
+- security
+- external-secrets-operator
 
-# This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application. Versions are not expected to
-# follow Semantic Versioning. They should reflect the version the application is using.
-# It is recommended to use it with quotes.
-appVersion: "1.0.0"
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: secret-management
+  platform.pnats.cloud/component: secrets-operator
+  platform.pnats.cloud/docs: 'https://external-secrets.io'
+  platform.pnats.cloud/deploys: 'external-secrets-operator'
+  platform.pnats.cloud/dependencies: '[{"name":"vault","type":"secret-backend"}]'
+
+labels:
+  platform.pnats.cloud/component: secrets-operator
+  platform.pnats.cloud/component-category: 'security/secret-management'
 
 dependencies:
 - name: external-secrets
   alias: external-secrets
-  version: 0.19.2
+  version: 1.1.0
   repository: https://charts.external-secrets.io

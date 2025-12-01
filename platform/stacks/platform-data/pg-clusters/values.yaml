@@ -1,0 +1,304 @@
+# PostgreSQL Clusters Helm Chart
+# Production-ready Zalando Postgres Operator cluster configurations
+#
+# This chart uses a template-driven approach to deploy multiple PostgreSQL clusters
+# with consistent security, HA, and monitoring configurations.
+
+# ==============================================================================
+# Global TLS Configuration
+# ==============================================================================
+# Controls automatic TLS certificate provisioning via cert-manager
+tls:
+  # Create a ClusterIssuer for PostgreSQL certificates
+  # Set to false if you already have an issuer configured
+  createIssuer: true
+
+  # Name of the ClusterIssuer to create/use
+  issuerName: platform-postgres-ca
+
+  # Sync wave for issuer creation (should be before clusters)
+  issuerSyncWave: "-5"
+
+  # Issuer type: selfSigned, ca, acme, vault
+  # - selfSigned: Creates self-signed certificates (default, good for internal)
+  # - ca: Uses existing CA certificate
+  # - acme: Uses Let's Encrypt or other ACME provider (for public exposure)
+  # - vault: Uses HashiCorp Vault PKI
+  issuerType: selfSigned
+
+  # CA issuer configuration (when issuerType: ca)
+  # caSecretName: my-ca-certificate
+
+  # ACME issuer configuration (when issuerType: acme)
+  # acme:
+  #   server: https://acme-v02.api.letsencrypt.org/directory
+  #   email: platform-admin@pnats.cloud
+  #   privateKeySecret: postgres-acme-issuer-key
+  #   ingressClass: nginx
+  #   solvers:
+  #   - http01:
+  #       ingress:
+  #         class: nginx
+
+  # Vault issuer configuration (when issuerType: vault)
+  # vault:
+  #   server: https://vault.vault.svc.cluster.local:8200
+  #   path: pki/sign/postgres
+  #   role: postgres-issuer
+  #   auth:
+  #     kubernetes:
+  #       role: postgres-issuer
+  #       mountPath: /v1/auth/kubernetes
+
+# ==============================================================================
+# PostgreSQL Clusters
+# ==============================================================================
+# List of PostgreSQL clusters to deploy
+# Each cluster will be deployed as a separate postgresql CR
+pgClusters: []
+
+# Example cluster configuration (commented out):
+# pgClusters:
+#   - name: example-db
+#     namespace: applications
+#     teamId: platform
+#
+#     # High Availability
+#     numberOfInstances: 3
+#
+#     # Storage
+#     size: 100Gi
+#     storageClass: plt-blk-hdd-repl
+#     # For AWS gp3 volumes (optional):
+#     # iops: 3000
+#     # throughput: 125
+#
+#     # PostgreSQL version
+#     pgVersion: "16"
+#
+#     # Load Balancer Configuration
+#     lb:
+#       master:
+#         enabled: true
+#       replica:
+#         enabled: true
+#       # Restrict access to specific IP ranges (optional)
+#       # allowedSourceRanges:
+#       #   - 10.0.0.0/8
+#       #   - 192.168.0.0/16
+#
+#     # Connection Pooler (PgBouncer)
+#     pooler:
+#       enabled: true
+#       instances: 2
+#       mode: transaction  # or "session"
+#       schema: pooler
+#       user: pooler
+#       replica:
+#         enabled: true
+#       lb:
+#         master:
+#           enabled: true
+#         replica:
+#           enabled: true
+#       resources:
+#         requests:
+#           cpu: 100m
+#           memory: 128Mi
+#         limits:
+#           cpu: 500m
+#           memory: 256Mi
+#
+#     # Resources for PostgreSQL pods
+#     resources:
+#       requests:
+#         cpu: 1000m
+#         memory: 2Gi
+#       limits:
+#         cpu: 4000m
+#         memory: 8Gi
+#
+#     # Application-specific users
+#     # Note: platform_admin and postgres_exporter are created automatically
+#     users:
+#       app_user:
+#         - login
+#         - createdb
+#       readonly_user:
+#         - login
+#
+#     # Enable password rotation for specific users
+#     usersWithSecretRotation:
+#       - app_user
+#
+#     # Databases to create
+#     databases:
+#       app_database: app_user
+#       analytics_database: app_user
+#
+#     # Patroni HA configuration
+#     patroni:
+#       synchronousMode: false
+#       synchronousModeStrict: false
+#       # For critical data, enable synchronous replication:
+#       # synchronousMode: true
+#       # synchronousNodeCount: 1
+#
+#       # Replication slots for logical replication (optional)
+#       # slots:
+#       #   cdc_slot:
+#       #     type: logical
+#       #     database: app_database
+#       #     plugin: pgoutput
+#
+#     # Monitoring configuration
+#     monitoring:
+#       exporterImage: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+#       resources:
+#         requests:
+#           cpu: 50m
+#           memory: 64Mi
+#         limits:
+#           cpu: 200m
+#           memory: 128Mi
+#       # customQueries: true  # Enable if you have custom query configs
+#
+#     # Pod Disruption Budget
+#     pdb:
+#       minAvailable: 1
+#
+#     # TLS configuration - automatic certificate provisioning
+#     tls:
+#       # Enable TLS encryption (uses cert-manager)
+#       enabled: true
+#
+#       # Certificate will be auto-created as: {name}-tls-cert
+#       # You can override the secret name if needed
+#       # secretName: custom-tls-secret
+#
+#       # Issuer to use (defaults to global tls.issuerName)
+#       # issuer: platform-postgres-ca
+#       # issuerKind: ClusterIssuer
+#
+#       # Advanced issuer configuration
+#       # issuerRef:
+#       #   name: vault-issuer
+#       #   kind: Issuer
+#       #   group: cert-manager.io
+#
+#       # Certificate settings
+#       # duration: 2160h  # 90 days
+#       # renewBefore: 720h  # 30 days
+#       # organization: "ProficientNow Cloud Platform"
+#
+#       # Additional DNS names for the certificate
+#       # additionalDNSNames:
+#       #   - postgres.example.com
+#       #   - db.example.com
+#
+#       # IP addresses (for direct IP access)
+#       # ipAddresses:
+#       #   - 10.0.1.50
+#
+#       # Private key algorithm (RSA or ECDSA)
+#       # privateKey:
+#       #   algorithm: RSA
+#       #   size: 2048
+#       #   encoding: PKCS1
+#       #   rotationPolicy: Always
+#
+#       # If using a CA issuer, enable CA certificate in secret
+#       # caEnabled: true
+#       # caFileName: ca.crt
+#
+#       # Sync wave (should be before cluster creation)
+#       # syncWave: "-1"
+#
+#     # Logical backups to S3 (optional)
+#     # logicalBackup:
+#     #   enabled: true
+#     #   schedule: "30 00 * * *"  # Daily at 00:30
+#     #   s3Bucket: my-postgres-backups
+#     #   s3Region: us-east-1
+#     #   s3Endpoint: s3.amazonaws.com
+#     #   # Credentials should be provided via cluster-wide operator config
+#
+#     # Maintenance windows (optional)
+#     # maintenanceWindows:
+#     #   - "Mon:01:00-03:00"
+#     #   - "Sat:22:00-23:59"
+#
+#     # Node affinity for dedicated PostgreSQL nodes (optional)
+#     # nodeAffinity:
+#     #   requiredDuringSchedulingIgnoredDuringExecution:
+#     #     nodeSelectorTerms:
+#     #     - matchExpressions:
+#     #       - key: workload-type
+#     #         operator: In
+#     #         values:
+#     #         - database
+#
+#     # Tolerations for dedicated nodes (optional)
+#     # tolerations:
+#     #   - key: database
+#     #     operator: Equal
+#     #     value: "true"
+#     #     effect: NoSchedule
+#
+#     # Additional pod annotations (optional)
+#     # podAnnotations:
+#     #   backup.velero.io/backup-volumes: pgdata
+#
+#     # Additional service annotations (optional)
+#     # serviceAnnotations:
+#     #   service.beta.kubernetes.io/aws-load-balancer-type: nlb
+#
+#     # Additional labels (optional)
+#     # labels:
+#     #   environment: production
+#     #   cost-center: engineering
+
+# ==============================================================================
+# IMPORTANT NOTES:
+# ==============================================================================
+#
+# 1. DEFAULT USERS:
+#    - platform_admin: Keycloak-synced superuser (has full admin privileges)
+#    - postgres_exporter: Monitoring user for Prometheus
+#    These are automatically created for all clusters
+#
+# 2. SECURITY:
+#    - Uses scram-sha-256 password encryption (not md5)
+#    - SSL/TLS connections enforced via pg_hba
+#    - Network access restricted to 10.0.0.0/8 by default
+#
+# 3. HIGH AVAILABILITY:
+#    - Pod anti-affinity spreads replicas across nodes
+#    - PodDisruptionBudget ensures minimum availability during updates
+#    - Patroni handles automatic failover
+#
+# 4. MONITORING:
+#    - postgres_exporter sidecar for Prometheus metrics
+#    - Detailed query and connection logging
+#    - Performance and audit logging enabled
+#
+# 5. POSTGRES PARAMETERS:
+#    - Hardcoded in template for consistency
+#    - Optimized for general production workloads
+#    - Modify template directly if changes needed cluster-wide
+#
+# 6. PG_HBA CONFIG:
+#    - Hardcoded in template for security
+#    - Enforces SSL and scram-sha-256 authentication
+#    - Allows PAM authentication for zalandos role
+#    - Modify template directly if changes needed
+#
+# 7. SECRETS MANAGEMENT:
+#    - Operator auto-generates secrets in format:
+#      {username}.{clustername}.credentials.postgresql.acid.zalan.do
+#    - Keycloak should sync platform_admin password to this secret
+#
+# 8. CONNECTION POOLING:
+#    - PgBouncer deployed for each cluster
+#    - Transaction mode recommended for most applications
+#    - Session mode for applications needing session features

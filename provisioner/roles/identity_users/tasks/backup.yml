@@ -1,0 +1,141 @@
+---
+# Identity & Users Role - Backup Phase
+# Creates backup of current user accounts, SSH configurations, and group memberships
+
+- name: Create backup directory
+  file:
+      path: /var/lib/ansible/backups/identity_users
+      state: directory
+      mode: '0700'
+      owner: root
+      group: root
+
+- name: Get current timestamp for backup naming
+  set_fact:
+      backup_timestamp: '{{ ansible_date_time.epoch }}'
+
+- name: Backup current passwd file
+  copy:
+      src: /etc/passwd
+      dest: '/var/lib/ansible/backups/identity_users/passwd.{{ backup_timestamp }}.bak'
+      remote_src: true
+      mode: '0600'
+      backup: true
+  register: passwd_backup
+
+- name: Backup current shadow file
+  copy:
+      src: /etc/shadow
+      dest: '/var/lib/ansible/backups/identity_users/shadow.{{ backup_timestamp }}.bak'
+      remote_src: true
+      mode: '0600'
+      backup: true
+  register: shadow_backup
+
+- name: Backup current group file
+  copy:
+      src: /etc/group
+      dest: '/var/lib/ansible/backups/identity_users/group.{{ backup_timestamp }}.bak'
+      remote_src: true
+      mode: '0600'
+      backup: true
+  register: group_backup
+
+- name: Backup current gshadow file (if exists)
+  copy:
+      src: /etc/gshadow
+      dest: '/var/lib/ansible/backups/identity_users/gshadow.{{ backup_timestamp }}.bak'
+      remote_src: true
+      mode: '0600'
+      backup: true
+  register: gshadow_backup
+  failed_when: false
+
+- name: Backup SSH daemon configuration
+  copy:
+      src: /etc/ssh/sshd_config
+      dest: '/var/lib/ansible/backups/identity_users/sshd_config.{{ backup_timestamp }}.bak'
+      remote_src: true
+      mode: '0600'
+      backup: true
+  register: sshd_config_backup
+
+- name: Backup existing sudoers files
+  shell: |
+      if [ -d "/etc/sudoers.d" ]; then
+        tar -czf "/var/lib/ansible/backups/identity_users/sudoers_d.{{ backup_timestamp }}.tar.gz" \
+          -C "/etc" sudoers.d/ 2>/dev/null || true
+      fi
+  register: sudoers_backup
+  changed_when: false
+
+- name: Backup existing user SSH directories
+  shell: |
+      for user in {{ users | map(attribute='username') | join(' ') }}; do
+        if [ -d "/home/$user/.ssh" ]; then
+          tar -czf "/var/lib/ansible/backups/identity_users/${user}_ssh_{{ backup_timestamp }}.tar.gz" \
+            -C "/home/$user" .ssh/ 2>/dev/null || true
+        fi
+      done
+  vars:
+      backup_timestamp: '{{ backup_timestamp }}'
+  register: ssh_dirs_backup
+  changed_when: false
+
+- name: Backup login.defs configuration
+  copy:
+      src: /etc/login.defs
+      dest: '/var/lib/ansible/backups/identity_users/login.defs.{{ backup_timestamp }}.bak'
+      remote_src: true
+      mode: '0600'
+      backup: true
+  register: login_defs_backup
+  failed_when: false
+
+- name: Backup PAM configuration files
+  shell: |
+      if [ -d "/etc/pam.d" ]; then
+        tar -czf "/var/lib/ansible/backups/identity_users/pam_d.{{ backup_timestamp }}.tar.gz" \
+          -C "/etc" pam.d/ 2>/dev/null || true
+      fi
+  register: pam_backup
+  changed_when: false
+
+- name: Create backup manifest
+  copy:
+      content: |
+          # Identity & Users Backup Manifest
+          # Created: {{ ansible_date_time.iso8601 }}
+          # Timestamp: {{ backup_timestamp }}
+
+          BACKUP_FILES:
+          - passwd: {{ passwd_backup.dest }}
+          - shadow: {{ shadow_backup.dest }}
+          - group: {{ group_backup.dest }}
+          - gshadow: {{ gshadow_backup.dest if gshadow_backup is succeeded else 'N/A' }}
+          - sshd_config: {{ sshd_config_backup.dest }}
+          - login_defs: {{ login_defs_backup.dest if login_defs_backup is succeeded else 'N/A' }}
+          - sudoers_d: /var/lib/ansible/backups/identity_users/sudoers_d.{{ backup_timestamp }}.tar.gz
+          - pam_d: /var/lib/ansible/backups/identity_users/pam_d.{{ backup_timestamp }}.tar.gz
+          - ssh_directories: /var/lib/ansible/backups/identity_users/*_ssh_{{ backup_timestamp }}.tar.gz
+
+          USERS_TO_CONFIGURE:
+          {% for user in users %}
+          - {{ user.username }}
+          {% endfor %}
+
+          ROLLBACK_INSTRUCTIONS:
+          1. Stop SSH service: systemctl stop ssh
+          2. Restore files from backup directory
+          3. Restart SSH service: systemctl start ssh
+          4. Verify user access works properly
+      dest: '/var/lib/ansible/backups/identity_users/manifest.{{ backup_timestamp }}.txt'
+      mode: '0600'
+
+- name: Log backup completion
+  debug:
+      msg:
+          - 'Identity & Users backup completed successfully'
+          - 'Backup timestamp: {{ backup_timestamp }}'
+          - 'Backup directory: /var/lib/ansible/backups/identity_users/'
+          - 'Manifest: /var/lib/ansible/backups/identity_users/manifest.{{ backup_timestamp }}.txt'

@@ -1,24 +1,14 @@
-# Target-Chart Values - Application Factory Pattern
-# This file defines the default structure for generating ArgoCD applications
-
+argocdNamespace: argocd
+# Stack identification
+stackName: infrastructure
 # Default repository configuration
 default:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
-  targetRevision: 'main'
-
-# Stack name for generated applications (used in labels/annotations)
-stackName: 'platform-infra'
-
-# Applications list - empty by default
-# Override with values-{environment}.yaml files
-applications: []
-
-# Global configuration for all generated applications
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: main
+# Global configuration for all applications
 global:
-  # ArgoCD project for all applications
-  project: 'platform-infra'
-
-  # Default sync policy
+  # ArgoCD project
+  project: infrastructure
   syncPolicy:
     automated:
       prune: true
@@ -26,21 +16,31 @@ global:
     syncOptions:
     - 'CreateNamespace=true'
     - 'RespectIgnoreDifferences=true'
-
-  # Default retry configuration
+  # Retry configuration
   retry:
     limit: 3
     backoff:
       duration: '5s'
       factor: 2
       maxDuration: '3m'
-
-# Labels applied to all generated applications
+# Common labels applied to all ArgoCD Application resources
+# These are merged with app-specific labels (app-specific takes precedence)
 commonLabels:
-  app.kubernetes.io/managed-by: 'platform-infra-chart'
+  app.kubernetes.io/managed-by: 'platform-core'
   app.kubernetes.io/part-of: 'platform'
-  platform.pn-infra.io/stack: 'platform-infra'
-
-# Annotations applied to all generated applications
+  platform.pnats.cloud/stack: infrastructure
+  platform.pnats.cloud/layer: foundation
+  platform.pnats.cloud/deploys: '["argocd","ingress-nginx","external-dns","cert-manager","sealed-secrets"]'
+  platform.pnats.cloud/dependencies: '[]'
 commonAnnotations:
-  platform.pn-infra.io/generated-by: 'platform-infra-chart'
+  platform.pnats.cloud/managed-by: 'platform-core'
+  platform.pnats.cloud/generated-by: 'platform-core-chart'
+# Applications list - override in values-{environment}.yaml
+applications: []
+# Dependency orchestration
+dependencies: []
+dependencyCheck:
+  enabled: true
+  pollIntervalSeconds: 10
+  timeoutSeconds: 1200
+  image: docker.io/bitnami/kubectl:1.30.3

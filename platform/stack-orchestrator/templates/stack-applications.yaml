@@ -1,0 +1,70 @@
+{{- $root := . -}}
+{{- range .Values.stacks }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .name }}
+  namespace: {{ $root.Values.argocdNamespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    {{- range $k, $v := $root.Values.commonLabels }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+    {{- if .labels }}
+    {{- range $k, $v := .labels }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "{{ default 0 .syncWave }}"
+    platform.pnats.cloud/dependencies: {{ (.dependencies | default list) | toJson | quote }}
+    {{- range $k, $v := $root.Values.commonAnnotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+    {{- if .annotations }}
+    {{- range $k, $v := .annotations }}
+    {{ $k }}: {{ $v | quote }}
+    {{- end }}
+    {{- end }}
+{{- $automated := (coalesce $root.Values.default.syncPolicy.automated (dict)) -}}
+{{- $syncOpts := (coalesce $root.Values.default.syncPolicy.syncOptions (list "CreateNamespace=true" "RespectIgnoreDifferences=true")) -}}
+{{- $retry := (coalesce $root.Values.default.retry (dict)) -}}
+{{- $retryBackoff := (coalesce $retry.backoff (dict)) -}}
+spec:
+  project: {{ .project | default $root.Values.default.project }}
+  sources:
+    - repoURL: {{ .repoURL | default $root.Values.default.repoURL }}
+      targetRevision: {{ .targetRevision | default $root.Values.default.targetRevision }}
+      path: {{ required (printf "chart.path required for %s" .name) .chart.path }}
+      helm:
+        {{- if .dependencies }}
+        values: |
+          dependencies:
+          {{- range .dependencies }}
+            - {{ . }}
+          {{- end }}
+        {{- end }}
+        valueFiles:
+          - {{ printf "$values/%s" (required (printf "chart.valuesFile required for %s" .name) .chart.valuesFile) }}
+    - repoURL: {{ $root.Values.default.repoURL }}
+      targetRevision: {{ $root.Values.default.targetRevision }}
+      ref: values
+  destination:
+    server: {{ $root.Values.default.destinationServer }}
+    namespace: {{ .destinationNamespace | default $root.Values.argocdNamespace }}
+  syncPolicy:
+    automated:
+      prune: {{ default true $automated.prune }}
+      selfHeal: {{ default true $automated.selfHeal }}
+    syncOptions:
+      {{- range $opt := $syncOpts }}
+      - {{ $opt }}
+      {{- end }}
+    retry:
+      limit: {{ default 3 $retry.limit }}
+      backoff:
+        duration: {{ default "5s" $retryBackoff.duration | quote }}
+        factor: {{ default 2 $retryBackoff.factor }}
+        maxDuration: {{ default "3m" $retryBackoff.maxDuration | quote }}
+{{- end }}

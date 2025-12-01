@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: fuma-docs
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: docs
+  source:
+    repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: HEAD
+    path: docs/fuma-docs/chart
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: docs
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

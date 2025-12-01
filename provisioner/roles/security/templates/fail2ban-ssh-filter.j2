@@ -1,0 +1,46 @@
+# Fail2Ban configuration file
+#
+# SSH filter for enhanced protection
+# Custom filter for SSH brute force protection with additional patterns
+#
+
+[INCLUDES]
+
+before = common.conf
+
+[Definition]
+
+_daemon = sshd
+
+# Standard SSH authentication failures
+failregex = ^%(__prefix_line)s(?:error: PAM: )?[aA]uthentication (?:failure|error|failed) for .* from <HOST>( via \S+)?\s*$
+            ^%(__prefix_line)s(?:error: )?Received disconnect from <HOST>: 3: .*: Auth fail [preauth]$
+            ^%(__prefix_line)s(?:error: )?Connection closed by authenticating user .* <HOST> port .* [preauth]$
+            ^%(__prefix_line)s(?:error: )?PAM: Authentication failure for .* from <HOST>$
+            ^%(__prefix_line)s(?:error: )?PAM: User not known to the underlying authentication module for .* from <HOST>$
+
+# Invalid user attempts
+            ^%(__prefix_line)s(?:error: )?[iI]nvalid user .* from <HOST> port .*$
+            ^%(__prefix_line)s(?:error: )?User .* from <HOST> not allowed because not listed in AllowUsers$
+
+# Protocol violations
+            ^%(__prefix_line)s(?:error: )?Did not receive identification string from <HOST>$
+            ^%(__prefix_line)s(?:error: )?Bad protocol version identification .* from <HOST>$
+            ^%(__prefix_line)s(?:error: )?SSH: Server;Ltype: Version;Remote: <HOST>-.*;Name: bad version.*$
+
+# Key-based authentication failures
+            ^%(__prefix_line)s(?:error: )?Connection closed by <HOST> port .* [preauth]$
+
+# Additional security patterns
+            ^%(__prefix_line)s(?:error: )?maximum authentication attempts exceeded for .* from <HOST> port .* ssh2 [preauth]$
+            ^%(__prefix_line)s(?:error: )?Unable to negotiate with <HOST> port .*: no matching .*$
+
+ignoreregex = 
+
+[Init]
+
+# "maxlines" is number of log lines to buffer for multi-line regex searches
+maxlines = 10
+
+# Journal additional settings
+journalmatch = _SYSTEMD_UNIT=ssh.service + _SYSTEMD_UNIT=sshd.service

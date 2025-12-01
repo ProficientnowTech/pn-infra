@@ -10,7 +10,7 @@ image:
   pullPolicy: IfNotPresent
 
 # Deployment settings
-replicaCount: 1  # Single replica (leader election enabled)
+replicaCount: 3 # Single replica (leader election enabled)
 
 # Resources
 resources:
@@ -34,7 +34,7 @@ rbac:
 # Cloud provider configuration
 cloudProvider:
   # Namespace where VMs are running (in management cluster)
-  namespace: ""  # Will be set per workload cluster
+  namespace: "" # Will be set per workload cluster
 
   # LoadBalancer configuration
   loadBalancer:
@@ -64,7 +64,7 @@ leaderElection:
 
 # Logging
 log:
-  level: 2  # 0=panic, 1=error, 2=warning, 3=info, 4=debug
+  level: 2 # 0=panic, 1=error, 2=warning, 3=info, 4=debug
 
 # Node controller settings
 nodeController:
@@ -132,12 +132,12 @@ readinessProbe:
 
 # Command line arguments
 extraArgs:
-  - --v=2
-  - --cloud-provider=kubevirt
-  - --cloud-config=/etc/cloud/cloud-config
-  - --use-service-account-credentials=true
-  - --bind-address=0.0.0.0
-  - --secure-port=10258
+- --v=2
+- --cloud-provider=kubevirt
+- --cloud-config=/etc/cloud/cloud-config
+- --use-service-account-credentials=true
+- --bind-address=0.0.0.0
+- --secure-port=10258
 
 # Volume mounts
 volumeMounts:
@@ -166,9 +166,9 @@ strategy:
 
 # Enable network policy
 networkPolicy:
-  enabled: false  # Enable if needed
+  enabled: false # Enable if needed
 
 # Metrics
 metrics:
-  enabled: false  # Can enable later
+  enabled: true # Can enable later
   port: 10259

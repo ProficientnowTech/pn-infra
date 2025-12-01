@@ -1,0 +1,163 @@
+# Development Environment PostgreSQL Clusters
+# Minimal resources and single instance for cost savings
+
+pgClusters:
+  # Temporal database for workflow engine
+  - name: temporal-db
+    namespace: temporal
+    teamId: temporal
+
+    # Minimal HA for development
+    numberOfInstances: 1
+
+    # Storage
+    size: 20Gi
+    storageClass: plt-blk-hdd-repl
+
+    # PostgreSQL version
+    pgVersion: "16"
+
+    # Load Balancer
+    lb:
+      master:
+        enabled: true
+      replica:
+        enabled: false  # No replicas in dev
+
+    # Connection Pooler
+    pooler:
+      enabled: true
+      instances: 1
+      mode: transaction
+      replica:
+        enabled: false
+      lb:
+        master:
+          enabled: true
+        replica:
+          enabled: false
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+
+    # Minimal resources for development
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+    # Application users
+    users:
+      temporal:
+        - login
+        - createdb
+
+    # Databases
+    databases:
+      temporal: temporal
+      temporal_visibility: temporal
+
+    # Patroni - no synchronous replication in dev
+    patroni:
+      synchronousMode: false
+      synchronousModeStrict: false
+
+    # Monitoring
+    monitoring:
+      exporterImage: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+      resources:
+        requests:
+          cpu: 25m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+
+    # PDB - allow disruption in dev
+    pdb:
+      minAvailable: 0
+
+  # Platform shared services database
+  - name: platform-db
+    namespace: platform
+    teamId: platform
+
+    # Single instance for dev
+    numberOfInstances: 1
+
+    # Storage
+    size: 10Gi
+    storageClass: plt-blk-hdd-repl
+
+    # PostgreSQL version
+    pgVersion: "16"
+
+    # Load Balancer
+    lb:
+      master:
+        enabled: true
+      replica:
+        enabled: false
+
+    # Connection Pooler
+    pooler:
+      enabled: true
+      instances: 1
+      mode: transaction
+      replica:
+        enabled: false
+      lb:
+        master:
+          enabled: true
+        replica:
+          enabled: false
+
+    # Minimal resources
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+    # Application users
+    users:
+      backstage:
+        - login
+        - createdb
+      argocd:
+        - login
+        - createdb
+
+    # Databases
+    databases:
+      backstage: backstage
+      argocd: argocd
+
+    # Patroni
+    patroni:
+      synchronousMode: false
+      synchronousModeStrict: false
+
+    # Monitoring
+    monitoring:
+      exporterImage: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+      resources:
+        requests:
+          cpu: 25m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+
+    # PDB
+    pdb:
+      minAvailable: 0

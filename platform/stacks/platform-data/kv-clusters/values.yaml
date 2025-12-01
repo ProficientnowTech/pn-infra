@@ -1,0 +1,144 @@
+# ==============================================================================
+# Redis Clusters - Base Values
+# ==============================================================================
+# Multi-cluster Redis deployment using OpsTree Redis Operator
+# Supports Redis Replication with Sentinel for automatic failover
+# ==============================================================================
+
+# Global External Access Configuration
+# Single shared IP for all Redis clusters (port-based routing)
+externalAccess:
+  # Shared IP for all Redis external endpoints
+  sharedIP: ""  # Override in environment-specific values (e.g., 103.110.174.22)
+
+  # Default IP allowlist (applies to all clusters unless overridden)
+  allowedSourceRanges:
+    - 0.0.0.0/0  # TODO: Restrict in production!
+
+# Redis Clusters List
+# Define multiple Redis clusters with different configurations
+redisClusters: []
+  # Example cluster configuration:
+  # - name: platform-kv
+  #   namespace: platform
+  #   description: "Platform services key-value store"
+  #
+  #   # Cluster size (1 master + N replicas)
+  #   clusterSize: 3
+  #
+  #   # Container image
+  #   image: quay.io/opstree/redis:v7.0.12
+  #   imagePullPolicy: IfNotPresent
+  #
+  #   # Resource allocation
+  #   resources:
+  #     requests:
+  #       cpu: 200m
+  #       memory: 512Mi
+  #     limits:
+  #       cpu: 1000m
+  #       memory: 1Gi
+  #
+  #   # Persistent storage
+  #   storage:
+  #     size: 10Gi
+  #     storageClass: plt-blk-hdd-repl
+  #     accessModes:
+  #       - ReadWriteOnce
+  #
+  #   # Redis configuration
+  #   config:
+  #     maxmemory: "896mb"
+  #     maxmemoryPolicy: "allkeys-lru"
+  #     appendonly: "yes"
+  #     appendfsync: "everysec"
+  #     loglevel: "notice"
+  #     maxclients: "10000"
+  #
+  #   # Sentinel for automatic failover
+  #   sentinel:
+  #     enabled: true
+  #     clusterSize: 3
+  #     quorum: 2
+  #     image: quay.io/opstree/redis-sentinel:v7.0.12
+  #     resources:
+  #       requests:
+  #         cpu: 100m
+  #         memory: 128Mi
+  #       limits:
+  #         cpu: 500m
+  #         memory: 256Mi
+  #     monitoring:
+  #       enabled: true
+  #       exporterImage: quay.io/opstree/redis-exporter:v1.45.0
+  #     pdb:
+  #       enabled: true
+  #       maxUnavailable: 1
+  #     podSecurityContext:
+  #       runAsUser: 1000
+  #       runAsGroup: 1000
+  #       fsGroup: 1000
+  #     livenessProbe:
+  #       failureThreshold: 3
+  #       initialDelaySeconds: 1
+  #       periodSeconds: 10
+  #     readinessProbe:
+  #       failureThreshold: 3
+  #       initialDelaySeconds: 1
+  #       periodSeconds: 10
+  #
+  #   # Monitoring
+  #   monitoring:
+  #     enabled: true
+  #     exporterImage: quay.io/opstree/redis-exporter:v1.45.0
+  #     resources:
+  #       requests:
+  #         cpu: 50m
+  #         memory: 64Mi
+  #       limits:
+  #         cpu: 200m
+  #         memory: 128Mi
+  #
+  #   # Health checks
+  #   readinessProbe:
+  #     failureThreshold: 5
+  #     initialDelaySeconds: 15
+  #     periodSeconds: 15
+  #     successThreshold: 1
+  #     timeoutSeconds: 5
+  #   livenessProbe:
+  #     failureThreshold: 5
+  #     initialDelaySeconds: 15
+  #     periodSeconds: 15
+  #     successThreshold: 1
+  #     timeoutSeconds: 5
+  #
+  #   # Pod Disruption Budget
+  #   pdb:
+  #     enabled: true
+  #     maxUnavailable: 1
+  #
+  #   # Security context
+  #   podSecurityContext:
+  #     runAsUser: 1000
+  #     runAsGroup: 1000
+  #     fsGroup: 1000
+  #
+  #   # External access (optional)
+  #   externalAccess:
+  #     enabled: true
+  #     port: 6379  # Port on shared IP
+  #     hostname: platform-kv.pnats.cloud
+  #     allowedSourceRanges:
+  #       - 0.0.0.0/0
+  #     sessionAffinity: ClientIP
+  #     sessionAffinityTimeout: 10800
+  #
+  #   # Labels and annotations
+  #   labels:
+  #     environment: production
+  #     criticality: high
+  #   annotations:
+  #     backup-policy: daily
+  #   podAnnotations:
+  #     backup.velero.io/backup-volumes: data

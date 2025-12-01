@@ -1,0 +1,142 @@
+---
+# Phase 1: Validate system_settings prerequisites
+- name: Check if system_settings configuration sections are defined
+  assert:
+      that:
+          - system_settings is defined or maintenance is defined or optimization is defined
+      fail_msg: 'System settings configuration is not defined in inventory (system_settings, maintenance, or optimization)'
+      success_msg: 'System settings configuration sections found'
+
+- name: Validate kernel modules configuration (if defined)
+  block:
+      - name: Check kernel modules format
+        assert:
+            that:
+                - item is string
+            fail_msg: 'Invalid kernel module format: {{ item }} - must be a string'
+            success_msg: 'Kernel module {{ item }} format is valid'
+        loop: '{{ system_settings.kernel_modules | default([]) }}'
+
+      - name: Check if kernel modules can be loaded
+        command: modprobe --dry-run "{{ item }}"
+        register: modprobe_check
+        changed_when: false
+        failed_when: false
+        loop: '{{ system_settings.kernel_modules | default([]) }}'
+
+  when: system_settings is defined and system_settings.kernel_modules is defined
+
+- name: Validate sysctl configuration (if defined)
+  block:
+      - name: Check sysctl parameters format
+        assert:
+            that:
+                - item.name is defined
+                - item.value is defined
+            fail_msg: "Invalid sysctl parameter format - must have 'name' and 'value' fields"
+            success_msg: 'Sysctl parameter {{ item.name }} format is valid'
+        loop: '{{ system_settings.sysctl | default([]) }}'
+
+      - name: Check if sysctl parameters exist
+        shell: sysctl -n "{{ item.name }}" 2>/dev/null || echo "unknown"
+        register: sysctl_check
+        changed_when: false
+        loop: '{{ system_settings.sysctl | default([]) }}'
+
+  when: system_settings is defined and system_settings.sysctl is defined
+
+- name: Validate systemd services configuration (if defined)
+  block:
+      - name: Check systemd services format
+        assert:
+            that:
+                - item.name is defined
+                - item.enabled is defined
+                - item.state is defined
+                - item.state in ['started', 'stopped', 'restarted', 'reloaded']
+            fail_msg: "Invalid systemd service format - must have 'name', 'enabled', and valid 'state'"
+            success_msg: 'Systemd service {{ item.name }} format is valid'
+        loop: '{{ system_settings.systemd_services | default([]) }}'
+
+      - name: Check if systemd services exist
+        systemd:
+            name: '{{ item.name }}'
+        register: service_check
+        failed_when: false
+        loop: '{{ system_settings.systemd_services | default([]) }}'
+
+  when: system_settings is defined and system_settings.systemd_services is defined
+
+- name: Check system prerequisites
+  block:
+      - name: Verify systemd is available
+        command: systemctl --version
+        register: systemd_version_check
+        changed_when: false
+        failed_when: systemd_version_check.rc != 0
+
+      - name: Check if we have sufficient privileges
+        command: id -u
+        register: user_id
+        changed_when: false
+        failed_when: user_id.stdout != "0"
+
+      - name: Verify /proc filesystem is mounted
+        stat:
+            path: /proc/sys
+        register: proc_sys_check
+        failed_when: not proc_sys_check.stat.exists or not proc_sys_check.stat.isdir
+
+      - name: Check if sysctl is available
+        command: sysctl --version
+        register: sysctl_version_check
+        changed_when: false
+        failed_when: sysctl_version_check.rc != 0
+
+- name: Validate optimization settings (if defined)
+  block:
+      - name: Check network optimization prerequisites
+        block:
+            - name: Check for network interfaces
+              shell: ip link show | grep -c "^[0-9]"
+              register: interface_count
+              changed_when: false
+
+            - name: Verify network interfaces exist
+              assert:
+                  that:
+                      - interface_count.stdout | int > 0
+                  fail_msg: 'No network interfaces found for optimization'
+                  success_msg: 'Network interfaces available for optimization'
+
+        when: optimization.enable_network_optimization | default(false)
+
+      - name: Check filesystem optimization prerequisites
+        block:
+            - name: Check filesystem types
+              shell: mount | awk '{print $5}' | sort -u | grep -E "(ext[234]|xfs|btrfs)"
+              register: fs_types
+              changed_when: false
+              failed_when: false
+
+            - name: Verify supported filesystems exist
+              assert:
+                  that:
+                      - fs_types.stdout_lines | length > 0
+                  fail_msg: 'No supported filesystems found for optimization'
+                  success_msg: 'Supported filesystems available for optimization'
+
+        when: optimization.enable_fs_optimization | default(false)
+
+  when: optimization is defined
+
+- name: Log validation success
+  debug:
+      msg: |
+          System settings validation completed successfully:
+          - Kernel modules: {{ system_settings.kernel_modules | default([]) | length }}
+          - Sysctl parameters: {{ system_settings.sysctl | default([]) | length }}
+          - Systemd services: {{ system_settings.systemd_services | default([]) | length }}
+          - Network optimization: {{ optimization.enable_network_optimization | default(false) }}
+          - FS optimization: {{ optimization.enable_fs_optimization | default(false) }}
+          - Maintenance updates: {{ maintenance.enable_autoupdates | default(false) }}

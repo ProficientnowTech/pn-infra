@@ -1,0 +1,11 @@
+---
+# Directories Role - Handlers
+# Basic handlers for directory management operations
+
+- name: reload systemd daemon
+  systemd:
+      daemon_reload: true
+
+- name: update file permissions cache
+  shell: updatedb
+  ignore_errors: true

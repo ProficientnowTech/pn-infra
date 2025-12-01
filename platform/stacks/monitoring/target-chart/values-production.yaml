@@ -1,0 +1,67 @@
+# Production Environment
+# Platform Security applications with sync wave ordering
+applications:
+- name: prometheus
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+
+- name: loki
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+
+- name: tempo
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+  ignoreDifferences:
+  - group: apps
+    kind: StatefulSet
+    jqPathExpressions:
+    - .spec.volumeClaimTemplates[]
+
+- name: promtail
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+
+- name: grafana
+  annotations:
+    argocd.argoproj.io/sync-wave: '40'
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+
+- name: gatus
+  annotations:
+    argocd.argoproj.io/sync-wave: '50'
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+
+- name: kubecost
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  destinationNamespaceOverwrite: monitoring
+  syncOptions:
+  - ServerSideApply=true
+
+- name: oneuptime
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+  destinationNamespaceOverwrite: monitoring-stack
+  syncOptions:
+  - ServerSideApply=true
+
+commonLabels:
+  platform.pnats.cloud/environment: 'production'

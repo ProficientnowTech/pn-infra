@@ -1,0 +1,65 @@
+---
+name: storage_disk_layouts
+description: this definition holds all the disk & partition layouts for pn infrastructure
+disk_layouts:
+    - name: ceph_layout
+      description: disk layout for ceph storage nodes
+      disks:
+          - device: /dev/sdb
+            disk_size_gb: 500
+            partition_layout:
+                - name: ceph-osd
+                  size_gb: 200
+                  mount_point: /var/lib/ceph/osd1
+                  filesystem: xfs
+                  purpose: ceph-osd-partition
+                - name: ceph-osd
+                  size_gb: 200
+                  mount_point: /var/lib/ceph/osd2
+                  filesystem: xfs
+                  purpose: ceph-osd-partition
+                - name: home
+                  size_gb: 45
+                  mount_point: /home
+                  filesystem: ext4
+                  purpose: home-partition
+                - name: docker-data
+                  size_gb: 45
+                  mount_point: /var/lib/docker
+                  filesystem: ext4
+                  purpose: docker-data-partition
+    - name: general_layout
+      description: disk layout for any node
+      disks:
+          - device: /dev/sda
+            disk_size_gb: 200
+            partition_layout:
+                - name: root
+                  size_gb: 80
+                  mount_point: /
+                  filesystem: ext4
+                  purpose: root-partition
+                - name: home
+                  size_gb: 50
+                  mount_point: /home
+                  filesystem: ext4
+                  purpose: home-partition
+                - name: docker-data
+                  size_gb: 70
+                  mount_point: /var/lib/docker
+                  filesystem: ext4
+                  purpose: docker-data-partition
+metadata:
+    created_by: Shaik Noorullah Shareef
+    created_at: 2025-09-04
+    last_modified_by: Shaik Noorullah Shareef
+    last_modified_at: 2025-09-04
+    revision: v1.0.0
+    tags:
+        - general
+        - base-layout
+        - default
+        - ceph
+        - storage
+        - k8s storage nodes
+    documentation_url: https://docs.pnats.cloud/infrastructure/disk-layouts

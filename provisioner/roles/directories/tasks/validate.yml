@@ -1,0 +1,92 @@
+---
+# Directories Role - Validation Phase
+# Validates directory creation prerequisites and configuration
+
+- name: Check if directories variable is defined
+  fail:
+      msg: "Directories variable is not defined. Define 'directories' in inventory or set to empty list []."
+  when: directories is not defined
+
+- name: Skip validation if directories list is empty
+  debug:
+      msg: 'No directories configured - skipping directory management'
+  when: directories | length == 0
+
+- name: Validate directory configuration format
+  fail:
+      msg: "Directory entry {{ item }} is missing required 'path' field"
+  when:
+      - directories | length > 0
+      - item.path is not defined or item.path == ""
+  loop: '{{ directories }}'
+
+- name: Validate directory paths are absolute
+  fail:
+      msg: "Directory path '{{ item.path }}' must be absolute (start with /)"
+  when:
+      - directories | length > 0
+      - not item.path.startswith('/')
+  loop: '{{ directories }}'
+
+- name: Check system prerequisites
+  stat:
+      path: /
+  register: root_check
+  failed_when: not root_check.stat.exists
+
+- name: Validate required system commands are available
+  command: 'which {{ item }}'
+  loop:
+      - mkdir
+      - chown
+      - chmod
+  register: required_commands
+  failed_when: required_commands.rc != 0
+  changed_when: false
+  when: directories | length > 0
+
+- name: Check parent directories exist or can be created
+  stat:
+      path: '{{ item.path | dirname }}'
+  loop: '{{ directories }}'
+  register: parent_dirs
+  when: directories | length > 0
+
+- name: Validate ownership settings
+  fail:
+      msg: "Invalid owner '{{ item.owner }}' for directory {{ item.path }}"
+  when:
+      - directories | length > 0
+      - item.owner is defined
+      - item.owner is match('^[0-9]+$') and item.owner | int < 0
+  loop: '{{ directories }}'
+
+- name: Validate group settings
+  fail:
+      msg: "Invalid group '{{ item.group }}' for directory {{ item.path }}"
+  when:
+      - directories | length > 0
+      - item.group is defined
+      - item.group is match('^[0-9]+$') and item.group | int < 0
+  loop: '{{ directories }}'
+
+- name: Validate permission modes
+  fail:
+      msg: "Invalid mode '{{ item.mode }}' for directory {{ item.path }} - must be octal format like '0755'"
+  when:
+      - directories | length > 0
+      - item.mode is defined
+      - not (item.mode is match('^0[0-7]{3}$'))
+  loop: '{{ directories }}'
+
+- name: Log validation results
+  debug:
+      msg:
+          - 'Directories validation completed successfully'
+          - 'Found {{ directories | length }} directories to configure'
+          - 'System prerequisites verified'
+  when: directories | length > 0
+
+- name: Set validation success marker
+  set_fact:
+      directories_validation_passed: true

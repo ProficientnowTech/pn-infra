@@ -1,0 +1,45 @@
+argocdNamespace: argocd
+# Stack identification
+stackName: developer-platform
+# Default repository configuration
+default:
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: main
+# Global configuration for all applications
+global:
+  # ArgoCD project
+  project: developer-platform
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - 'CreateNamespace=true'
+    - 'RespectIgnoreDifferences=true'
+  # Retry configuration
+  retry:
+    limit: 3
+    backoff:
+      duration: '5s'
+      factor: 2
+      maxDuration: '3m'
+# Common labels applied to all ArgoCD Application resources
+# These are merged with app-specific labels (app-specific takes precedence)
+commonLabels:
+  app.kubernetes.io/managed-by: 'platform-core'
+  app.kubernetes.io/part-of: 'platform'
+  platform.pnats.cloud/stack: developer-platform
+  platform.pnats.cloud/layer: developer-platform
+  platform.pnats.cloud/deploys: '["backstage","clusterapi","harbor","kubevirt","kubevirt-cloud-controller-manager","kubevirt-manager","verdaccio"]'
+  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","keycloak","vault","exteral-secrets","databases"]'
+commonAnnotations:
+  platform.pnats.cloud/managed-by: 'platform-core'
+  platform.pnats.cloud/generated-by: 'platform-core-chart'
+# Applications list - override in values-{environment}.yaml
+applications: []
+dependencies: []
+dependencyCheck:
+  enabled: true
+  pollIntervalSeconds: 10
+  timeoutSeconds: 1200
+  image: docker.io/bitnami/kubectl:1.30.3

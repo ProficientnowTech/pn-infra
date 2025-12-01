@@ -1,0 +1,51 @@
+# Application Infrastructure Stack - Application Factory Pattern
+# Generates ArgoCD Applications for application infrastructure components
+
+# ArgoCD namespace
+argocdNamespace: argocd
+
+# Stack identification
+stackName: application-infra
+
+# Default repository configuration
+default:
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: main
+
+# Global configuration for all applications
+global:
+  # ArgoCD project
+  project: application-infra
+
+  # Sync policy
+  automated:
+    prune: true
+    selfHeal: true
+
+  # Retry configuration
+  retry:
+    limit: 3
+    backoff:
+      duration: 5s
+      factor: 2
+      maxDuration: 3m
+
+# Common labels applied to all ArgoCD Application resources
+# These are merged with app-specific labels (app-specific takes precedence)
+commonLabels:
+  platform.pnats.cloud/stack: application-infra
+  platform.pnats.cloud/layer: application
+
+# Common annotations applied to all ArgoCD Application resources
+# These are merged with app-specific annotations (app-specific takes precedence)
+commonAnnotations:
+  platform.pnats.cloud/managed-by: argocd
+
+# Applications list - override in values-{environment}.yaml
+applications: []
+dependencies: []
+dependencyCheck:
+  enabled: true
+  pollIntervalSeconds: 10
+  timeoutSeconds: 1200
+  image: docker.io/bitnami/kubectl:1.30.3

@@ -2,5 +2,7 @@ apiVersion: operator.tekton.dev/v1alpha1
 kind: TektonDashboard
 metadata:
   name: dashboard
+  annotations:
+    argocd.argoproj.io/sync-wave: '10'
 spec:
   targetNamespace: tekton-pipelines

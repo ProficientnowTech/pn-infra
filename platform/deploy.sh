@@ -51,110 +51,33 @@ check_resource_ready() {
 }
 
 # Create required secrets for platform
-create_platform_secrets() {
-	log_info "Creating platform secrets..."
-
-	# Create namespaces if they don't exist
-	local namespaces=("postgres-operator" "platform-secrets")
-	for ns in "${namespaces[@]}"; do
-		if ! kubectl get namespace "$ns" >/dev/null 2>&1; then
-			kubectl create namespace "$ns" || log_warning "Namespace $ns already exists"
-		fi
-	done
-
-	# Deploy secrets using Kustomize
-	deploy_platform_secrets
+render_bootstrap_secrets() {
+	local script="${SCRIPT_DIR}/bootstrap/scripts/render-secrets.sh"
+	if [[ ! -x "$script" ]]; then
+		log_error "Bootstrap secret renderer not found or not executable: $script"
+		return 1
+	fi
+	log_info "Rendering bootstrap secrets from specs..."
+	if "$script" --apply; then
+		log_success "Bootstrap secrets rendered."
+	else
+		log_error "Failed to render bootstrap secrets."
+		return 1
+	fi
 }
+install_sealed_secrets() {
+	log_info "Ensuring sealed-secrets controller is installed..."
+	local script="${SCRIPT_DIR}/bootstrap/install-sealed-secrets.sh"
 
-deploy_platform_secrets() {
-	log_info "Deploying platform secrets..."
-
-	local secrets_dir="${SCRIPT_DIR}/bootstrap/secrets"
-
-	if [[ ! -d "$secrets_dir" ]]; then
-		log_error "Secrets directory not found: $secrets_dir"
+	if [[ ! -x "$script" ]]; then
+		log_error "Sealed-secrets install script not found or not executable: $script"
 		return 1
 	fi
 
-	# Check if secret environment file exists and has values
-	local env_file="postgres-backup-credentials.env"
-	local env_path="${secrets_dir}/${env_file}"
-
-	if [[ ! -f "$env_path" ]]; then
-		log_warning "Secret environment file not found: $env_file"
-		log_info "Creating template environment file..."
-		cat >"$env_path" <<EOF
-# S3 Backup Credentials for Zalando Postgres Operator
-# Fill in these values before deployment
-
-# AWS Access Key for S3 backups
-AWS_ACCESS_KEY_ID=
-
-# AWS Secret Key for S3 backups
-AWS_SECRET_ACCESS_KEY=
-
-# AWS Region for S3 bucket
-AWS_REGION=us-east-1
-
-# S3 Bucket name for backups
-AWS_S3_BUCKET=
-
-# KMS Key ID for encryption (DSSE-KMS key)
-AWS_KMS_KEY_ID=
-
-# KMS Key ID for signing (optional)
-AWS_KMS_SIGNING_KEY_ID=
-EOF
-		log_warning "Please fill in ${env_path} with your AWS credentials and redeploy"
-		return 1
-	fi
-
-	# Check for empty values
-	local missing_vars=0
-	local required_vars=("AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" "AWS_S3_BUCKET")
-
-	for var in "${required_vars[@]}"; do
-		local value=$(grep "^${var}=" "$env_path" | cut -d'=' -f2- | tr -d '[:space:]')
-		if [[ -z "$value" ]]; then
-			log_warning "Required variable $var is empty in $env_file"
-			((missing_vars++))
-		fi
-	done
-
-	if [[ $missing_vars -gt 0 ]]; then
-		log_error "$missing_vars required secret values are empty"
-		log_info "Please fill in the following required variables in ${env_path}:"
-		for var in "${required_vars[@]}"; do
-			local value=$(grep "^${var}=" "$env_path" | cut -d'=' -f2- | tr -d '[:space:]')
-			if [[ -z "$value" ]]; then
-				log_info "  - $var"
-			fi
-		done
-		return 1
-	fi
-
-	# Deploy secrets using kustomize
-	log_info "Applying S3 backup secrets to cluster..."
-	if kubectl apply -k "$secrets_dir"; then
-		log_success "S3 backup secrets deployed successfully"
+	if "$script"; then
+		log_success "Sealed-secrets controller is ready."
 	else
-		log_error "Failed to deploy S3 backup secrets"
-		return 1
-	fi
-
-	# Wait for secret to propagate
-	sleep 2
-
-	# Verify secret was created
-	log_info "Verifying secret creation..."
-	if kubectl get secret postgres-backup-credentials -n postgres-operator >/dev/null 2>&1; then
-		log_success "✓ Secret postgres-backup-credentials created in postgres-operator namespace"
-
-		# Show secret metadata (without revealing values)
-		log_info "Secret details:"
-		kubectl get secret postgres-backup-credentials -n postgres-operator -o jsonpath='{.metadata.name}{" created at "}{.metadata.creationTimestamp}{"\n"}' 2>/dev/null || true
-	else
-		log_error "✗ Secret postgres-backup-credentials missing in postgres-operator namespace"
+		log_error "Failed to install sealed-secrets controller."
 		return 1
 	fi
 }
@@ -299,8 +222,8 @@ deploy_platform_applications() {
 		exit 0
 	fi
 
-	# Create platform secrets first
-	create_platform_secrets
+	install_sealed_secrets
+	render_bootstrap_secrets
 
 	# Start ArgoCD deployment (non-blocking)
 	deploy_argocd
@@ -351,37 +274,6 @@ deploy_argocd_projects() {
 	else
 		error "Failed to create Argo Project successfully"
 		return 1
-	fi
-}
-
-# Show deployment status
-show_status() {
-	log_info "Platform deployment status:"
-
-	if ! kubectl cluster-info >/dev/null 2>&1; then
-		log_error "Cannot connect to cluster"
-		return 1
-	fi
-
-	# Show ArgoCD applications
-	if kubectl get namespace argocd >/dev/null 2>&1; then
-		echo
-		log_info "ArgoCD Applications:"
-		kubectl get applications -n argocd 2>/dev/null | head -20 || log_warning "No applications found"
-
-		# Show secret status
-		echo
-		log_info "Platform Secrets:"
-		local secrets=("postgres-backup-credentials" "infisical-secrets")
-		for secret in "${secrets[@]}"; do
-			if kubectl get secret "$secret" -n "${secret##*-}" >/dev/null 2>&1; then
-				echo -e "  ${GREEN}✓${NC} $secret"
-			else
-				echo -e "  ${RED}✗${NC} $secret"
-			fi
-		done
-	else
-		log_warning "ArgoCD not deployed"
 	fi
 }
 
@@ -504,9 +396,6 @@ show_status() {
 case $OPERATION in
 deploy)
 	deploy_platform_applications
-	;;
-create-secrets)
-	create_platform_secrets
 	;;
 status)
 	show_status

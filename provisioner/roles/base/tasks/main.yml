@@ -1,0 +1,62 @@
+---
+# Base Role - Timezone, Locale, Time Sync, Logging Configuration
+# Implements 5-phase safety pattern: validate → backup → apply → test → rollback
+
+- name: Initialize base role status
+  set_fact:
+      base_validation_passed: false
+      base_backup_completed: false
+      base_configuration_applied: false
+      base_tests_passed: false
+      base_rollback_needed: false
+
+# Phase 1: VALIDATE
+- name: 'Validate base prerequisites'
+  include_tasks: validate.yml
+  register: validation_result
+  ignore_errors: true
+
+- name: Set validation status
+  set_fact:
+      base_validation_passed: '{{ validation_result is succeeded }}'
+
+# Phase 2: BACKUP
+- name: 'Backup base configurations'
+  include_tasks: backup.yml
+  when: base_validation_passed
+  register: backup_result
+  ignore_errors: true
+
+- name: Set backup status
+  set_fact:
+      base_backup_completed: '{{ backup_result is succeeded }}'
+  when: base_validation_passed
+
+# Phase 3: APPLY
+- name: 'Apply base configuration'
+  include_tasks: apply.yml
+  when: base_validation_passed and (base_backup_completed or backup_result is skipped)
+  register: apply_result
+  ignore_errors: true
+
+- name: Set apply status
+  set_fact:
+      base_configuration_applied: '{{ apply_result is succeeded }}'
+  when: base_validation_passed
+
+# Phase 4: TEST
+- name: 'Test base configuration'
+  include_tasks: test.yml
+  when: base_configuration_applied
+  register: test_result
+  ignore_errors: true
+
+- name: Set test status
+  set_fact:
+      base_tests_passed: '{{ test_result is succeeded }}'
+  when: base_configuration_applied
+
+# Phase 5: HANDLE RESULT
+- name: 'Handle base result'
+  include_tasks: result_handler.yml
+  when: base_validation_passed

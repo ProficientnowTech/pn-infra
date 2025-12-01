@@ -1,0 +1,16 @@
+apiVersion: v2
+name: security-stack
+description: ArgoCD Application factory for infrastructure security components
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+- security
+- secrets-management
+- authentication
+- platform-security
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com

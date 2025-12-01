@@ -1,0 +1,228 @@
+{{- range .Values.redisClusters }}
+---
+# ==============================================================================
+# RedisReplication Cluster: {{ .name }}
+# ==============================================================================
+# High-availability Redis cluster with automatic replication
+# Uses OpsTree Redis Operator for management
+# ==============================================================================
+apiVersion: redis.redis.opstreelabs.in/v1beta2
+kind: RedisReplication
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: redis-replication
+    app.kubernetes.io/part-of: platform-data
+    app.kubernetes.io/managed-by: helm
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .syncWave | default "0" | quote }}
+    description: "Redis replication cluster for {{ .description | default .name }}"
+    {{- if .annotations }}
+    {{- toYaml .annotations | nindent 4 }}
+    {{- end }}
+spec:
+  # ==============================================================================
+  # Cluster Size Configuration
+  # ==============================================================================
+  # Total number of Redis instances (1 master + N replicas)
+  # For HA: minimum 3 (1 master + 2 replicas)
+  clusterSize: {{ .clusterSize | default 3 }}
+
+  # ==============================================================================
+  # Kubernetes Configuration
+  # ==============================================================================
+  kubernetesConfig:
+    # Redis container image
+    image: {{ .image | default "quay.io/opstree/redis:v7.0.12" }}
+    imagePullPolicy: {{ .imagePullPolicy | default "IfNotPresent" }}
+
+    {{- if .imagePullSecrets }}
+    imagePullSecrets:
+    {{- toYaml .imagePullSecrets | nindent 4 }}
+    {{- end }}
+
+    # Resource allocation
+    resources:
+      {{- if .resources }}
+      {{- toYaml .resources | nindent 6 }}
+      {{- else }}
+      # Default resources for production
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      {{- end }}
+
+    {{- if .serviceAccountName }}
+    serviceAccountName: {{ .serviceAccountName }}
+    {{- end }}
+
+  # ==============================================================================
+  # Redis Configuration
+  # ==============================================================================
+  redisConfig:
+    # Reference to ConfigMap with additional Redis configuration
+    additionalRedisConfig: {{ .name }}-config
+
+  # ==============================================================================
+  # Persistent Storage
+  # ==============================================================================
+  storage:
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+        {{- if .storage.accessModes }}
+        {{- toYaml .storage.accessModes | nindent 8 }}
+        {{- else }}
+        - ReadWriteOnce
+        {{- end }}
+        storageClassName: {{ .storage.storageClass | default "plt-blk-hdd-repl" }}
+        resources:
+          requests:
+            storage: {{ .storage.size | default "10Gi" }}
+
+  # ==============================================================================
+  # High Availability - Pod Anti-Affinity
+  # ==============================================================================
+  # Ensure Redis pods are spread across different nodes for HA
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app.kubernetes.io/name
+              operator: In
+              values:
+              - {{ .name }}
+          topologyKey: kubernetes.io/hostname
+
+  # ==============================================================================
+  # Monitoring - Redis Exporter
+  # ==============================================================================
+  redisExporter:
+    enabled: {{ .monitoring.enabled | default true }}
+    image: {{ .monitoring.exporterImage | default "quay.io/opstree/redis-exporter:v1.45.0" }}
+    imagePullPolicy: {{ .monitoring.imagePullPolicy | default "IfNotPresent" }}
+    {{- if .monitoring.resources }}
+    resources:
+      {{- toYaml .monitoring.resources | nindent 6 }}
+    {{- else }}
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+    {{- end }}
+
+  # ==============================================================================
+  # Health Checks
+  # ==============================================================================
+  readinessProbe:
+    failureThreshold: {{ .readinessProbe.failureThreshold | default 5 }}
+    initialDelaySeconds: {{ .readinessProbe.initialDelaySeconds | default 15 }}
+    periodSeconds: {{ .readinessProbe.periodSeconds | default 15 }}
+    successThreshold: {{ .readinessProbe.successThreshold | default 1 }}
+    timeoutSeconds: {{ .readinessProbe.timeoutSeconds | default 5 }}
+
+  livenessProbe:
+    failureThreshold: {{ .livenessProbe.failureThreshold | default 5 }}
+    initialDelaySeconds: {{ .livenessProbe.initialDelaySeconds | default 15 }}
+    periodSeconds: {{ .livenessProbe.periodSeconds | default 15 }}
+    successThreshold: {{ .livenessProbe.successThreshold | default 1 }}
+    timeoutSeconds: {{ .livenessProbe.timeoutSeconds | default 5 }}
+
+  # ==============================================================================
+  # Pod Disruption Budget
+  # ==============================================================================
+  # Ensure minimum availability during updates/maintenance
+  {{- if .pdb }}
+  pdb:
+    enabled: {{ .pdb.enabled | default true }}
+    {{- if .pdb.minAvailable }}
+    minAvailable: {{ .pdb.minAvailable }}
+    {{- else if .pdb.maxUnavailable }}
+    maxUnavailable: {{ .pdb.maxUnavailable }}
+    {{- else }}
+    maxUnavailable: 1
+    {{- end }}
+  {{- else }}
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+  {{- end }}
+
+  # ==============================================================================
+  # Security Context
+  # ==============================================================================
+  podSecurityContext:
+    runAsUser: {{ .podSecurityContext.runAsUser | default 1000 }}
+    runAsGroup: {{ .podSecurityContext.runAsGroup | default 1000 }}
+    fsGroup: {{ .podSecurityContext.fsGroup | default 1000 }}
+    {{- if .podSecurityContext.fsGroupChangePolicy }}
+    fsGroupChangePolicy: {{ .podSecurityContext.fsGroupChangePolicy }}
+    {{- end }}
+
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: false  # Redis needs write for RDB/AOF persistence
+    runAsNonRoot: true
+
+  # ==============================================================================
+  # Node Scheduling
+  # ==============================================================================
+  {{- if .nodeSelector }}
+  nodeSelector:
+    {{- toYaml .nodeSelector | nindent 4 }}
+  {{- end }}
+
+  {{- if .tolerations }}
+  tolerations:
+  {{- toYaml .tolerations | nindent 2 }}
+  {{- end }}
+
+  # ==============================================================================
+  # Priority and Preemption
+  # ==============================================================================
+  {{- if .priorityClassName }}
+  priorityClassName: {{ .priorityClassName }}
+  {{- end }}
+
+  # ==============================================================================
+  # Pod Annotations
+  # ==============================================================================
+  {{- if .podAnnotations }}
+  podAnnotations:
+    {{- toYaml .podAnnotations | nindent 4 }}
+  {{- end }}
+
+  # ==============================================================================
+  # Init Containers
+  # ==============================================================================
+  {{- if .initContainers }}
+  initContainers:
+  {{- toYaml .initContainers | nindent 2 }}
+  {{- end }}
+
+  # ==============================================================================
+  # Sidecars
+  # ==============================================================================
+  {{- if .sidecars }}
+  sidecars:
+  {{- toYaml .sidecars | nindent 2 }}
+  {{- end }}
+
+{{- end }}

@@ -4,12 +4,12 @@ tempo:
     storage:
       trace:
         backend: local
-    
+
   persistence:
     enabled: true
-    storageClassName: ceph-block
+    storageClassName: bulk-ec
     size: 50Gi
-  
+
   resources:
     requests:
       cpu: 100m

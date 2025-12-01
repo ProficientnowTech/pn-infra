@@ -1,0 +1,72 @@
+environment: development
+stacks:
+  - name: platform-infrastructure
+    project: infrastructure
+    chart:
+      path: platform/stacks/infrastructure/target-chart
+      valuesFile: platform/stacks/infrastructure/target-chart/values-development.yaml
+    dependencies: []
+  - name: platform-storage
+    project: storage
+    chart:
+      path: platform/stacks/storage/target-chart
+      valuesFile: platform/stacks/storage/target-chart/values-development.yaml
+    dependencies:
+      - platform-infrastructure
+  - name: platform-security
+    project: security
+    chart:
+      path: platform/stacks/security/target-chart
+      valuesFile: platform/stacks/security/target-chart/values-development.yaml
+    dependencies:
+      - platform-infrastructure
+      - platform-storage
+  - name: platform-monitoring
+    project: monitoring
+    chart:
+      path: platform/stacks/monitoring/target-chart
+      valuesFile: platform/stacks/monitoring/target-chart/values-development.yaml
+    dependencies:
+      - platform-security
+  - name: platform-data-streaming
+    project: data-streaming
+    chart:
+      path: platform/stacks/data-streaming/target-chart
+      valuesFile: platform/stacks/data-streaming/target-chart/values-development.yaml
+    dependencies:
+      - platform-monitoring
+  - name: platform-data
+    project: platform-data
+    chart:
+      path: platform/stacks/platform-data/target-chart
+      valuesFile: platform/stacks/platform-data/target-chart/values-development.yaml
+    dependencies:
+      - platform-data-streaming
+  - name: platform-developer-platform
+    project: developer-platform
+    chart:
+      path: platform/stacks/developer-platform/target-chart
+      valuesFile: platform/stacks/developer-platform/target-chart/values-development.yaml
+    dependencies:
+      - platform-data
+  - name: platform-development-workloads
+    project: development-workloads
+    chart:
+      path: platform/stacks/development-workloads/target-chart
+      valuesFile: platform/stacks/development-workloads/target-chart/values-development.yaml
+    dependencies:
+      - platform-developer-platform
+  - name: platform-application-infra
+    project: application-infra
+    chart:
+      path: platform/stacks/application-infra/target-chart
+      valuesFile: platform/stacks/application-infra/target-chart/values-development.yaml
+    dependencies:
+      - platform-development-workloads
+  - name: platform-backup-dr
+    project: backup-dr
+    chart:
+      path: platform/stacks/backup-and-disaster-recovery/target-chart
+      valuesFile: platform/stacks/backup-and-disaster-recovery/target-chart/values-development.yaml
+    dependencies:
+      - platform-application-infra

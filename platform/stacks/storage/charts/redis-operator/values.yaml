@@ -1,117 +1,93 @@
-redisOperator:
-  name: redis-operator
-  imageName: quay.io/opstree/redis-operator
-  # Overrides the image tag whose default is the chart appVersion.
-  imagePullPolicy: IfNotPresent
+redis-operator:
+  redisOperator:
+    # pprof configuration for performance profiling
+    pprof:
+      # Enable pprof server for performance profiling
+      enabled: true
+      # The address the pprof endpoint binds to
+      bindAddress: ":6060"
 
-  # Additional pod annotations
-  podAnnotations: {}
-  # Additional Pod labels (e.g. for filtering Pod by custom labels)
-  podLabels: {}
+    # metrics configuration for monitoring
+    metrics:
+      # Enable metrics server
+      enabled: true
+      # The address the metrics endpoint binds to
+      bindAddress: ":8080"
 
-  # Additional arguments for redis-operator container
-  extraArgs: []
-  # When not specified, the operator will watch all namespaces. It can be set to a specific namespace or multiple namespaces separated by commas.
-  watchNamespace: ""
-  # -- The DNS domain suffix used for Kubernetes service discovery.
-  # Default is "cluster.local". Change this if your cluster uses a custom DNS domain.
-  serviceDNSDomain: "cluster.local"
-  env: []
-  # If set to true, webhook server will be enabled for masterSlaveAntiAffinity feature
-  # When enabled, you need to either:
-  # 1. Enable cert-manager (certmanager.enabled=true) for automatic certificate management, or
-  # 2. Manually create a certificate secret (see "How to generate private key" section in README)
-  webhook: true
-  automountServiceAccountToken: true
+  resources:
+    limits:
+      cpu: 500m
+      memory: 500Mi
+    requests:
+      cpu: 500m
+      memory: 500Mi
 
-  # pprof configuration for performance profiling
-  pprof:
-    # Enable pprof server for performance profiling
-    enabled: false
-    # The address the pprof endpoint binds to
-    bindAddress: ":6060"
+  replicas: 3
 
-  # metrics configuration for monitoring
-  metrics:
-    # Enable metrics server
+  rbac:
     enabled: true
-    # The address the metrics endpoint binds to
-    bindAddress: ":8080"
+  serviceAccountName: redis-operator
 
-resources:
-  limits:
-    cpu: 500m
-    memory: 500Mi
-  requests:
-    cpu: 500m
-    memory: 500Mi
+  serviceAccount:
+    automountServiceAccountToken: true
 
-replicas: 3
+  service:
+    name: webhook-service
+    namespace: redis-operator
 
-rbac:
-  enabled: true
-serviceAccountName: redis-operator
+  certificate:
+    name: serving-cert
+    secretName: webhook-server-cert
 
-serviceAccount:
-  automountServiceAccountToken: true
+  issuer:
+    # Whether to create the issuer or not. You might want to disable this if instead you
+    # want to use a ClusterIssuer that you simply want to provide.
+    create: true
+    # You can choose Issuer or ClusterIssuer here. The first one is namespaced, the second one
+    # is available for global usage.
+    kind: Issuer
+    type: selfSigned
+    # name: letsencrypt-production  # Not needed for self-signed internal webhook certificates
+    # email: shubham.gupta@opstree.com
+    # server: https://acme-v02.api.letsencrypt.org/directory
+    # privateKeySecretName: letsencrypt-prod
+    # solver:
+    #   enabled: true
+    #   ingressClass: nginx
 
-service:
-  name: webhook-service
-  namespace: redis-operator
+  certmanager:
+    # Whether to use cert-manager for certificate management
+    # Only effective when webhook=true
+    # If webhook=true and certmanager.enabled=false, you need to manually create certificate secret
+    enabled: true
+    # API version of the cert-manager CRDs
+    apiVersion: "cert-manager.io/v1"
 
-certificate:
-  name: serving-cert
-  secretName: webhook-server-cert
+  priorityClassName: ""
+  nodeSelector: {}
+  tolerateAllTaints: false
+  tolerations: []
+  affinity: {}
 
-issuer:
-  # Whether to create the issuer or not. You might want to disable this if instead you
-  # want to use a ClusterIssuer that you simply want to provide.
-  create: true
-  # You can choose Issuer or ClusterIssuer here. The first one is namespaced, the second one
-  # is available for global usage.
-  kind: Issuer
-  type: selfSigned
-  # name: letsencrypt-production  # Not needed for self-signed internal webhook certificates
-  # email: shubham.gupta@opstree.com
-  # server: https://acme-v02.api.letsencrypt.org/directory
-  # privateKeySecretName: letsencrypt-prod
-  # solver:
-  #   enabled: true
-  #   ingressClass: nginx
+  podSecurityContext: {}
+  #  fsGroup: 2000
 
-certmanager:
-  # Whether to use cert-manager for certificate management
-  # Only effective when webhook=true
-  # If webhook=true and certmanager.enabled=false, you need to manually create certificate secret
-  enabled: true
-  # API version of the cert-manager CRDs
-  apiVersion: "cert-manager.io/v1"
+  securityContext: {}
+  #  capabilities:
+  #    drop:
+  #    - ALL
+  #  readOnlyRootFilesystem: true
+  #  runAsNonRoot: true
+  #  runAsUser: 1000
 
-priorityClassName: ""
-nodeSelector: {}
-tolerateAllTaints: false
-tolerations: []
-affinity: {}
+  # Feature gates for alpha/experimental features
+  featureGates:
+    # Enable generating Redis configuration using an init container instead of a regular container
+    GenerateConfigInInitContainer: false
 
-podSecurityContext: {}
-#  fsGroup: 2000
-
-securityContext: {}
-#  capabilities:
-#    drop:
-#    - ALL
-#  readOnlyRootFilesystem: true
-#  runAsNonRoot: true
-#  runAsUser: 1000
-
-# Feature gates for alpha/experimental features
-featureGates:
-  # Enable generating Redis configuration using an init container instead of a regular container
-  GenerateConfigInInitContainer: false
-
-manager:
-  # config values for the operator manager
-  config:
-    kubeClientTimeout: 60s
-    # -- If value > 0, it will override the default value in the operator
-    kubeClientQPS: 0.0
+  manager:
+    # config values for the operator manager
+    config:
+      kubeClientTimeout: 60s
+      # -- If value > 0, it will override the default value in the operator
+      kubeClientQPS: 0.0

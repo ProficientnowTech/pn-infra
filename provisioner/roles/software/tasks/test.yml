@@ -1,0 +1,137 @@
+---
+# Phase 4: Test software configuration
+- name: Test package installations
+  block:
+      - name: Check if packages are installed (Debian)
+        shell: dpkg -l | grep -E "^.i[[:space:]]+{{ item.name }}(:[^[:space:]]+)?[[:space:]]"
+        register: debian_package_check
+        changed_when: false
+        failed_when: false
+        loop: '{{ base_packages }}'
+        when: ansible_os_family == "Debian"
+
+      - name: Check if packages are installed (RedHat)
+        shell: rpm -q "{{ item.name }}"
+        register: redhat_package_check
+        changed_when: false
+        failed_when: false
+        loop: '{{ base_packages }}'
+        when: ansible_os_family == "RedHat"
+
+- name: Verify package installation results
+  block:
+      - name: Collect installation test results
+        set_fact:
+            installed_packages: []
+            missing_packages: []
+
+      - name: Process Debian package test results
+        set_fact:
+            installed_packages: '{{ installed_packages + [item.item.name] if item.rc == 0 else installed_packages }}'
+            missing_packages: '{{ missing_packages + [item.item.name] if item.rc != 0 else missing_packages }}'
+        loop: '{{ debian_package_check.results | default([]) }}'
+        when: ansible_os_family == "Debian"
+        loop_control:
+            label: '{{ item.item.name }}'
+
+      - name: Process RedHat package test results
+        set_fact:
+            installed_packages: '{{ installed_packages + [item.item.name] if item.rc == 0 else installed_packages }}'
+            missing_packages: '{{ missing_packages + [item.item.name] if item.rc != 0 else missing_packages }}'
+        loop: '{{ redhat_package_check.results | default([]) }}'
+        when: ansible_os_family == "RedHat"
+        loop_control:
+            label: '{{ item.item.name }}'
+
+- name: Test critical package functionality
+  block:
+      - name: Test curl functionality
+        command: curl --version
+        register: curl_test
+        changed_when: false
+        when: "'curl' in installed_packages"
+
+      - name: Test jq functionality
+        command: jq --version
+        register: jq_test
+        changed_when: false
+        when: "'jq' in installed_packages"
+
+      - name: Test containerd functionality
+        command: containerd --version
+        register: containerd_test
+        changed_when: false
+        ignore_errors: true
+        when: "'containerd' in installed_packages"
+
+      - name: Test ca-certificates installation
+        stat:
+            path: /etc/ssl/certs/ca-certificates.crt
+        register: ca_certs_test
+        when: "'ca-certificates' in installed_packages"
+
+- name: Verify package manager health
+  block:
+      - name: Test package manager functionality (Debian)
+        command: apt list --installed
+        register: apt_health
+        changed_when: false
+        failed_when: apt_health.rc != 0
+        when: ansible_os_family == "Debian"
+
+      - name: Test package manager functionality (RedHat)
+        command: yum list installed
+        register: yum_health
+        changed_when: false
+        failed_when: yum_health.rc != 0
+        when: ansible_os_family == "RedHat"
+
+- name: Assess installation success rate
+  block:
+      - name: Calculate success metrics
+        set_fact:
+            installation_success_rate: '{{ ((installed_packages | length) / (base_packages | length) * 100) | round(2) }}'
+
+      - name: Verify acceptable success rate
+        assert:
+            that:
+                - installation_success_rate | float >= 95.0
+            fail_msg: |
+                Software installation success rate too low: {{ installation_success_rate }}%
+                Installed: {{ installed_packages | join(', ') }}
+                Missing: {{ missing_packages | join(', ') }}
+            success_msg: 'Software installation success rate: {{ installation_success_rate }}%'
+
+- name: Test system stability after installation
+  block:
+      - name: Check system load after installation
+        shell: uptime | awk '{print $NF}'
+        register: system_load
+        changed_when: false
+
+      - name: Check memory usage
+        shell: free | grep Mem | awk '{print ($3/$2) * 100.0}'
+        register: memory_usage
+        changed_when: false
+
+      - name: Verify system resources are reasonable
+        assert:
+            that:
+                - system_load.stdout | float < 10.0
+                - memory_usage.stdout | float < 90.0
+            fail_msg: 'System resources stressed after installation - Load: {{ system_load.stdout }}, Memory: {{ memory_usage.stdout }}%'
+            success_msg: 'System resources healthy after installation'
+
+- name: Final software validation summary
+  debug:
+      msg: |
+          Software configuration tests completed:
+          - Success rate: {{ installation_success_rate }}%
+          - Installed packages: {{ installed_packages | length }}/{{ base_packages | length }}
+          - System load: {{ system_load.stdout }}
+          - Memory usage: {{ memory_usage.stdout }}%
+          {% if missing_packages | length > 0 %}
+          - Missing packages: {{ missing_packages | join(', ') }}
+          {% endif %}
+          - Package manager: {{ 'healthy ✓' if (apt_health is succeeded or yum_health is succeeded) else 'needs attention ⚠' }}
+          - Critical tools: {{ 'curl ✓' if curl_test is succeeded else 'curl ✗' }} {{ 'jq ✓' if jq_test is succeeded else 'jq ✗' }}

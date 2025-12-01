@@ -1,0 +1,94 @@
+---
+# Networking Role - Result Handler Phase
+# Basic success/failure handling and simple rollback
+
+- name: Determine overall operation result
+  set_fact:
+      networking_operation_successful: '{{ networking_validation_passed and (networking_backup_completed or backup_result is skipped) and networking_configuration_applied and networking_tests_passed }}'
+
+- name: Handle successful configuration
+  block:
+      - name: Create success status file
+        copy:
+            content: |
+                # Networking Role - SUCCESS
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: success
+                vlans_configured: {{ network_vlans | length }}
+                vlan_module_loaded: {{ networking_test_details.vlan_module_loaded | default(false) }}
+                interfaces_up: {{ networking_test_details.interfaces_up | default(0) }}
+            dest: /var/lib/ansible/networking-role-status
+            mode: '0644'
+
+      - name: Set success status for dependent roles
+        set_fact:
+            networking_status: 'success'
+
+      - name: Log successful completion
+        debug:
+            msg: 'Networking Role completed successfully - {{ network_vlans | length }} VLANs configured'
+
+  when: networking_operation_successful
+
+- name: Handle failed configuration
+  block:
+      - name: Attempt basic rollback if needed
+        block:
+            - name: Get backup timestamp
+              shell: ls -t /var/lib/ansible/backups/networking/manifest.*.txt | head -1 | grep -o '[0-9]\{10\}'
+              register: backup_timestamp_result
+              when: networking_configuration_applied and not networking_tests_passed
+
+            - name: Remove created VLAN interfaces
+              shell: |
+                  primary_if=$(ip route | grep default | awk '{print $5}' | head -1)
+                  {% for vlan in network_vlans %}
+                  ip link delete ${primary_if}.{{ vlan.id }} 2>/dev/null || true
+                  {% endfor %}
+              when: backup_timestamp_result is succeeded
+              ignore_errors: true
+
+            - name: Remove netplan configuration
+              file:
+                  path: /etc/netplan/99-ansible-vlans.yaml
+                  state: absent
+              when:
+                  - backup_timestamp_result is succeeded
+                  - ansible_os_family == "Debian"
+              ignore_errors: true
+
+            - name: Remove network scripts configuration
+              file:
+                  path: '/etc/sysconfig/network-scripts/ifcfg-{{ item.name }}.{{ item.id }}'
+                  state: absent
+              loop: '{{ network_vlans }}'
+              when:
+                  - backup_timestamp_result is succeeded
+                  - ansible_os_family == "RedHat"
+              ignore_errors: true
+
+        when: networking_configuration_applied and not networking_tests_passed
+        ignore_errors: true
+
+      - name: Create failure status file
+        copy:
+            content: |
+                # Networking Role - FAILED
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: failed
+                validation_passed: {{ networking_validation_passed }}
+                configuration_applied: {{ networking_configuration_applied }}
+                tests_passed: {{ networking_tests_passed }}
+                vlans_attempted: {{ network_vlans | length }}
+            dest: /var/lib/ansible/networking-role-status
+            mode: '0644'
+
+      - name: Set failure status for dependent roles
+        set_fact:
+            networking_status: 'failed'
+
+      - name: Log failure
+        debug:
+            msg: 'Networking Role failed - check /var/lib/ansible/networking-role-status'
+
+  when: not networking_operation_successful

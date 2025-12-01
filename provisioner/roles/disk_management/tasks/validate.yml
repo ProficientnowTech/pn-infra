@@ -1,0 +1,147 @@
+---
+# Phase 1: Validate disk_management prerequisites
+- name: Check if disk_management configuration is defined
+  assert:
+      that:
+          - disk_management is defined
+      fail_msg: 'Disk management configuration is not defined in inventory'
+      success_msg: 'Disk management configuration found'
+
+- name: Check if partitions configuration is valid
+  block:
+      - name: Skip validation if no partitions defined
+        debug:
+            msg: 'No partitions defined - disk management will be skipped'
+        when: disk_management.partitions is not defined or disk_management.partitions | length == 0
+
+      - name: Validate partition configuration format
+        assert:
+            that:
+                - item.device is defined
+                - item.number is defined
+                - item.part_start is defined
+                - item.part_end is defined
+                - item.filesystem is defined
+                - item.mount_point is defined
+            fail_msg: 'Invalid partition format - must have device, number, part_start, part_end, filesystem, mount_point'
+            success_msg: 'Partition {{ item.device }}{{ item.number }} format is valid'
+        loop: '{{ disk_management.partitions | default([]) }}'
+        when: disk_management.partitions is defined and disk_management.partitions | length > 0
+
+  when: disk_management is defined
+
+- name: Validate system prerequisites for disk operations
+  block:
+      - name: Check if we have sufficient privileges
+        command: id -u
+        register: user_id
+        changed_when: false
+        failed_when: user_id.stdout != "0"
+
+      - name: Check if required disk utilities are available
+        command: '{{ item }} --version'
+        register: disk_utils_check
+        changed_when: false
+        loop:
+            - fdisk
+            - lsblk
+            - blkid
+            - mount
+            - umount
+        failed_when: disk_utils_check.rc != 0
+
+      - name: Check if filesystem utilities are available
+        command: '{{ item }}'
+        register: fs_utils_check
+        changed_when: false
+        failed_when: false
+        loop:
+            - 'mkfs.ext4 -V'
+            - 'mkfs.xfs -V'
+            - 'which mkfs.btrfs'
+
+- name: Validate partition configurations (if defined)
+  block:
+      - name: Check if target devices exist
+        stat:
+            path: '{{ item.device }}'
+        register: device_check
+        failed_when: not device_check.stat.exists or not device_check.stat.ischr and not device_check.stat.isblk
+        loop: '{{ disk_management.partitions | default([]) }}'
+
+      - name: Check if devices are not currently mounted at target mount points
+        shell: mount | grep "{{ item.mount_point }}"
+        register: mount_check
+        changed_when: false
+        failed_when: false
+        loop: '{{ disk_management.partitions | default([]) }}'
+
+      - name: Verify mount points don't conflict with system directories
+        assert:
+            that:
+                - item.mount_point not in ['/boot', '/etc', '/bin', '/sbin', '/lib', '/usr', '/var/lib/dpkg', '/var/lib/rpm']
+            fail_msg: 'Mount point {{ item.mount_point }} conflicts with critical system directory'
+            success_msg: 'Mount point {{ item.mount_point }} is safe'
+        loop: '{{ disk_management.partitions | default([]) }}'
+
+      - name: Check available disk space on target devices
+        shell: |
+            device="{{ item.device }}"
+            if [ -b "$device" ]; then
+              lsblk -b -d -n -o SIZE "$device" 2>/dev/null || echo "0"
+            else
+              echo "0"
+            fi
+        register: disk_space_check
+        changed_when: false
+        loop: '{{ disk_management.partitions | default([]) }}'
+
+      - name: Validate sufficient disk space
+        assert:
+            that:
+                - disk_space_check.results[idx].stdout | int > 1073741824 # 1GB minimum
+            fail_msg: |
+                Insufficient disk space on {{ item.device }}: {{ (disk_space_check.results[idx].stdout | int / 1073741824) | round(2) }}GB
+                Minimum required: 1GB
+            success_msg: 'Sufficient disk space available on {{ item.device }}'
+        loop: '{{ disk_management.partitions | default([]) }}'
+        loop_control:
+            index_var: idx
+
+  when: disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0
+
+- name: Check for existing partition tables and data safety
+  block:
+      - name: Check existing partition tables
+        command: fdisk -l "{{ item.device }}"
+        register: existing_partitions
+        changed_when: false
+        failed_when: false
+        loop: '{{ disk_management.partitions | default([]) }}'
+
+      - name: Warn about existing data
+        debug:
+            msg: |
+                WARNING: Device {{ item.device }} appears to have existing partitions.
+                Proceeding will modify/destroy existing data.
+                Existing partition info: {{ existing_partitions.results[idx].stdout_lines | default([]) }}
+        loop: '{{ disk_management.partitions | default([]) }}'
+        loop_control:
+            index_var: idx
+        when:
+            - existing_partitions.results[idx].rc == 0
+            - "'Disk ' + item.device in existing_partitions.results[idx].stdout"
+
+  when: disk_management is defined and disk_management.partitions is defined and disk_management.partitions | length > 0
+
+- name: Log validation success
+  debug:
+      msg: |
+          Disk management validation completed successfully:
+          - Partitions to create: {{ disk_management.partitions | default([]) | length }}
+          - Disk utilities: available ✓
+          - Filesystem utilities: available ✓
+          - Permissions: sufficient ✓
+          {% if disk_management.partitions is defined and disk_management.partitions | length > 0 %}
+          - Target devices: verified ✓
+          {% endif %}

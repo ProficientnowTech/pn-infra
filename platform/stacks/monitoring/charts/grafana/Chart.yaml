@@ -5,7 +5,28 @@ type: application
 version: 0.1.0
 appVersion: "11.0.0"
 
+keywords:
+- monitoring
+- dashboards
+- grafana
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: monitoring
+  platform.pnats.cloud/component: grafana
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'grafana'
+  platform.pnats.cloud/resource-type: CRDs
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: grafana
+  platform.pnats.cloud/component-category: monitoring
+
 dependencies:
-  - name: grafana
-    version: 8.5.2
-    repository: https://grafana.github.io/helm-charts
+- name: grafana
+  version: 8.5.2
+  repository: https://grafana.github.io/helm-charts

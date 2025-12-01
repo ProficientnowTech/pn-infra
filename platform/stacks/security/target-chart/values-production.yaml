@@ -1,0 +1,45 @@
+# Production Environment
+# Platform Security applications with sync wave ordering
+applications:
+- name: crossplane
+  annotations:
+    argocd.argoproj.io/sync-wave: '-10'
+  destinationNamespaceOverwrite: crossplane-system
+  syncOptions:
+  - CreateNamespace=true
+
+- name: external-secrets
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: external-secrets
+  syncOptions:
+  - ServerSideApply=true
+  ignoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: ValidatingWebhookConfiguration
+    jqPathExpressions:
+    - .webhooks[].clientConfig.caBundle
+
+- name: vault
+  annotations:
+    argocd.argoproj.io/sync-wave: '10'
+  destinationNamespaceOverwrite: vault
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+  ignoreDifferences:
+  - group: apps
+    kind: StatefulSet
+    jqPathExpressions:
+    - .spec.volumeClaimTemplates[]
+
+- name: keycloak
+  annotations:
+    argocd.argoproj.io/sync-wave: '30'
+  destinationNamespaceOverwrite: keycloak
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+
+commonLabels:
+  platform.pnats.cloud/environment: 'production'

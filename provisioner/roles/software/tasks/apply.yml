@@ -1,0 +1,129 @@
+---
+# Phase 3: Apply software configuration changes
+- name: Update package manager cache
+  block:
+      - name: Update apt cache (Debian)
+        apt:
+            update_cache: yes
+            cache_valid_time: 3600
+        when: ansible_os_family == "Debian"
+        register: apt_update
+
+      - name: Update yum cache (RedHat)
+        yum:
+            update_cache: yes
+        when: ansible_os_family == "RedHat"
+        register: yum_update
+
+      - name: Log cache update result
+        debug:
+            msg: 'Package cache updated successfully'
+
+- name: Install required packages
+  block:
+      - name: Install packages via apt (Debian)
+        apt:
+            name: '{{ item.name }}'
+            state: present
+            install_recommends: '{{ item.install_recommends | default(false) }}'
+            allow_unauthenticated: '{{ item.allow_unauthenticated | default(false) }}'
+        loop: '{{ base_packages }}'
+        when: ansible_os_family == "Debian"
+        register: apt_install_result
+
+      - name: Install packages via yum/dnf (RedHat)
+        yum:
+            name: '{{ item.name }}'
+            state: present
+            disable_gpg_check: '{{ item.disable_gpg_check | default(false) }}'
+        loop: '{{ base_packages }}'
+        when: ansible_os_family == "RedHat"
+        register: yum_install_result
+
+- name: Handle potential installation failures
+  block:
+      - name: Check for failed package installations
+        set_fact:
+            failed_packages: []
+
+      - name: Collect failed packages (Debian)
+        set_fact:
+            failed_packages: '{{ failed_packages + [item.item.name] }}'
+        loop: '{{ apt_install_result.results | default([]) }}'
+        when:
+            - ansible_os_family == "Debian"
+            - item is failed
+        loop_control:
+            label: '{{ item.item.name }}'
+
+      - name: Collect failed packages (RedHat)
+        set_fact:
+            failed_packages: '{{ failed_packages + [item.item.name] }}'
+        loop: '{{ yum_install_result.results | default([]) }}'
+        when:
+            - ansible_os_family == "RedHat"
+            - item is failed
+        loop_control:
+            label: '{{ item.item.name }}'
+
+      - name: Log failed packages
+        debug:
+            msg: "Failed to install packages: {{ failed_packages | join(', ') }}"
+        when: failed_packages | length > 0
+
+- name: Configure additional repositories if needed
+  block:
+      - name: Add Docker GPG key (Debian) - if containerd is in package list
+        apt_key:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            state: present
+        when:
+            - ansible_os_family == "Debian"
+            - base_packages | selectattr('name', 'equalto', 'containerd') | list | length > 0
+        ignore_errors: true
+        register: docker_gpg_key
+
+      - name: Add Docker repository (Debian) - if containerd is in package list
+        apt_repository:
+            repo: 'deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable'
+            state: present
+            update_cache: yes
+        when:
+            - ansible_os_family == "Debian"
+            - base_packages | selectattr('name', 'equalto', 'containerd') | list | length > 0
+            - docker_gpg_key is succeeded
+        ignore_errors: true
+
+- name: Clean package manager cache to save space
+  block:
+      - name: Clean apt cache (Debian)
+        apt:
+            autoclean: yes
+            autoremove: yes
+        when: ansible_os_family == "Debian"
+
+      - name: Clean yum cache (RedHat)
+        yum:
+            autoremove: yes
+        when: ansible_os_family == "RedHat"
+
+- name: Get post-installation package statistics
+  shell: >
+      {% if ansible_os_family == "Debian" %}
+      dpkg --get-selections | wc -l
+      {% else %}
+      rpm -qa | wc -l
+      {% endif %}
+  register: final_package_count
+  changed_when: false
+
+- name: Log installation completion
+  debug:
+      msg: |
+          Software installation completed:
+          - Packages requested: {{ base_packages | length }}
+          - Failed installations: {{ failed_packages | default([]) | length }}
+          - Total packages on system: {{ final_package_count.stdout }}
+          {% if failed_packages | default([]) | length > 0 %}
+          - Failed packages: {{ failed_packages | join(', ') }}
+          {% endif %}

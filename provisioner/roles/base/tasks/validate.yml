@@ -1,0 +1,69 @@
+---
+# Phase 1: Validate base prerequisites
+- name: Check if base configuration is defined
+  assert:
+      that:
+          - base_setup is defined
+          - base_setup.timezone is defined
+          - base_setup.locale is defined
+          - base_setup.config_time_sync is defined
+          - base_setup.config_logging is defined
+      fail_msg: 'Base configuration variables are not properly defined in inventory'
+      success_msg: 'Base configuration variables validated successfully'
+
+- name: Check if timezone is valid
+  stat:
+      path: '/usr/share/zoneinfo/{{ base_setup.timezone }}'
+  register: timezone_check
+  failed_when: not timezone_check.stat.exists
+
+- name: Validate timezone format
+  assert:
+      that:
+          - timezone_check.stat.exists
+      fail_msg: 'Invalid timezone specified: {{ base_setup.timezone }}'
+      success_msg: 'Timezone {{ base_setup.timezone }} is valid'
+
+- name: Check if locale is supported
+  command: locale -a
+  register: available_locales
+  changed_when: false
+
+- name: Validate locale format
+  assert:
+      that:
+          - base_setup.locale + '.UTF-8' in available_locales.stdout_lines or base_setup.locale + '.utf8' in available_locales.stdout_lines or base_setup.locale in available_locales.stdout_lines
+      fail_msg: 'Locale {{ base_setup.locale }} is not available on this system'
+      success_msg: 'Locale {{ base_setup.locale }} is supported'
+
+- name: Check if systemd is available (required for time sync)
+  command: systemctl --version
+  register: systemd_check
+  changed_when: false
+  failed_when: systemd_check.rc != 0
+
+- name: Check if timedatectl is available
+  command: timedatectl --version
+  register: timedatectl_check
+  changed_when: false
+  when: base_setup.config_time_sync
+
+- name: Validate system has required directories
+  stat:
+      path: '{{ item }}'
+  register: required_dirs
+  failed_when: not required_dirs.stat.exists or not required_dirs.stat.isdir
+  loop:
+      - /etc
+      - /var/log
+      - /usr/share/zoneinfo
+
+- name: Check if we have sufficient privileges
+  command: id -u
+  register: user_id
+  changed_when: false
+  failed_when: user_id.stdout != "0"
+
+- name: Log validation success
+  debug:
+      msg: 'Base role validation completed successfully'

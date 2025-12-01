@@ -1,0 +1,355 @@
+---
+# Phase 3: Apply security configuration changes
+- name: Configure SSH hardening
+  block:
+      - name: Apply SSH daemon configuration
+        lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '{{ item.regexp }}'
+            line: '{{ item.line }}'
+            backup: no
+            validate: sshd -t -f %s
+        loop:
+            - {
+                  regexp: '^#?MaxStartups',
+                  line: 'MaxStartups {{ security.ssh.max_startups | default(10) }}',
+              }
+            - {
+                  regexp: '^#?LoginGraceTime',
+                  line: 'LoginGraceTime {{ security.ssh.login_grace_time_secs | default(60) }}',
+              }
+            - {
+                  regexp: '^#?PermitUserEnvironment',
+                  line: 'PermitUserEnvironment {{ "yes" if security.ssh.permit_user_environment | default(false) else "no" }}',
+              }
+            - {
+                  regexp: '^#?Compression',
+                  line: 'Compression {{ "yes" if security.ssh.compression | default(false) else "no" }}',
+              }
+            - {
+                  regexp: '^#?TCPKeepAlive',
+                  line: 'TCPKeepAlive {{ "yes" if security.ssh.tcp_keep_alive | default(true) else "no" }}',
+              }
+            - {
+                  regexp: '^#?AllowTcpForwarding',
+                  line: 'AllowTcpForwarding {{ "yes" if security.ssh.allow_tcp_forwarding | default(true) else "no" }}',
+              }
+            - {
+                  regexp: '^#?AllowStreamLocalForwarding',
+                  line: 'AllowStreamLocalForwarding {{ "yes" if security.ssh.allow_stream_local_forwarding | default(true) else "no" }}',
+              }
+            - {
+                  regexp: '^#?GatewayPorts',
+                  line: 'GatewayPorts {{ "yes" if security.ssh.gateway_ports | default(false) else "no" }}',
+              }
+            - {
+                  regexp: '^#?PermitTunnel',
+                  line: 'PermitTunnel {{ "yes" if security.ssh.permit_tunnel | default(false) else "no" }}',
+              }
+        notify: restart ssh
+        register: ssh_config_changes
+
+      - name: Disable weak SSH algorithms (if enabled)
+        block:
+            - name: Configure strong SSH ciphers
+              lineinfile:
+                  path: /etc/ssh/sshd_config
+                  regexp: '^#?Ciphers'
+                  line: 'Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr'
+                  backup: no
+                  validate: sshd -t -f %s
+
+            - name: Configure strong SSH MACs
+              lineinfile:
+                  path: /etc/ssh/sshd_config
+                  regexp: '^#?MACs'
+                  line: 'MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512'
+                  backup: no
+                  validate: sshd -t -f %s
+
+            - name: Configure strong SSH key exchange algorithms
+              lineinfile:
+                  path: /etc/ssh/sshd_config
+                  regexp: '^#?KexAlgorithms'
+                  line: 'KexAlgorithms curve25519-sha256@libssh.org,ecdh-sha2-nistp521,ecdh-sha2-nistp384,ecdh-sha2-nistp256,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512,diffie-hellman-group14-sha256'
+                  backup: no
+                  validate: sshd -t -f %s
+
+        when: security.ssh.disable_weak_algorithms | default(false)
+        notify: restart ssh
+
+  when: security.enable_ssh_hardening | default(false)
+
+- name: Configure firewall
+  block:
+      - name: Configure UFW firewall (Debian)
+        block:
+            - name: Install UFW
+              apt:
+                  name: ufw
+                  state: present
+
+            - name: Reset UFW to defaults
+              ufw:
+                  state: reset
+              ignore_errors: true
+
+            - name: Set UFW default policies
+              ufw:
+                  direction: '{{ item.direction }}'
+                  policy: '{{ item.policy }}'
+              loop:
+                  - { direction: incoming, policy: deny }
+                  - { direction: outgoing, policy: allow }
+                  - { direction: routed, policy: deny }
+
+            - name: Build VLAN source mapping from network_vlans
+              set_fact:
+                  vlan_source_mapping: >-
+                      {%- set mapping = {'any': 'any', 'localhost': '127.0.0.1'} -%}
+                      {%- for vlan in network_vlans | default([]) -%}
+                        {%- set network = vlan.gateway | regex_replace('\\.\\d+$', '.0/24') -%}
+                        {%- set _ = mapping.update({vlan.name: network}) -%}
+                      {%- endfor -%}
+                      {{ mapping }}
+
+            - name: Configure UFW rules from security.firewall_rules
+              ufw:
+                  rule: allow
+                  direction: "{{ 'in' if item.direction in ['in', 'inbound'] else 'out' }}"
+                  port: '{{ item.port | string }}'
+                  proto: '{{ item.protocol }}'
+                  comment: "{{ item.description | default('Ansible managed') | truncate(100, True) }}"
+                  from_ip: "{{ vlan_source_mapping[item.source] | default('any') }}"
+                  interface: "{{ vlan_interface_mapping[item.source] | default('') }}"
+              loop: '{{ security.firewall_rules | default([]) }}'
+              vars:
+                  vlan_interface_mapping: >-
+                      {%- set mapping = {'any': '', 'localhost': ''} -%}
+                      {%- for vlan in network_vlans | default([]) -%}
+                        {%- set _ = mapping.update({vlan.name: vlan.name + '.' + vlan.id | string}) -%}
+                      {%- endfor -%}
+                      {{ mapping }}
+              when: security.firewall_rules is defined and security.firewall_rules | length > 0
+              register: ufw_rules_result
+
+            - name: Ensure SSH access (fallback)
+              ufw:
+                  rule: allow
+                  port: '22'
+                  proto: tcp
+                  comment: 'SSH access (fallback)'
+
+            - name: Enable UFW
+              ufw:
+                  state: enabled
+
+        when: ansible_os_family == "Debian"
+
+      - name: Configure firewalld (RedHat)
+        block:
+            - name: Install firewalld
+              yum:
+                  name: firewalld
+                  state: present
+
+            - name: Start and enable firewalld
+              systemd:
+                  name: firewalld
+                  state: started
+                  enabled: true
+
+            - name: Set default firewalld zone to drop
+              firewalld:
+                  zone: drop
+                  state: present
+                  permanent: true
+                  immediate: true
+
+            - name: Build VLAN zone mapping from network_vlans
+              set_fact:
+                  vlan_zone_mapping: >-
+                      {%- set mapping = {'any': 'public', 'localhost': 'trusted'} -%}
+                      {%- for vlan in network_vlans | default([]) -%}
+                        {%- if vlan.name in ['management'] -%}
+                          {%- set _ = mapping.update({vlan.name: 'internal'}) -%}
+                        {%- elif vlan.name in ['public_traffic'] -%}
+                          {%- set _ = mapping.update({vlan.name: 'public'}) -%}
+                        {%- else -%}
+                          {%- set _ = mapping.update({vlan.name: 'internal'}) -%}
+                        {%- endif -%}
+                      {%- endfor -%}
+                      {{ mapping }}
+
+            - name: Configure firewalld inbound rules from security.firewall_rules
+              firewalld:
+                  port: '{{ item.port }}/{{ item.protocol }}'
+                  permanent: true
+                  state: enabled
+                  immediate: true
+                  zone: "{{ vlan_zone_mapping[item.source] | default('public') }}"
+              loop: '{{ security.firewall_rules | default([]) }}'
+              when:
+                  - security.firewall_rules is defined
+                  - security.firewall_rules | length > 0
+                  - item.direction in ['in', 'inbound']
+              register: firewalld_inbound_rules_result
+
+            - name: Configure firewalld outbound rules from security.firewall_rules
+              firewalld:
+                  rich_rule: "rule family='ipv4' port protocol='{{ item.protocol }}' port='{{ item.port }}' accept"
+                  permanent: true
+                  state: enabled
+                  immediate: true
+                  zone: public
+              loop: '{{ security.firewall_rules | default([]) }}'
+              when:
+                  - security.firewall_rules is defined
+                  - security.firewall_rules | length > 0
+                  - item.direction in ['out', 'outbound']
+              register: firewalld_outbound_rules_result
+
+            - name: Ensure SSH access (fallback)
+              firewalld:
+                  service: ssh
+                  permanent: true
+                  state: enabled
+                  immediate: true
+                  zone: public
+
+        when: ansible_os_family == "RedHat"
+
+- name: Configure fail2ban
+  block:
+      - name: Install fail2ban
+        package:
+            name: fail2ban
+            state: present
+
+      - name: Create fail2ban jail.local configuration
+        copy:
+            content: |
+                [DEFAULT]
+                bantime = {{ security.fail2ban.bantime_secs | default(3600) }}
+                findtime = {{ security.fail2ban.findtime_secs | default(600) }}
+                maxretry = {{ security.fail2ban.max_retries | default(3) }}
+                {% if security.fail2ban.destemail is defined %}
+                destemail = {{ security.fail2ban.destemail }}
+                {% endif %}
+
+                [sshd]
+                enabled = true
+                port = 22
+                filter = sshd
+                logpath = /var/log/auth.log
+                maxretry = {{ security.fail2ban.maxretry_attempts | default(6) }}
+
+                [sshd-ddos]
+                enabled = true
+                port = 22
+                filter = sshd-ddos
+                logpath = /var/log/auth.log
+                maxretry = 2
+            dest: /etc/fail2ban/jail.local
+            mode: '0644'
+        notify: restart fail2ban
+
+      - name: Start and enable fail2ban service
+        systemd:
+            name: fail2ban
+            state: started
+            enabled: true
+
+  when: security.fail2ban is defined
+
+- name: Apply kernel security hardening
+  block:
+      - name: Deploy kernel security configuration from template
+        template:
+            src: security-kernel.conf.j2
+            dest: /etc/sysctl.d/99-ansible-security.conf
+            mode: '0644'
+            owner: root
+            group: root
+            backup: yes
+        notify: reload sysctl
+
+      - name: Apply kernel security parameters immediately
+        command: sysctl --system
+        register: sysctl_apply_result
+        changed_when: false
+
+  when: security.enable_kernel_hardening | default(false)
+
+- name: Configure filesystem security
+  block:
+      - name: Set secure permissions on sensitive files
+        file:
+            path: '{{ item }}'
+            mode: '0600'
+            owner: root
+            group: root
+        loop:
+            - /etc/shadow
+            - /etc/gshadow
+            - /etc/ssh/ssh_host_rsa_key
+            - /etc/ssh/ssh_host_ecdsa_key
+            - /etc/ssh/ssh_host_ed25519_key
+        ignore_errors: true
+        when: security.filesystem.set_secure_permissions | default(false)
+
+      - name: Set sticky bit on world-writable directories
+        file:
+            path: '{{ item }}'
+            mode: '1777'
+        loop:
+            - /tmp
+            - /var/tmp
+        when: security.filesystem.set_sticky_bit_on_tmp_dirs | default(false)
+
+  when: security.filesystem is defined
+
+- name: Configure audit logging
+  block:
+      - name: Install auditd
+        package:
+            name: auditd
+            state: present
+
+      - name: Deploy comprehensive audit rules from template
+        template:
+            src: audit-rules.j2
+            dest: /etc/audit/rules.d/audit.rules
+            mode: '0640'
+            owner: root
+            group: root
+            backup: yes
+        notify: restart auditd
+        when: security.audit.enable_logging | default(false)
+
+      - name: Start and enable auditd service
+        systemd:
+            name: auditd
+            state: started
+            enabled: true
+        when: security.audit.enable_logging | default(false)
+
+  when: security.audit is defined
+
+- name: Log security configuration completion
+  debug:
+      msg: |
+          Security configuration applied:
+          - SSH hardening: {{ 'enabled' if security.enable_ssh_hardening | default(false) else 'disabled' }}
+          - Kernel hardening: {{ 'enabled' if security.enable_kernel_hardening | default(false) else 'disabled' }}
+          - Firewall: {{ 'UFW' if ansible_os_family == 'Debian' else 'firewalld' }} configured with {{ security.firewall_rules | default([]) | length }} total rules
+          {% if ansible_os_family == "Debian" and ufw_rules_result is defined -%}
+          - UFW rules configured: {{ ufw_rules_result.results | selectattr('changed', 'equalto', true) | list | length }} new rules applied
+          {% elif ansible_os_family == "RedHat" -%}
+          - Firewalld inbound rules: {{ firewalld_inbound_rules_result.results | selectattr('changed', 'equalto', true) | list | length if firewalld_inbound_rules_result is defined else 0 }} applied
+          - Firewalld outbound rules: {{ firewalld_outbound_rules_result.results | selectattr('changed', 'equalto', true) | list | length if firewalld_outbound_rules_result is defined else 0 }} applied
+          {% endif -%}
+          - VLAN sources validated: {{ network_vlans | map(attribute='name') | list | join(', ') if network_vlans is defined else 'none' }}
+          - Fail2ban: {{ 'configured' if security.fail2ban is defined else 'disabled' }}
+          - Audit logging: {{ 'enabled' if (security.audit is defined and security.audit.enable_logging | default(false)) else 'disabled' }}
+          - Filesystem security: {{ 'applied' if security.filesystem is defined else 'skipped' }}

@@ -1,0 +1,260 @@
+---
+role:
+    name: ans-controller
+    role_id: 140
+    display_name: Ansible Controller Node
+    description: Ansible controller node for post-bootstrap config
+    category: management
+vm_size: 's.2'
+operating_system:
+    name: ubuntu
+    version: '22.04'
+    architecture: amd64
+    image_format: qcow2
+disks:
+    - general_layout
+network:
+    vlans:
+        - management
+        - internal_traffic
+        - public_traffic
+        - storage_public
+        - high_speed_external
+        - nested_cluster_data
+        - nested_cluster_apps
+
+software:
+    base_packages:
+        - name: curl
+        - name: wget
+        - name: git
+        - name: ansible
+        - name: ansible-core
+        - name: python3
+        - name: python3-pip
+        - name: python3-venv
+        - name: python3-dev
+        - name: jq
+        - name: unzip
+        - name: tar
+        - name: ca-certificates
+        - name: gnupg
+        - name: lsb-release
+        - name: openssh-client
+        - name: sshpass
+        - name: rsync
+        - name: vim
+        - name: nano
+        - name: htop
+        - name: btop
+        - name: net-tools
+        - name: iputils-ping
+        - name: dnsutils
+        - name: tree
+        - name: tmux
+        - name: build-essential
+        - name: libffi-dev
+        - name: libssl-dev
+        - name: apt-transport-https
+        - name: software-properties-common
+
+configuration:
+    base_setup:
+        timezone: Asia/Kolkata
+        locale: en_US
+        config_time_sync: true
+        config_logging: true
+    security:
+        setup_banner: true
+        lock_root_account: false
+        configure_password_policies: false
+        configure_account_lockout_policy: false
+        enable_ssh_hardening: false
+        enable_kernel_hardening: false
+        fail2ban:
+            max_retries: 3
+            bantime_secs: 3600
+            findtime_secs: 600
+            maxretry_attempts: 6
+            destemail: snoorullah@proficientnowtech.com
+        ssh:
+            max_startups: 3
+            login_grace_time_secs: 60
+            permit_user_environment: true
+            compression: false
+            tcp_keep_alive: true
+            allow_tcp_forwarding: true
+            allow_stream_local_forwarding: true
+            gateway_ports: false
+            permit_tunnel: true
+            disable_weak_algorithms: true
+        kernel:
+            secure_ipv4: true
+            secure_ipv6: true
+            disable_ipv6: false
+            secure_memory: true
+            restrict_insecure_processes: true
+        filesystem:
+            set_secure_permissions: true
+            remove_world_readable_perms_from_sensitive_dirs: true
+            set_sticky_bit_on_tmp_dirs: true
+        audit:
+            enable_logging: true
+            monitor_auth: true
+            monitor_login_logout_events: true
+            monitor_network_config: true
+            monitor_ssh_config: true
+            monitor_sys_calls: true
+            monitor_file_access: true
+            lock_config: true
+        firewall_rules:
+            - direction: out
+              protocol: tcp
+              port: 22
+              source: any
+              description: SSH access to all managed nodes
+            - direction: in
+              protocol: tcp
+              port: 22
+              source: management
+              description: SSH management access
+            - direction: out
+              protocol: tcp
+              port: 443
+              source: any
+              description: HTTPS access for package downloads and API calls
+            - direction: out
+              protocol: tcp
+              port: 80
+              source: any
+              description: HTTP access for package downloads
+            - direction: in
+              protocol: tcp
+              port: 8080
+              source: management
+              description: Ansible web interface (optional)
+            - direction: out
+              protocol: tcp
+              port: 6443
+              source: internal_traffic
+              description: Kubernetes API server access
+    maintenance:
+        enable_autoupdates: true
+    optimization:
+        enable_network_optimization: true
+        enable_fs_optimization: true
+    systemd_services:
+        - name: ssh
+          enabled: true
+          state: started
+        - name: cron
+          enabled: true
+          state: started
+    users:
+        - username: ansible
+          groups:
+              - sudo
+          sudo: true
+          shell: /bin/bash
+          lock_passwd: false
+          hashed_passwd: $6$rounds=500000$7mvgcck9UMiYIh6I$UqhEkEgyqEKhUP/NeoE979MAR9/cx/qAHG5JdCifbeVy33yZG11j2ILjyRTIMAUnNg7z6yCdFCU7SfpqI1QqJ1
+          ssh_authorized_keys:
+              - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPRWgKRmCzgC1JM2PPJkb8rhkyHyyeOoWEer0k+LQ+A2 proxmox-hyd (pn-production-k8s) created by ssh-manager
+          ssh_client_config:
+              strict_host_key_checking: true
+              user_known_hosts_file: ~/.ssh/known_hosts
+              pass_authentication: true
+              pubkey_authentication: true
+              identities_only: false
+              log_level: INFO
+              server_alive_interval: 60
+              server_alive_count_max: 3
+              connect_timeout: 10
+        - username: ubuntu
+          groups:
+              - sudo
+              - ansible
+              - adm
+          sudo: true
+          shell: /bin/bash
+          lock_passwd: false
+          hashed_passwd: $6$rounds=500000$7mvgcck9UMiYIh6I$UqhEkEgyqEKhUP/NeoE979MAR9/cx/qAHG5JdCifbeVy33yZG11j2ILjyRTIMAUnNg7z6yCdFCU7SfpqI1QqJ1
+          ssh_authorized_keys:
+              - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPRWgKRmCzgC1JM2PPJkb8rhkyHyyeOoWEer0k+LQ+A2 proxmox-hyd (pn-production-k8s) created by ssh-manager
+          ssh_client_config:
+              strict_host_key_checking: true
+              user_known_hosts_file: ~/.ssh/known_hosts
+              pass_authentication: true
+              pubkey_authentication: true
+              identities_only: false
+              log_level: INFO
+              server_alive_interval: 60
+              server_alive_count_max: 3
+              connect_timeout: 10
+    directories:
+        - path: /opt/ansible
+          owner: ansible
+          group: ansible
+          mode: '755'
+        - path: /opt/ansible/playbooks
+          owner: ansible
+          group: ansible
+          mode: '755'
+        - path: /opt/ansible/inventories
+          owner: ansible
+          group: ansible
+          mode: '755'
+        - path: /opt/ansible/roles
+          owner: ansible
+          group: ansible
+          mode: '755'
+        - path: /opt/ansible/group_vars
+          owner: ansible
+          group: ansible
+          mode: '755'
+        - path: /opt/ansible/host_vars
+          owner: ansible
+          group: ansible
+          mode: '755'
+        - path: /var/log/ansible
+          owner: ansible
+          group: ansible
+          mode: '755'
+        - path: /home/ansible/.ssh
+          owner: ansible
+          group: ansible
+          mode: '700'
+        - path: /etc/ansible
+          owner: root
+          group: ansible
+          mode: '755'
+scripts:
+    post_install:
+        - install_ansible_collections.sh
+        - setup_ansible_vault.sh
+        - configure_ansible_config.sh
+        - setup_inventory_templates.sh
+        - install_additional_tools.sh
+    startup:
+        - verify_ssh_connectivity.sh
+        - check_ansible_installation.sh
+    validation:
+        - validate_ansible_controller.sh
+        - test_ssh_key_access.sh
+        - verify_ansible_collections.sh
+        - test_inventory_access.sh
+metadata:
+    created_by: Shaik Noorullah Shareef
+    created_at: 2025-09-04
+    last_modified_by: Shaik Noorullah Shareef
+    last_modified_at: 2025-09-04
+    revision: v1.0.0
+    tags:
+        - ansible
+        - controller
+        - automation
+        - configuration-management
+        - orchestration
+        - devops
+        - management
+    documentation_url: https://docs.pnats.cloud/infrastructure/nodes/ans-controller

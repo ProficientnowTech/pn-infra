@@ -1,0 +1,140 @@
+---
+# Phase 3: Apply base configuration changes
+- name: Set timezone
+  timezone:
+      name: '{{ base_setup.timezone }}'
+  notify: restart rsyslog
+  register: timezone_change
+
+- name: Generate locale
+  locale_gen:
+      name: '{{ base_setup.locale }}.UTF-8'
+      state: present
+  when: ansible_os_family == "Debian"
+  register: locale_gen_result
+
+- name: Set system locale (RedHat family)
+  copy:
+      content: |
+          LANG={{ base_setup.locale }}.UTF-8
+          LC_ALL={{ base_setup.locale }}.UTF-8
+      dest: /etc/locale.conf
+      backup: no
+  when: ansible_os_family == "RedHat"
+  register: locale_redhat
+
+- name: Set system locale (Debian family)
+  copy:
+      content: |
+          LANG={{ base_setup.locale }}.UTF-8
+          LANGUAGE={{ base_setup.locale }}:en
+          LC_ALL={{ base_setup.locale }}.UTF-8
+      dest: /etc/default/locale
+      backup: no
+  when: ansible_os_family == "Debian"
+  register: locale_debian
+
+- name: Configure time synchronization
+  block:
+      - name: Enable systemd-timesyncd service
+        systemd:
+            name: systemd-timesyncd
+            enabled: true
+            state: started
+            daemon_reload: true
+        register: timesyncd_service
+
+      - name: Configure timesyncd
+        copy:
+            content: |
+                [Time]
+                NTP=pool.ntp.org
+                FallbackNTP=time.google.com time.cloudflare.com
+            dest: /etc/systemd/timesyncd.conf
+            backup: no
+        notify: restart timesyncd
+        register: timesyncd_config
+
+      - name: Force time synchronization
+        command: timedatectl set-ntp true
+        changed_when: true
+
+  when: base_setup.config_time_sync
+
+- name: Configure system logging
+  block:
+      - name: Ensure rsyslog is installed
+        package:
+            name: rsyslog
+            state: present
+
+      - name: Configure rsyslog for better logging
+        blockinfile:
+            path: /etc/rsyslog.conf
+            block: |
+                # Ansible managed - Base role logging configuration
+                $ModLoad imjournal
+                $IMJournalStateFile imjournal.state
+                $FileOwner root
+                $FileGroup adm
+                $FileCreateMode 0640
+                $DirCreateMode 0755
+            marker: '# {mark} ANSIBLE MANAGED BASE LOGGING'
+            backup: no
+        notify: restart rsyslog
+        register: rsyslog_config
+
+      - name: Enable and start rsyslog service
+        systemd:
+            name: rsyslog
+            enabled: true
+            state: started
+            daemon_reload: true
+        register: rsyslog_service
+
+      - name: Configure logrotate for system logs
+        copy:
+            content: |
+                /var/log/messages
+                /var/log/secure
+                /var/log/maillog
+                /var/log/cron
+                /var/log/spooler
+                /var/log/boot.log
+                {
+                    weekly
+                    missingok
+                    rotate 4
+                    compress
+                    delaycompress
+                    sharedscripts
+                    postrotate
+                        /usr/bin/systemctl reload rsyslog.service > /dev/null 2>&1 || true
+                    endscript
+                }
+            dest: /etc/logrotate.d/syslog
+            mode: '0644'
+        when: ansible_os_family == "RedHat"
+
+      - name: Set appropriate log directory permissions
+        file:
+            path: /var/log
+            mode: '0755'
+            owner: root
+            group: root
+
+  when: base_setup.config_logging
+
+- name: Ensure system time is set correctly
+  command: timedatectl show
+  register: timedatectl_status
+  changed_when: false
+
+- name: Log configuration changes
+  debug:
+      msg: |
+          Base configuration applied:
+          - Timezone: {{ base_setup.timezone }}
+          - Locale: {{ base_setup.locale }}.UTF-8
+          - Time sync: {{ 'enabled' if base_setup.config_time_sync else 'disabled' }}
+          - Logging: {{ 'configured' if base_setup.config_logging else 'disabled' }}

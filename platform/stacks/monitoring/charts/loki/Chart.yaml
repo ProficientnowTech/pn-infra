@@ -5,7 +5,29 @@ type: application
 version: 0.1.0
 appVersion: "3.0.0"
 
+keywords:
+- logs
+- monitoring
+- log-storage
+- log-aggregation
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: monitoring
+  platform.pnats.cloud/component: loki
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'loki'
+  platform.pnats.cloud/resource-type: application
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: loki
+  platform.pnats.cloud/component-category: monitoring
+
 dependencies:
-  - name: loki
-    version: 6.46.0
-    repository: https://grafana.github.io/helm-charts
+- name: loki
+  version: 6.46.0
+  repository: https://grafana.github.io/helm-charts

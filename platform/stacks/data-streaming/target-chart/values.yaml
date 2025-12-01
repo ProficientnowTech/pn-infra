@@ -1,0 +1,34 @@
+argocdNamespace: argocd
+stackName: data-streaming
+default:
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: main
+global:
+  project: data-streaming
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+  retry:
+    limit: 3
+    backoff:
+      duration: 5s
+      factor: 2
+      maxDuration: 3m
+commonLabels:
+  platform.pnats.cloud/stack: data-streaming
+  platform.pnats.cloud/layer: data
+  app.kubernetes.io/managed-by: platform-core
+commonAnnotations:
+  platform.pnats.cloud/managed-by: platform-core
+  platform.pnats.cloud/generated-by: platform-core-chart
+applications: []
+dependencies: []
+dependencyCheck:
+  enabled: true
+  pollIntervalSeconds: 10
+  timeoutSeconds: 1200
+  image: docker.io/bitnami/kubectl:1.30.3

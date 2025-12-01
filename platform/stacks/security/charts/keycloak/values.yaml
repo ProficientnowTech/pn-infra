@@ -9,19 +9,23 @@ keycloak:
 
   # Global PostgreSQL settings
   global:
-    defaultStorageClass: "ceph-block"
+    defaultStorageClass: "plt-blk-hdd-repl"
     security:
       allowInsecureImages: true
     postgresql:
       auth:
         username: bn_keycloak
-        password: bn_keycloak
         database: bitnami_keycloak
+        existingSecret: keycloak-postgresql-secret
+        secretKeys:
+          adminPasswordKey: postgres-password
+          userPasswordKey: password
 
   # Keycloak Admin User Configuration
   auth:
     adminUser: admin
-    adminPassword: admin
+    existingSecret: keycloak-admin-secret
+    passwordSecretKey: admin-password
 
   # PostgreSQL Specific Configuration
   postgresql:
@@ -30,15 +34,17 @@ keycloak:
       registry: docker.io
       repository: bitnamilegacy/postgresql
     auth:
-      postgresPassword: "" # Auto-generated
       username: bn_keycloak
-      password: "" # Auto-generated
       database: bitnami_keycloak
+      existingSecret: keycloak-postgresql-secret
+      secretKeys:
+        adminPasswordKey: postgres-password
+        userPasswordKey: password
     architecture: standalone
     primary:
       persistence:
         enabled: true
-        storageClass: "ceph-block"
+        storageClass: "plt-blk-hdd-repl"
         size: 8Gi
       resources:
         requests:
@@ -149,3 +155,627 @@ keycloak:
       enabled: true
     prometheusRule:
       enabled: true
+
+# Crossplane Keycloak Provider Configuration
+# Declarative realm, client, identity provider, and group management
+
+realm:
+  enabled: true
+  name: pcp
+  displayName: "ProficientNow Cloud Platform"
+
+  # User Registration and Login
+  registrationAllowed: true
+  registrationEmailAsUsername: true
+  loginWithEmailAllowed: true
+  duplicateEmailsAllowed: false
+  resetPasswordAllowed: true
+  editUsernameAllowed: false
+  rememberMe: true
+  verifyEmail: true
+  loginTheme: keycloak
+
+  # Security Settings
+  sslRequired: external
+  bruteForceProtected: true
+  permanentLockout: false
+  maxFailureWaitSeconds: 900
+  minimumQuickLoginWaitSeconds: 60
+  waitIncrementSeconds: 60
+  quickLoginCheckMilliSeconds: 1000
+  maxDeltaTimeSeconds: 43200
+  failureFactor: 5
+
+  # Password Policy
+  passwordPolicy: "length(12) and digits(1) and lowerCase(1) and upperCase(1) and specialChars(1) and notUsername"
+
+  # Token Settings (in seconds)
+  accessTokenLifespan: 300 # 5 minutes
+  accessTokenLifespanForImplicitFlow: 900 # 15 minutes
+  ssoSessionIdleTimeout: 1800 # 30 minutes
+  ssoSessionMaxLifespan: 36000 # 10 hours
+  offlineSessionIdleTimeout: 2592000 # 30 days
+
+  # Additional Attributes
+  attributes: {}
+
+  # SMTP Configuration (disabled by default - use sealed-secrets if enabled)
+  smtp:
+    enabled: true
+    host: "mail.proficientnowtech.com"
+    port: "587"
+    from: "noreply@pnats.cloud"
+    fromDisplayName: "ProficientNow Cloud Platform"
+    replyTo: "support@pnats.cloud"
+    auth: true
+    user: ""
+    passwordSecretName: keycloak-smtp-secret
+    passwordSecretKey: smtp-password
+    ssl: false
+    starttls: true
+
+  # Internationalization
+  internationalizationEnabled: false
+  supportedLocales:
+  - en
+  - es
+  defaultLocale: en
+
+  deletionPolicy: Delete
+
+# OIDC/SAML Clients Configuration
+# Client secrets are injected via bootstrap SealedSecrets (pcp-<client>-client-secret)
+# and retrieved with Helm's lookup() rather than being stored in values.
+clients:
+# ArgoCD OIDC Client
+- name: argocd
+  enabled: true
+  clientId: argocd
+  displayName: "ArgoCD"
+  description: "GitOps continuous delivery for Kubernetes"
+  publicClient: false
+  protocol: openid-connect
+
+  # Flow Configuration
+  standardFlowEnabled: true
+  implicitFlowEnabled: false
+  directAccessGrantsEnabled: true
+  serviceAccountsEnabled: false
+
+  # URLs
+  rootUrl: "https://argocd.pnats.cloud"
+  baseUrl: "https://argocd.pnats.cloud"
+  redirectUris:
+  - "https://argocd.pnats.cloud/auth/callback"
+  - "https://argocd.pnats.cloud/applications"
+  webOrigins:
+  - "https://argocd.pnats.cloud"
+  adminUrl: "https://argocd.pnats.cloud"
+
+  # Scopes
+  fullScopeAllowed: true
+  defaultClientScopes:
+  - profile
+  - email
+  - roles
+  optionalClientScopes:
+  - address
+  - phone
+  # Advanced Settings
+  attributes:
+    "access.token.lifespan": "300"
+    "client.session.idle.timeout": "1800"
+    "client.session.max.lifespan": "36000"
+
+  # Create Kubernetes Secret
+  deletionPolicy: Delete
+
+# Grafana OIDC Client
+- name: grafana
+  enabled: true
+  clientId: grafana
+  displayName: "Grafana"
+  description: "Observability and monitoring platform"
+  publicClient: false
+  protocol: openid-connect
+
+  # Flow Configuration
+  standardFlowEnabled: true
+  implicitFlowEnabled: false
+  directAccessGrantsEnabled: true
+  serviceAccountsEnabled: false
+
+  # URLs
+  rootUrl: "https://grafana.pnats.cloud"
+  baseUrl: "https://grafana.pnats.cloud"
+  redirectUris:
+  - "https://grafana.pnats.cloud/login/generic_oauth"
+  webOrigins:
+  - "https://grafana.pnats.cloud"
+  adminUrl: "https://grafana.pnats.cloud"
+
+  # Scopes
+  fullScopeAllowed: true
+  defaultClientScopes:
+  - profile
+  - email
+  - roles
+  optionalClientScopes:
+  - address
+  - phone
+  # Advanced Settings
+  attributes:
+    "access.token.lifespan": "300"
+    "client.session.idle.timeout": "1800"
+    "client.session.max.lifespan": "36000"
+
+  # Create Kubernetes Secret
+  deletionPolicy: Delete
+
+# Backstage OIDC Client
+- name: backstage
+  enabled: true
+  clientId: backstage
+  displayName: "Backstage"
+  description: "Developer portal and service catalog"
+  publicClient: false
+  protocol: openid-connect
+
+  # Flow Configuration
+  standardFlowEnabled: true
+  implicitFlowEnabled: false
+  directAccessGrantsEnabled: true
+  serviceAccountsEnabled: false
+
+  # URLs
+  rootUrl: "https://backstage.pnats.cloud"
+  baseUrl: "https://backstage.pnats.cloud"
+  redirectUris:
+  - "https://backstage.pnats.cloud/api/auth/oidc/handler/frame"
+  webOrigins:
+  - "https://backstage.pnats.cloud"
+  adminUrl: "https://backstage.pnats.cloud"
+
+  # Scopes
+  fullScopeAllowed: true
+  defaultClientScopes:
+  - profile
+  - email
+  - roles
+  optionalClientScopes:
+  - address
+  - phone
+  # Advanced Settings
+  attributes:
+    "access.token.lifespan": "300"
+    "client.session.idle.timeout": "1800"
+    "client.session.max.lifespan": "36000"
+
+  # Create Kubernetes Secret
+  deletionPolicy: Delete
+
+# OneUptime OIDC Client
+- name: oneuptime
+  enabled: true
+  clientId: oneuptime
+  displayName: "OneUptime"
+  description: "Uptime monitoring, status pages, and incident management platform"
+  publicClient: false
+  protocol: openid-connect
+
+  # Flow Configuration
+  standardFlowEnabled: true
+  implicitFlowEnabled: false
+  directAccessGrantsEnabled: true
+  serviceAccountsEnabled: false
+
+  # URLs
+  rootUrl: "https://uptime.pnats.cloud"
+  baseUrl: "https://uptime.pnats.cloud"
+  redirectUris:
+  - "https://uptime.pnats.cloud/*"
+  - "https://uptime.pnats.cloud/auth/callback"
+  - "https://uptime.pnats.cloud/api/auth/callback"
+  webOrigins:
+  - "https://uptime.pnats.cloud"
+  adminUrl: "https://uptime.pnats.cloud"
+
+  # Scopes
+  fullScopeAllowed: true
+  defaultClientScopes:
+  - profile
+  - email
+  - roles
+  optionalClientScopes:
+  - address
+  - phone
+  # Advanced Settings
+  attributes:
+    "access.token.lifespan": "300"
+    "client.session.idle.timeout": "1800"
+    "client.session.max.lifespan": "36000"
+
+  # Create Kubernetes Secret
+  deletionPolicy: Delete
+
+# Harbor OIDC Client
+- name: harbor
+  enabled: true
+  clientId: harbor
+  displayName: "Harbor Registry"
+  description: "Container registry SSO"
+  publicClient: false
+  protocol: openid-connect
+  standardFlowEnabled: true
+  implicitFlowEnabled: false
+  directAccessGrantsEnabled: false
+  serviceAccountsEnabled: false
+  rootUrl: "https://registry.pnats.cloud"
+  baseUrl: "https://registry.pnats.cloud"
+  redirectUris:
+  - "https://registry.pnats.cloud/c/oidc/callback"
+  webOrigins:
+  - "https://registry.pnats.cloud"
+  defaultClientScopes:
+  - profile
+  - email
+  - groups
+  attributes:
+    "access.token.lifespan": "300"
+  deletionPolicy: Delete
+
+# Verdaccio oauth2-proxy client
+- name: verdaccio-oauth
+  enabled: true
+  clientId: verdaccio-oauth
+  displayName: "Verdaccio oauth2"
+  description: "Verdaccio oauth2-proxy integration"
+  publicClient: false
+  protocol: openid-connect
+  standardFlowEnabled: true
+  implicitFlowEnabled: false
+  redirectUris:
+  - "https://npm.pnats.cloud/oauth2/callback"
+  webOrigins:
+  - "https://npm.pnats.cloud"
+  defaultClientScopes:
+  - profile
+  - email
+  - groups
+  attributes:
+    "post.logout.redirect.uris": "https://npm.pnats.cloud"
+  deletionPolicy: Delete
+
+# Kargo UI client
+- name: kargo
+  enabled: true
+  clientId: kargo
+  displayName: "Kargo"
+  description: "Progressive delivery UI"
+  publicClient: false
+  protocol: openid-connect
+  standardFlowEnabled: true
+  directAccessGrantsEnabled: false
+  redirectUris:
+  - "https://kargo.pnats.cloud/auth/callback"
+  webOrigins:
+  - "https://kargo.pnats.cloud"
+  defaultClientScopes:
+  - profile
+  - email
+  - groups
+  deletionPolicy: Delete
+
+# Tekton dashboard client (oauth2-proxy)
+- name: tekton-dashboard
+  enabled: true
+  clientId: tekton-dashboard
+  displayName: "Tekton Dashboard"
+  description: "Tekton UI SSO"
+  publicClient: false
+  protocol: openid-connect
+  standardFlowEnabled: true
+  redirectUris:
+  - "https://tekton.pnats.cloud/oauth2/callback"
+  webOrigins:
+  - "https://tekton.pnats.cloud"
+  defaultClientScopes:
+  - profile
+  - email
+  - groups
+  deletionPolicy: Delete
+
+# Argo Rollouts dashboard client (oauth2-proxy)
+- name: argo-rollouts
+  enabled: true
+  clientId: argo-rollouts
+  displayName: "Argo Rollouts Dashboard"
+  description: "Progressive delivery UI access"
+  publicClient: false
+  protocol: openid-connect
+  standardFlowEnabled: true
+  redirectUris:
+  - "https://argo-rollouts.pnats.cloud/oauth2/callback"
+  webOrigins:
+  - "https://argo-rollouts.pnats.cloud"
+  defaultClientScopes:
+  - profile
+  - email
+  - groups
+  deletionPolicy: Delete
+
+# Identity Providers Configuration
+identityProviders:
+# GitHub OAuth Provider
+- alias: github
+  enabled: true
+  providerId: github
+  displayName: "GitHub"
+
+  # Trust Settings
+  trustEmail: true
+  storeToken: false
+  addReadTokenRoleOnCreate: false
+  authenticateByDefault: false
+  linkOnly: false
+
+  # Login Flow
+  firstBrokerLoginFlowAlias: "first broker login"
+  updateProfileFirstLoginMode: "on"
+
+  # GitHub OAuth Configuration
+  config:
+    clientIdSecretName: keycloak-github-oauth
+    clientIdSecretKey: client-id
+    clientSecretSecretName: keycloak-github-oauth
+    clientSecretSecretKey: client-secret
+    defaultScope: "read:user user:email"
+    syncMode: "IMPORT"
+
+  deletionPolicy: Delete
+
+# Azure AD OIDC Provider
+- alias: azuread
+  enabled: true
+  providerId: oidc
+  displayName: "Microsoft / Azure AD"
+
+  # Trust Settings
+  trustEmail: true
+  storeToken: false
+  addReadTokenRoleOnCreate: false
+  authenticateByDefault: false
+  linkOnly: false
+
+  # Login Flow
+  firstBrokerLoginFlowAlias: "first broker login"
+  updateProfileFirstLoginMode: "on"
+
+  # Azure AD OIDC Configuration
+  config:
+    # Client credentials from Azure AD app registration
+    clientId: "cd877378-420e-46b7-8cc4-82d58bc1022d"
+    clientSecretSecretName: azuread-keycloak-oidc-credentials
+    clientSecretSecretKey: password
+
+    # Azure AD endpoints (replace <tenant-id> with your actual tenant ID)
+    authorizationUrl: "https://login.microsoftonline.com/a0318cee-1ae4-49e3-b611-7a6cf6c48ab0/oauth2/v2.0/authorize"
+    tokenUrl: "https://login.microsoftonline.com/a0318cee-1ae4-49e3-b611-7a6cf6c48ab0/oauth2/v2.0/token"
+    userInfoUrl: "https://graph.microsoft.com/oidc/userinfo"
+    jwksUrl: "https://login.microsoftonline.com/a0318cee-1ae4-49e3-b611-7a6cf6c48ab0/discovery/v2.0/keys"
+    issuer: "https://login.microsoftonline.com/a0318cee-1ae4-49e3-b611-7a6cf6c48ab0/v2.0"
+    logoutUrl: "https://login.microsoftonline.com/a0318cee-1ae4-49e3-b611-7a6cf6c48ab0/oauth2/v2.0/logout"
+
+    # Scopes - request user profile, email, and groups
+    defaultScope: "openid profile email"
+
+    # Validate signature
+    validateSignature: "true"
+    useJwksUrl: "true"
+
+    # User attribute mapping
+    syncMode: "IMPORT" # or "FORCE" to always update user data
+
+    # Optional: Enable group sync from Azure AD
+    # This requires groups claim in the token
+    groupsClaim: "groups"
+    groupsClaimDelimiter: ","
+
+  # Identity Provider Mappers (attribute mapping)
+  mappers:
+  # Map email
+  - name: email
+    identityProviderMapper: "oidc-user-attribute-idp-mapper"
+    config:
+      claim: "email"
+      userAttribute: "email"
+      syncMode: "INHERIT"
+
+  # Map first name
+  - name: firstName
+    identityProviderMapper: "oidc-user-attribute-idp-mapper"
+    config:
+      claim: "given_name"
+      userAttribute: "firstName"
+      syncMode: "INHERIT"
+
+  # Map last name
+  - name: lastName
+    identityProviderMapper: "oidc-user-attribute-idp-mapper"
+    config:
+      claim: "family_name"
+      userAttribute: "lastName"
+      syncMode: "INHERIT"
+
+  # Map username (use email as username)
+  - name: username
+    identityProviderMapper: "oidc-username-idp-mapper"
+    config:
+      template: "${CLAIM.email}"
+      syncMode: "INHERIT"
+
+  # Map Azure AD groups to Keycloak groups
+  - name: groups
+    identityProviderMapper: "oidc-advanced-group-idp-mapper"
+    config:
+      claim: "groups"
+      areGroupsPath: "false"
+      groupsClaim: "groups"
+      syncMode: "INHERIT"
+
+  deletionPolicy: Delete
+
+# Groups Configuration
+groups:
+# Platform Administrators
+- name: platform-admins
+  enabled: true
+  path: "/platform-admins"
+  attributes:
+    description:
+    - "Platform administrators with full access"
+  realmRoles:
+  - offline_access
+  - uma_authorization
+  clientRoles:
+    argocd:
+    - admin
+    grafana:
+    - admin
+    backstage:
+    - admin
+    oneuptime:
+    - admin
+  deletionPolicy: Delete
+
+# Platform Developers
+- name: platform-developers
+  enabled: true
+  path: "/platform-developers"
+  attributes:
+    description:
+    - "Platform developers with read-write access"
+  realmRoles:
+  - offline_access
+  clientRoles:
+    argocd:
+    - developer
+    grafana:
+    - editor
+    backstage:
+    - developer
+    oneuptime:
+    - developer
+  deletionPolicy: Delete
+
+# Platform Viewers
+- name: platform-viewers
+  enabled: true
+  path: "/platform-viewers"
+  attributes:
+    description:
+    - "Platform viewers with read-only access"
+  realmRoles:
+  - offline_access
+  clientRoles:
+    argocd:
+    - viewer
+    grafana:
+    - viewer
+    backstage:
+    - viewer
+    oneuptime:
+    - viewer
+  deletionPolicy: Delete
+
+- name: harbor-registry-a-push
+  enabled: true
+  path: "/harbor/registry-a/push"
+  attributes:
+    description:
+    - "Harbor Registry A push + pull"
+  clientRoles:
+    harbor:
+    - developer
+  deletionPolicy: Delete
+
+- name: harbor-registry-a-read
+  enabled: true
+  path: "/harbor/registry-a/read"
+  attributes:
+    description:
+    - "Harbor Registry A read-only"
+  clientRoles:
+    harbor:
+    - guest
+  deletionPolicy: Delete
+
+- name: verdaccio-publishers
+  enabled: true
+  path: "/verdaccio/publishers"
+  attributes:
+    description:
+    - "Publish packages to Verdaccio"
+  clientRoles:
+    verdaccio-oauth:
+    - publisher
+  deletionPolicy: Delete
+
+- name: verdaccio-readers
+  enabled: true
+  path: "/verdaccio/readers"
+  attributes:
+    description:
+    - "Read/install packages from Verdaccio"
+  clientRoles:
+    verdaccio-oauth:
+    - reader
+  deletionPolicy: Delete
+
+- name: kargo-admins
+  enabled: true
+  path: "/kargo/admins"
+  attributes:
+    description:
+    - "Kargo administrators"
+  clientRoles:
+    kargo:
+    - admin
+  deletionPolicy: Delete
+
+- name: kargo-users
+  enabled: true
+  path: "/kargo/users"
+  attributes:
+    description:
+    - "Kargo project maintainers"
+  clientRoles:
+    kargo:
+    - maintainer
+  deletionPolicy: Delete
+
+- name: tekton-operators
+  enabled: true
+  path: "/tekton/operators"
+  attributes:
+    description:
+    - "Tekton dashboard access"
+  clientRoles:
+    tekton-dashboard:
+    - operator
+  deletionPolicy: Delete
+
+- name: argo-rollouts-operators
+  enabled: true
+  path: "/argo-rollouts/operators"
+  attributes:
+    description:
+    - "Argo Rollouts dashboard access"
+  clientRoles:
+    argo-rollouts:
+    - operator
+  deletionPolicy: Delete
+
+# Ingress hostname (used by multiple templates)
+ingress:
+  hostname: keycloak.pnats.cloud

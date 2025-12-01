@@ -10,6 +10,10 @@ INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$INFRA_DIR/.." && pwd)"
 LOG_DIR="$PROJECT_ROOT/logs"
 LOG_FILE="$LOG_DIR/infra-deploy-$(date +%Y%m%d_%H%M%S).log"
+PROXMOX_TF_ROOT="$INFRA_DIR/platforms/proxmox/terraform"
+PROXMOX_TEMPLATES_DIR="$PROXMOX_TF_ROOT/templates"
+PROXMOX_POOLS_DIR="$PROXMOX_TF_ROOT/pools"
+PROXMOX_NODES_DIR="$PROXMOX_TF_ROOT/nodes"
 
 # Default values
 ENVIRONMENT=""
@@ -86,7 +90,7 @@ EXAMPLES:
 
 CONFIGURATION:
     Edit module environment configs with your settings:
-    modules/bootstrap/environments/development.config.yml
+    infrastructure/environments/development.yaml (references config packages)
 
 EOF
 }
@@ -99,20 +103,18 @@ check_prerequisites() {
 	mkdir -p "$LOG_DIR"
 
 	# Check for required directories
-	local required_dirs=(
-		"bootstrap"
-		"internal-developer-platform"
-		"kubernetes"
-		"nodes"
-		"pools"
-		"templates"
+	local required_paths=(
+		"modules/bootstrap"
+		"platforms/proxmox/terraform/templates"
+		"platforms/proxmox/terraform/pools"
+		"platforms/proxmox/terraform/nodes"
 	)
 
 	local missing_dirs=()
 
-	for dir in "${required_dirs[@]}"; do
-		if [[ ! -d "$INFRA_DIR/modules/$dir" ]]; then
-			missing_dirs+=("$dir")
+	for rel in "${required_paths[@]}"; do
+		if [[ ! -d "$INFRA_DIR/$rel" ]]; then
+			missing_dirs+=("$rel")
 		fi
 	done
 
@@ -183,7 +185,7 @@ run_bootstrap_phase() {
 run_images_phase() {
 	log_info "=== Phase 2: VM Images (Packer Build) ==="
 
-	local images_script="$INFRA_DIR/modules/images/run.sh"
+	local images_script="$PROXMOX_TEMPLATES_DIR/run.sh"
 
 	if [[ ! -f "$images_script" ]]; then
 		log_warn "Images script not found, skipping: $images_script"
@@ -198,7 +200,7 @@ run_images_phase() {
 		action="apply"
 	fi
 
-	cd "$INFRA_DIR/modules/images"
+	cd "$PROXMOX_TEMPLATES_DIR"
 	if ./run.sh "$action" --env "$ENVIRONMENT"; then
 		log_success "Images phase completed successfully"
 	else
@@ -209,9 +211,9 @@ run_images_phase() {
 
 # Phase 3: VM Templates (Resource allocation)
 run_templates_phase() {
-	log_info "=== Phase 3: VM Templates (Resource Templates) ==="
+	log_info "=== Phase 3: Proxmox Resource Pools ==="
 
-	local templates_script="$INFRA_DIR/modules/templates/run.sh"
+	local templates_script="$PROXMOX_POOLS_DIR/run.sh"
 
 	if [[ ! -f "$templates_script" ]]; then
 		log_warn "Templates script not found, skipping: $templates_script"
@@ -226,7 +228,7 @@ run_templates_phase() {
 		action="apply"
 	fi
 
-	cd "$INFRA_DIR/modules/templates"
+	cd "$PROXMOX_POOLS_DIR"
 	if ./run.sh "$action" --env "$ENVIRONMENT"; then
 		log_success "Templates phase completed successfully"
 	else
@@ -239,7 +241,7 @@ run_templates_phase() {
 run_nodes_phase() {
 	log_info "=== Phase 4: VM Deployment ==="
 
-	local nodes_script="$INFRA_DIR/modules/nodes/run.sh"
+	local nodes_script="$PROXMOX_NODES_DIR/run.sh"
 
 	if [[ ! -f "$nodes_script" ]]; then
 		log_warn "Nodes script not found, skipping: $nodes_script"
@@ -254,7 +256,7 @@ run_nodes_phase() {
 		action="apply"
 	fi
 
-	cd "$INFRA_DIR/modules/nodes"
+	cd "$PROXMOX_NODES_DIR"
 	if ./run.sh "$action" --env "$ENVIRONMENT"; then
 		log_success "Nodes phase completed successfully"
 	else

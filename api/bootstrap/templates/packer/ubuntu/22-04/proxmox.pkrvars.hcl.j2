@@ -1,0 +1,6 @@
+// Proxmox Settings
+proxmox_api_token_id        = "{{ proxmox.api.token_id }}"
+proxmox_api_token_secret    = "{{ proxmox.api.token_secret }}"
+proxmox_insecure_connection = {{ proxmox.insecure_connection | default('false') | lower }}
+proxmox_hostname           = "{{ proxmox.hostname }}"
+proxmox_node              = "{{ proxmox.node }}"

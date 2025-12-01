@@ -1,0 +1,25 @@
+---
+uri: metadata
+schema:
+    type: object
+    items:
+        created_by:
+            type: string
+        created_at:
+            type: string
+        last_modified_at:
+            type: string
+        last_modified_by:
+            type: string
+        revision:
+            type: string
+        tags:
+            type: array
+            items:
+                type: string
+        documentation_url:
+            type: string
+    required:
+        - created_by
+        - created_at
+        - revision

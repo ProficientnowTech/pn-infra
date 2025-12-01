@@ -1,0 +1,185 @@
+source "proxmox-iso" "{{ role_name }}" {
+  # Proxmox connection
+  proxmox_url              = var.proxmox_api_url
+  username                 = var.proxmox_api_token_id
+  token                    = var.proxmox_api_token_secret
+  insecure_skip_tls_verify = true
+
+  # VM settings
+  node                 = var.proxmox_node
+  vm_id                = var.vm_id
+  vm_name              = var.vm_name
+  template_description = "{{ role_name }} role image - {{ os }} with {{ packages | length }} packages"
+
+  # ISO configuration
+  iso_url          = "{{ iso_url }}"
+  iso_checksum     = "{{ iso_checksum }}"
+  iso_storage_pool = var.iso_storage_pool
+  unmount_iso      = true
+
+  # VM specifications
+  cores  = var.vm_cores
+  memory = var.vm_memory
+  
+  # Disk configuration
+  scsi_controller = "virtio-scsi-pci"
+  disks {
+    disk_size    = var.vm_disk_size
+    storage_pool = var.proxmox_storage_pool
+    type         = "scsi"
+  }
+
+  # Network configuration
+  network_adapters {
+    model    = "virtio"
+    bridge   = "vmbr0"
+    firewall = false
+  }
+
+  # Cloud-init configuration
+  cloud_init              = true
+  cloud_init_storage_pool = var.proxmox_storage_pool
+
+  # Boot and installation settings
+  boot_command = [
+    "<esc><wait>",
+    "linux /casper/vmlinuz --- autoinstall ds='nocloud-net;seedfrom=http://{{ "{{" }} .HTTPIP {{ "}}" }}:{{ "{{" }} .HTTPPort {{ "}}" }}/'",
+    "<enter><wait>",
+    "initrd /casper/initrd",
+    "<enter><wait>",
+    "boot",
+    "<enter>"
+  ]
+
+  boot_wait = "10s"
+  
+  # HTTP server for serving autoinstall config
+  http_directory = "workspace/http"
+  
+  # SSH configuration
+  ssh_username = "ubuntu"
+  ssh_password = "ubuntu"
+  ssh_timeout = "30m"
+  
+  # Shutdown command
+  shutdown_command = "echo 'ubuntu' | sudo -S shutdown -P now"
+}
+
+build {
+  name = "{{ role_name }}-{{ os.replace('.', '-') }}"
+  
+  sources = [
+    "source.proxmox-iso.{{ role_name }}"
+  ]
+
+  # Wait for cloud-init to complete
+  provisioner "shell" {
+    inline = [
+      "while [ ! -f /var/lib/cloud/instance/boot-finished ]; do echo 'Waiting for cloud-init...'; sleep 1; done",
+      "echo 'Cloud-init completed'"
+    ]
+  }
+
+  # Update system packages
+  provisioner "shell" {
+    inline = [
+      "sudo apt-get update",
+      "sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y"
+    ]
+  }
+
+  # Install role-specific packages
+  provisioner "shell" {
+    inline = [
+      "sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \\",
+{% for package in packages %}
+      "  {{ package }}{{ ' \\' if not loop.last else '' }}"{% if not loop.last %},{% endif %}
+{% endfor %}
+    ]
+  }
+
+  # Run bootstrap scripts for this role
+{% for script in scripts %}
+  provisioner "shell" {
+    inline_shebang = "/bin/bash -e"
+    inline = [
+      "{{ script.content | replace('\n', '\\n      \"') | replace('\"', '\\\"') }}"
+    ]
+  }
+{% endfor %}
+
+  # Configure networking based on role_id
+  provisioner "shell" {
+    inline = [
+      "# Configure role-specific networking",
+      "echo 'Role ID: {{ role_id }}' | sudo tee /etc/infrastructure-role-id",
+      "echo 'Role Name: {{ role_name }}' | sudo tee /etc/infrastructure-role-name",
+      "echo 'Environment: {{ environment }}' | sudo tee /etc/infrastructure-environment",
+      
+      "# Create network configuration script for instances",
+      "sudo mkdir -p /opt/scripts",
+      "sudo tee /opt/scripts/configure-instance-network.sh << 'EOF'",
+      "#!/bin/bash",
+      "# Instance network configuration based on role_id and instance number",
+      "INSTANCE_NUM=${1:-1}",
+      "ROLE_ID={{ role_id }}",
+      "BASE_IP=$((ROLE_ID + INSTANCE_NUM))",
+      "echo \"Instance ${INSTANCE_NUM} will use IP ending in: ${BASE_IP}\"",
+      "# Network configuration will be applied during ansible phase",
+      "EOF",
+      "sudo chmod +x /opt/scripts/configure-instance-network.sh"
+    ]
+  }
+
+  # Enable qemu-guest-agent
+  provisioner "shell" {
+    inline = [
+      "sudo systemctl enable qemu-guest-agent",
+      "sudo systemctl start qemu-guest-agent"
+    ]
+  }
+
+  # Final cleanup
+  provisioner "shell" {
+    inline = [
+      "# Clear package caches",
+      "sudo apt-get autoremove -y",
+      "sudo apt-get autoclean",
+      "sudo apt-get clean",
+      
+      "# Clear logs",
+      "sudo find /var/log -type f -name '*.log' -exec truncate -s 0 {} \\;",
+      "sudo find /var/log -type f -name '*.gz' -delete",
+      
+      "# Clear history",
+      "sudo rm -f /root/.bash_history",
+      "history -c",
+      
+      "# Clear temporary files", 
+      "sudo rm -rf /tmp/*",
+      "sudo rm -rf /var/tmp/*",
+      
+      "# Clear cloud-init cache",
+      "sudo rm -rf /var/lib/cloud/instances/*",
+      "sudo rm -rf /var/lib/cloud/instance",
+      
+      "# Clear machine-id (regenerated on boot)",
+      "sudo truncate -s 0 /etc/machine-id"
+    ]
+  }
+
+  # Create build artifact metadata
+  post-processor "shell-local" {
+    inline = [
+      "mkdir -p ../../workspace/artifacts",
+      "echo '{' > ../../workspace/artifacts/{{ role_name }}-metadata.json",
+      "echo '  \"role_name\": \"{{ role_name }}\",' >> ../../workspace/artifacts/{{ role_name }}-metadata.json", 
+      "echo '  \"role_id\": {{ role_id }},' >> ../../workspace/artifacts/{{ role_name }}-metadata.json",
+      "echo '  \"os\": \"{{ os }}\",' >> ../../workspace/artifacts/{{ role_name }}-metadata.json",
+      "echo '  \"vm_id\": {{ vm_id }},' >> ../../workspace/artifacts/{{ role_name }}-metadata.json",
+      "echo '  \"build_date\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",' >> ../../workspace/artifacts/{{ role_name }}-metadata.json",
+      "echo '  \"packages_count\": {{ packages | length }}' >> ../../workspace/artifacts/{{ role_name }}-metadata.json",
+      "echo '}' >> ../../workspace/artifacts/{{ role_name }}-metadata.json"
+    ]
+  }
+}

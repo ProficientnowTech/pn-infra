@@ -66,18 +66,22 @@ if [[ ! -f "$HOSTS_FILE" ]]; then
 	exit 1
 fi
 
+# Resolve repo root and API output directories
+REPO_ROOT="$(dirname "$(dirname "$(dirname "$BASE_DIR")")")"
+API_OUTPUT_DIR="$REPO_ROOT/api/outputs/$ENVIRONMENT"
+ANSIBLE_VARS_FILE="$API_OUTPUT_DIR/ansible.yml"
+
 # Validate generated group vars exist
-GENERATED_VARS="$BASE_DIR/generated/ansible/group_vars"
-if [[ ! -d "$GENERATED_VARS" ]]; then
-	echo "Error: Generated Ansible variables not found: $GENERATED_VARS"
-	echo "Run bootstrap module first to generate configuration."
+if [[ ! -f "$ANSIBLE_VARS_FILE" ]]; then
+	echo "Error: API-generated Ansible variables not found: $ANSIBLE_VARS_FILE"
+	echo "Run: go run ./cmd/api generate env --id $ENVIRONMENT"
 	exit 1
 fi
 
 # Copy generated variables to ansible directory
 echo "Copying generated variables..."
 mkdir -p "$SCRIPT_DIR/group_vars"
-cp -r "$GENERATED_VARS"/* "$SCRIPT_DIR/group_vars/"
+cp "$ANSIBLE_VARS_FILE" "$SCRIPT_DIR/group_vars/all.yml"
 
 # Validate required tools
 echo "Validating required tools..."

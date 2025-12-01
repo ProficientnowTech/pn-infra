@@ -1,0 +1,7 @@
+configPackage: core
+cluster:
+  name: development
+platforms:
+  - platform: proxmox
+    provider: terraform
+    enabled: true

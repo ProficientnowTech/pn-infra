@@ -1,0 +1,85 @@
+---
+# Phase 2: Backup existing base configurations
+- name: Create backup directory
+  file:
+      path: /var/backups/ansible-base
+      state: directory
+      mode: '0700'
+      owner: root
+      group: root
+
+- name: Generate backup timestamp
+  set_fact:
+      backup_timestamp: '{{ ansible_date_time.epoch }}'
+
+- name: Backup current timezone configuration
+  copy:
+      src: /etc/timezone
+      dest: '/var/backups/ansible-base/timezone.{{ backup_timestamp }}'
+      remote_src: yes
+  ignore_errors: true
+  register: timezone_backup
+
+- name: Backup current locale configuration
+  copy:
+      src: /etc/locale.conf
+      dest: '/var/backups/ansible-base/locale.conf.{{ backup_timestamp }}'
+      remote_src: yes
+  ignore_errors: true
+  register: locale_backup
+  when: ansible_os_family == "RedHat"
+
+- name: Backup current locale configuration (Debian/Ubuntu)
+  copy:
+      src: /etc/default/locale
+      dest: '/var/backups/ansible-base/locale.{{ backup_timestamp }}'
+      remote_src: yes
+  ignore_errors: true
+  register: locale_backup_debian
+  when: ansible_os_family == "Debian"
+
+- name: Backup current localtime symlink target
+  stat:
+      path: /etc/localtime
+  register: localtime_stat
+
+- name: Store current localtime target
+  copy:
+      content: "{{ localtime_stat.stat.lnk_source | default('/usr/share/zoneinfo/Etc/UTC') }}"
+      dest: '/var/backups/ansible-base/localtime.{{ backup_timestamp }}'
+  when: localtime_stat.stat.exists
+
+- name: Backup rsyslog configuration
+  copy:
+      src: /etc/rsyslog.conf
+      dest: '/var/backups/ansible-base/rsyslog.conf.{{ backup_timestamp }}'
+      remote_src: yes
+  ignore_errors: true
+  register: rsyslog_backup
+  when: (base_setup.config_logging | default(true)) | bool
+
+- name: Backup systemd-timesyncd configuration
+  copy:
+      src: /etc/systemd/timesyncd.conf
+      dest: '/var/backups/ansible-base/timesyncd.conf.{{ backup_timestamp }}'
+      remote_src: yes
+  ignore_errors: true
+  register: timesyncd_backup
+  when: (base_setup.config_time_sync | default(true)) | bool
+
+- name: Create backup manifest
+  copy:
+      content: |
+          # Base role backup manifest - {{ ansible_date_time.iso8601 }}
+          backup_timestamp: {{ backup_timestamp }}
+          timezone_backup: {{ timezone_backup.dest if timezone_backup.dest is defined else 'none' }}
+          locale_backup: {{ locale_backup.dest if locale_backup.dest is defined else locale_backup_debian.dest if locale_backup_debian.dest is defined else 'none' }}
+          localtime_backup: /var/backups/ansible-base/localtime.{{ backup_timestamp }}
+          rsyslog_backup: {{ rsyslog_backup.dest if rsyslog_backup.dest is defined else 'none' }}
+          timesyncd_backup: {{ timesyncd_backup.dest if timesyncd_backup.dest is defined else 'none' }}
+      dest: '/var/backups/ansible-base/manifest.{{ backup_timestamp }}'
+      mode: '0600'
+
+- name: Log backup completion
+  debug:
+      msg: 'Base configuration backup completed with timestamp {{ backup_timestamp }}'

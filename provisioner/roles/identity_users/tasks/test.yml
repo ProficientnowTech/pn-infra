@@ -1,0 +1,68 @@
+---
+# Identity & Users Role - Test Phase
+# Basic validation of user accounts and SSH configuration
+
+- name: Test user accounts were created
+  getent:
+      database: passwd
+      key: '{{ item.username }}'
+  loop: '{{ users }}'
+  register: user_tests
+  changed_when: false
+
+- name: Test user home directories exist
+  become: true
+  stat:
+      path: '/home/{{ item.username }}'
+  loop: '{{ users }}'
+  register: home_tests
+  failed_when: not (home_tests.stat.exists and home_tests.stat.isdir)
+
+- name: Test SSH directories exist
+  stat:
+      path: '/home/{{ item.username }}/.ssh'
+  loop: '{{ users }}'
+  register: ssh_dir_tests
+  failed_when: not (ssh_dir_tests.stat.exists and ssh_dir_tests.stat.isdir)
+
+- name: Test group memberships
+  shell: groups {{ item.username }}
+  loop: '{{ users }}'
+  register: group_tests
+  changed_when: false
+
+- name: Test sudo users have sudoers files
+  stat:
+      path: '/etc/sudoers.d/{{ item.username }}'
+  loop: '{{ users }}'
+  when: item.sudo | default(false)
+  register: sudoers_tests
+  failed_when:
+      - item.sudo | default(false)
+      - not (sudoers_tests.stat.exists)
+
+- name: Test SSH service is running
+  systemd:
+      name: "{{ ((ansible_facts.os_family | default(ansible_os_family)) == 'Debian') | ternary('ssh','sshd') }}"
+  register: ssh_service_test
+  failed_when: ssh_service_test.status.ActiveState != 'active'
+
+- name: Test SSH configuration is valid
+  shell: sshd -t
+  register: sshd_config_test
+  failed_when: sshd_config_test.rc != 0
+  changed_when: false
+
+- name: Test SSH port is accessible
+  wait_for:
+      port: 22
+      host: localhost
+      timeout: 10
+
+- name: Set test success marker
+  set_fact:
+      identity_tests_passed: true
+      identity_test_details:
+          users_created: '{{ users | length }}'
+          ssh_service_active: '{{ ssh_service_test.status.ActiveState == "active" }}'
+          ssh_config_valid: '{{ sshd_config_test.rc == 0 }}'

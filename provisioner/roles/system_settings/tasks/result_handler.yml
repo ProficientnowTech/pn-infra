@@ -1,0 +1,75 @@
+---
+# System Settings Role - Result Handler Phase
+# Basic success/failure handling
+
+- name: Determine overall operation result
+  set_fact:
+      system_settings_operation_successful: '{{ system_settings_validation_passed and (system_settings_backup_completed or backup_result is skipped) and system_settings_configuration_applied and system_settings_tests_passed }}'
+
+- name: Handle successful configuration
+  block:
+      - name: Create success status file
+        copy:
+            content: |
+                # System Settings Role - SUCCESS
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: success
+                kernel_modules: {{ system_settings.kernel_modules | default([]) | length }}
+                sysctl_params: {{ system_settings.sysctl | default([]) | length }}
+                systemd_services: {{ system_settings.systemd_services | default([]) | length }}
+            dest: /var/lib/ansible/system-settings-role-status
+            mode: '0644'
+
+      - name: Set success status for dependent roles
+        set_fact:
+            system_settings_status: 'success'
+
+      - name: Log successful completion
+        debug:
+            msg: 'System Settings Role completed successfully'
+
+  when: system_settings_operation_successful
+
+- name: Handle failed configuration
+  block:
+      - name: Attempt basic rollback if needed
+        block:
+            - name: Unload kernel modules if they were loaded
+              modprobe:
+                  name: '{{ item }}'
+                  state: absent
+              loop: '{{ system_settings.kernel_modules | default([]) }}'
+              ignore_errors: true
+              when: system_settings_configuration_applied and not system_settings_tests_passed
+
+            - name: Remove sysctl configuration file
+              file:
+                  path: /etc/sysctl.d/99-ansible-system-settings.conf
+                  state: absent
+              ignore_errors: true
+              when: system_settings_configuration_applied and not system_settings_tests_passed
+
+        when: system_settings_configuration_applied and not system_settings_tests_passed
+        ignore_errors: true
+
+      - name: Create failure status file
+        copy:
+            content: |
+                # System Settings Role - FAILED
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: failed
+                validation_passed: {{ system_settings_validation_passed }}
+                configuration_applied: {{ system_settings_configuration_applied }}
+                tests_passed: {{ system_settings_tests_passed }}
+            dest: /var/lib/ansible/system-settings-role-status
+            mode: '0644'
+
+      - name: Set failure status for dependent roles
+        set_fact:
+            system_settings_status: 'failed'
+
+      - name: Log failure
+        debug:
+            msg: 'System Settings Role failed - check /var/lib/ansible/system-settings-role-status'
+
+  when: not system_settings_operation_successful

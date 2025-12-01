@@ -1,0 +1,94 @@
+---
+# Directories Configuration Playbook
+# Manages directory creation, ownership, and permissions with cascade control
+# Part of Domain-Based Ansible Provisioning System
+
+- name: Directories Configuration
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+      directories_status: 'unknown'
+
+  pre_tasks:
+      - name: Check prerequisite role status
+        fail:
+            msg: |
+                Identity & Users role must complete successfully before running Directories role.
+                Current identity_status: {{ identity_status | default('undefined') }}
+                Please ensure identity role has completed successfully.
+        when: identity_status is not defined or identity_status != 'success'
+
+      - name: Log Directories role start
+        debug:
+            msg:
+                - '=== Starting Directories Role ==='
+                - 'Target host: {{ inventory_hostname }}'
+                - "Role: {{ role_name | default('undefined') }}"
+                - "Directories to configure: {{ directories | length if directories is defined else 'none' }}"
+                - 'Timestamp: {{ ansible_date_time.iso8601 }}'
+
+      - name: Validate directories configuration is defined
+        debug:
+            msg: |
+                Directories configuration is empty or not defined for this host.
+                This is normal if no custom directories are needed.
+                Directories variable: {{ directories | default('undefined') }}
+        when: directories is not defined or directories | length == 0
+
+  roles:
+      - role: directories
+        when: directories is defined
+
+  post_tasks:
+      - name: Set directories completion status
+        set_fact:
+            directories_status: "{{ 'success' if ansible_failed_task is not defined else 'failed' }}"
+
+      - name: Log Directories role completion
+        debug:
+            msg:
+                - '=== Directories Role Completed ==='
+                - 'Status: {{ directories_status }}'
+                - 'Directories processed: {{ directories | length if directories is defined else 0 }}'
+                - "Cascade ownership applied: {{ directories_test_details.cascade_ownership_configured | default(0) if directories_status == 'success' else 'N/A' }}"
+                - "Cascade permissions applied: {{ directories_test_details.cascade_permissions_configured | default(0) if directories_status == 'success' else 'N/A' }}"
+                - 'Timestamp: {{ ansible_date_time.iso8601 }}'
+
+      - name: Write directories status to file
+        copy:
+            content: |
+                # Directories Role Status
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: {{ directories_status }}
+                host: {{ inventory_hostname }}
+                directories_count: {{ directories | length if directories is defined else 0 }}
+                role_name: {{ role_name | default('undefined') }}
+                {% if directories_status == 'success' %}
+                cascade_ownership_applied: {{ directories_test_details.cascade_ownership_configured | default(0) }}
+                cascade_permissions_applied: {{ directories_test_details.cascade_permissions_configured | default(0) }}
+                {% endif %}
+
+                dependencies_met:
+                - identity_status: {{ identity_status | default('undefined') }}
+
+                configured_directories:
+                {% for dir in directories %}
+                - {{ dir.path }}
+                {% endfor %}
+            dest: /var/lib/ansible/directories-playbook-status
+            mode: '0644'
+
+      - name: Display final status message
+        debug:
+            msg:
+                - 'Directories playbook execution completed'
+                - 'Final status: {{ directories_status }}'
+                - 'Status file: /var/lib/ansible/directories-playbook-status'
+                - 'Role status file: /var/lib/ansible/directories-role-status'
+                - "{{ 'Next: Configure networking or security as needed' if directories_status == 'success' else 'Fix issues before proceeding with dependent roles' }}"
+
+  handlers:
+      - name: directories handler notification
+        debug:
+            msg: 'Directories configuration change detected'

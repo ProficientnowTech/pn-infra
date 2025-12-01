@@ -1,0 +1,233 @@
+---
+# Phase 4: Test system settings configuration
+- name: Test kernel module configuration
+  block:
+      - name: Verify kernel modules are loaded
+        shell: lsmod | grep "^{{ item }}"
+        register: kernel_module_test
+        changed_when: false
+        loop: '{{ system_settings.kernel_modules }}'
+
+      - name: Verify kernel modules load at boot configuration
+        lineinfile:
+            path: /etc/modules-load.d/ansible-system-settings.conf
+            line: '{{ item }}'
+            state: present
+        check_mode: yes
+        register: kernel_module_boot_test
+        loop: '{{ system_settings.kernel_modules }}'
+
+      - name: Assert all kernel modules are properly loaded
+        assert:
+            that:
+                - kernel_module_test.results | selectattr('rc', 'equalto', 0) | list | length == system_settings.kernel_modules | length
+            fail_msg: 'Not all kernel modules are loaded properly'
+            success_msg: 'All {{ system_settings.kernel_modules | length }} kernel modules loaded successfully'
+
+  when: system_settings is defined and system_settings.kernel_modules is defined
+
+- name: Test sysctl parameter configuration
+  block:
+      - name: Verify sysctl parameters are set correctly
+        shell: sysctl -n "{{ item.name }}"
+        register: sysctl_test
+        changed_when: false
+        loop: '{{ system_settings.sysctl }}'
+
+      - name: Assert sysctl parameters match expected values
+        assert:
+            that:
+                - sysctl_test.results[idx].stdout | string == item.value | string
+            fail_msg: |
+                Sysctl parameter {{ item.name }} mismatch:
+                Expected: {{ item.value }}
+                Actual: {{ sysctl_test.results[idx].stdout }}
+            success_msg: 'Sysctl parameter {{ item.name }} set correctly to {{ item.value }}'
+        loop: '{{ system_settings.sysctl }}'
+        loop_control:
+            index_var: idx
+
+      - name: Verify sysctl configuration file exists
+        stat:
+            path: /etc/sysctl.d/99-ansible-system-settings.conf
+        register: sysctl_file_test
+        failed_when: not sysctl_file_test.stat.exists
+
+  when: system_settings is defined and system_settings.sysctl is defined
+
+- name: Test systemd service configuration
+  block:
+      - name: Get current service states
+        systemd:
+            name: '{{ item.name }}'
+        register: systemd_test
+        loop: '{{ system_settings.systemd_services }}'
+
+      - name: Assert services are in expected state
+        assert:
+            that:
+                - systemd_test.results[idx].status.UnitFileState == ('enabled' if item.enabled else 'disabled')
+                - systemd_test.results[idx].status.ActiveState == ('active' if item.state == 'started' else 'inactive')
+            fail_msg: |
+                Service {{ item.name }} state mismatch:
+                Expected: enabled={{ item.enabled }}, active={{ 'yes' if item.state == 'started' else 'no' }}
+                Actual: enabled={{ systemd_test.results[idx].status.UnitFileState }}, active={{ systemd_test.results[idx].status.ActiveState }}
+            success_msg: 'Service {{ item.name }} configured correctly'
+        loop: '{{ system_settings.systemd_services }}'
+        loop_control:
+            index_var: idx
+
+  when: system_settings is defined and system_settings.systemd_services is defined
+
+- name: Test network optimization configuration
+  block:
+      - name: Verify network optimization sysctl parameters
+        shell: sysctl -n "{{ item }}"
+        register: network_opt_test
+        changed_when: false
+        loop:
+            - 'net.core.rmem_max'
+            - 'net.core.wmem_max'
+            - 'net.core.netdev_max_backlog'
+
+      - name: Check if BBR congestion control is available and set
+        shell: sysctl -n net.ipv4.tcp_congestion_control
+        register: bbr_test
+        changed_when: false
+        ignore_errors: true
+
+      - name: Verify network configuration file exists
+        stat:
+            path: /etc/sysctl.d/90-ansible-network-optimization.conf
+        register: network_opt_file_test
+        failed_when: not network_opt_file_test.stat.exists
+
+      - name: Log network optimization test results
+        debug:
+            msg: |
+                Network optimization test results:
+                - rmem_max: {{ network_opt_test.results[0].stdout }}
+                - wmem_max: {{ network_opt_test.results[1].stdout }}
+                - netdev_max_backlog: {{ network_opt_test.results[2].stdout }}
+                - TCP congestion control: {{ bbr_test.stdout | default('unknown') }}
+
+  when: optimization is defined and optimization.enable_network_optimization | default(false)
+
+- name: Test filesystem optimization configuration
+  block:
+      - name: Verify filesystem optimization sysctl parameters
+        shell: sysctl -n "{{ item }}"
+        register: fs_opt_test
+        changed_when: false
+        loop:
+            - 'vm.dirty_ratio'
+            - 'vm.dirty_background_ratio'
+            - 'vm.swappiness'
+            - 'vm.vfs_cache_pressure'
+
+      - name: Verify filesystem configuration file exists
+        stat:
+            path: /etc/sysctl.d/90-ansible-fs-optimization.conf
+        register: fs_opt_file_test
+        failed_when: not fs_opt_file_test.stat.exists
+
+      - name: Check current swappiness value
+        shell: cat /proc/sys/vm/swappiness
+        register: swappiness_test
+        changed_when: false
+
+      - name: Assert filesystem optimizations are applied
+        assert:
+            that:
+                - swappiness_test.stdout == "10"
+                - fs_opt_test.results[0].stdout == "15" # dirty_ratio
+            fail_msg: 'Filesystem optimizations not applied correctly'
+            success_msg: 'Filesystem optimizations applied successfully'
+
+  when: optimization is defined and optimization.enable_fs_optimization | default(false)
+
+- name: Test automatic updates configuration
+  block:
+      - name: Test unattended-upgrades configuration (Debian)
+        block:
+            - name: Check unattended-upgrades package is installed
+              package_facts:
+                  manager: 'auto'
+
+            - name: Verify unattended-upgrades is installed
+              assert:
+                  that:
+                      - "'unattended-upgrades' in ansible_facts.packages"
+                  fail_msg: 'unattended-upgrades package not installed'
+                  success_msg: 'unattended-upgrades package installed'
+
+            - name: Check auto-upgrades configuration file
+              stat:
+                  path: /etc/apt/apt.conf.d/20auto-upgrades
+              register: auto_upgrades_test
+              failed_when: not auto_upgrades_test.stat.exists
+
+        when: ansible_os_family == "Debian"
+
+      - name: Test yum-cron configuration (RedHat)
+        block:
+            - name: Check yum-cron service status
+              systemd:
+                  name: yum-cron
+              register: yum_cron_test
+
+            - name: Verify yum-cron is enabled and running
+              assert:
+                  that:
+                      - yum_cron_test.status.UnitFileState == "enabled"
+                      - yum_cron_test.status.ActiveState == "active"
+                  fail_msg: 'yum-cron service not properly configured'
+                  success_msg: 'yum-cron service configured and running'
+
+        when: ansible_os_family == "RedHat"
+
+  when: maintenance is defined and maintenance.enable_autoupdates | default(false)
+
+- name: Test system stability after configuration changes
+  block:
+      - name: Check system load after configuration
+        shell: uptime | awk '{print $NF}'
+        register: system_load_test
+        changed_when: false
+
+      - name: Check memory usage
+        shell: free | grep Mem | awk '{print ($3/$2) * 100.0}'
+        register: memory_usage_test
+        changed_when: false
+
+      - name: Test basic system functionality
+        command: systemctl is-system-running
+        register: system_running_test
+        changed_when: false
+        failed_when: false
+
+      - name: Verify system is stable
+        assert:
+            that:
+                - system_load_test.stdout | float < 20.0
+                - memory_usage_test.stdout | float < 95.0
+            fail_msg: |
+                System may be unstable after configuration changes:
+                Load: {{ system_load_test.stdout }}
+                Memory: {{ memory_usage_test.stdout }}%
+                System state: {{ system_running_test.stdout }}
+            success_msg: 'System stable after configuration changes'
+
+- name: Final system settings validation summary
+  debug:
+      msg: |
+          System settings configuration tests completed:
+          - Kernel modules: {{ 'configured ✓' if (system_settings is defined and system_settings.kernel_modules is defined) else 'skipped' }}
+          - Sysctl parameters: {{ 'configured ✓' if (system_settings is defined and system_settings.sysctl is defined) else 'skipped' }}
+          - Systemd services: {{ 'configured ✓' if (system_settings is defined and system_settings.systemd_services is defined) else 'skipped' }}
+          - Network optimization: {{ 'enabled ✓' if (optimization is defined and optimization.enable_network_optimization | default(false)) else 'disabled' }}
+          - FS optimization: {{ 'enabled ✓' if (optimization is defined and optimization.enable_fs_optimization | default(false)) else 'disabled' }}
+          - Auto updates: {{ 'enabled ✓' if (maintenance is defined and maintenance.enable_autoupdates | default(false)) else 'disabled' }}
+          - System load: {{ system_load_test.stdout }}
+          - Memory usage: {{ memory_usage_test.stdout }}%
+          - System state: {{ system_running_test.stdout }}

@@ -1,0 +1,86 @@
+---
+# Identity & Users Role - Result Handler Phase
+# Basic success/failure handling and simple rollback
+
+- name: Determine overall operation result
+  set_fact:
+      identity_operation_successful: '{{ identity_validation_passed and (identity_backup_completed or backup_result is skipped) and identity_configuration_applied and identity_tests_passed }}'
+
+- name: Handle successful configuration
+  block:
+      - name: Create success status file
+        copy:
+            content: |
+                # Identity & Users Role - SUCCESS
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: success
+                users_configured: {{ users | length }}
+                ssh_service_active: true
+            dest: /var/lib/ansible/identity-users-role-status
+            mode: '0644'
+
+      - name: Set success status for dependent roles
+        set_fact:
+            identity_status: 'success'
+
+      - name: Log successful completion
+        debug:
+            msg: 'Identity & Users Role completed successfully - {{ users | length }} users configured'
+
+  when: identity_operation_successful
+
+- name: Handle failed configuration
+  block:
+      - name: Attempt basic rollback if needed
+        block:
+            - name: Get backup timestamp
+              shell: ls -t /var/lib/ansible/backups/identity_users/manifest.*.txt | head -1 | grep -o '[0-9]\{10\}'
+              register: backup_timestamp_result
+              when: identity_configuration_applied and not identity_tests_passed
+
+            - name: Restore passwd file
+              copy:
+                  src: '/var/lib/ansible/backups/identity_users/passwd.{{ backup_timestamp_result.stdout }}.bak'
+                  dest: /etc/passwd
+                  remote_src: true
+                  mode: '0644'
+              when: backup_timestamp_result is succeeded
+
+            - name: Restore shadow file
+              copy:
+                  src: '/var/lib/ansible/backups/identity_users/shadow.{{ backup_timestamp_result.stdout }}.bak'
+                  dest: /etc/shadow
+                  remote_src: true
+                  mode: '0640'
+              when: backup_timestamp_result is succeeded
+
+            - name: Restart SSH service
+              systemd:
+                  name: "{{ ansible_facts['os_family'] == 'Debian' | ternary('ssh', 'sshd') }}"
+                  state: restarted
+              when: backup_timestamp_result is succeeded
+
+        when: identity_configuration_applied and not identity_tests_passed
+        ignore_errors: true
+
+      - name: Create failure status file
+        copy:
+            content: |
+                # Identity & Users Role - FAILED
+                timestamp: {{ ansible_date_time.iso8601 }}
+                status: failed
+                validation_passed: {{ identity_validation_passed }}
+                configuration_applied: {{ identity_configuration_applied }}
+                tests_passed: {{ identity_tests_passed }}
+            dest: /var/lib/ansible/identity-users-role-status
+            mode: '0644'
+
+      - name: Set failure status for dependent roles
+        set_fact:
+            identity_status: 'failed'
+
+      - name: Log failure
+        debug:
+            msg: 'Identity & Users Role failed - check /var/lib/ansible/identity-users-role-status'
+
+  when: not identity_operation_successful

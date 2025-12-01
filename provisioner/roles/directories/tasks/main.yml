@@ -1,0 +1,66 @@
+---
+# Directories Role - Directory Management with Cascade Permission Control
+# Implements 5-phase safety pattern: validate → backup → apply → test → rollback
+
+- name: Initialize directories role status
+  set_fact:
+      directories_validation_passed: false
+      directories_backup_completed: false
+      directories_configuration_applied: false
+      directories_tests_passed: false
+      directories_rollback_needed: false
+
+# Phase 1: VALIDATE
+- name: 'Validate directories prerequisites'
+  include_tasks: validate.yml
+  register: validation_result
+  ignore_errors: true
+
+- name: Set validation status
+  set_fact:
+      directories_validation_passed: '{{ validation_result is succeeded }}'
+
+- name: Log validation phase completion
+  debug:
+      msg: "Directories validation phase completed - Status: {{ 'PASSED' if directories_validation_passed else 'FAILED' }}"
+
+# Phase 2: BACKUP
+- name: 'Backup directories configurations'
+  include_tasks: backup.yml
+  when: directories_validation_passed
+  register: backup_result
+  ignore_errors: true
+
+- name: Set backup status
+  set_fact:
+      directories_backup_completed: '{{ backup_result is succeeded }}'
+  when: directories_validation_passed
+
+# Phase 3: APPLY
+- name: 'Apply directories configuration'
+  include_tasks: apply.yml
+  when: directories_validation_passed and (directories_backup_completed or backup_result is skipped)
+  register: apply_result
+  ignore_errors: true
+
+- name: Set apply status
+  set_fact:
+      directories_configuration_applied: '{{ apply_result is succeeded }}'
+  when: directories_validation_passed
+
+# Phase 4: TEST
+- name: 'Test directories configuration'
+  include_tasks: test.yml
+  when: directories_configuration_applied
+  register: test_result
+  ignore_errors: true
+
+- name: Set test status
+  set_fact:
+      directories_tests_passed: '{{ test_result is succeeded }}'
+  when: directories_configuration_applied
+
+# Phase 5: HANDLE RESULT
+- name: 'Handle directories result'
+  include_tasks: result_handler.yml
+  when: directories_validation_passed

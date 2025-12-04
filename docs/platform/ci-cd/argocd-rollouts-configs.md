@@ -88,7 +88,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-config.git
-    targetRevision: main
+    targetRevision: v2
     path: argocd/applications
   
   destination:
@@ -131,7 +131,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-config.git
-    targetRevision: main
+    targetRevision: v2
     path: overlays/dev/user-service
   
   destination:
@@ -178,7 +178,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-config.git
-    targetRevision: main
+    targetRevision: v2
     path: overlays/staging/user-service
   
   destination:
@@ -225,7 +225,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-config.git
-    targetRevision: main
+    targetRevision: v2
     path: overlays/uat/user-service
   
   destination:
@@ -261,7 +261,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-config.git
-    targetRevision: main
+    targetRevision: v2
     path: overlays/preprod/user-service
   
   destination:
@@ -305,7 +305,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-config.git
-    targetRevision: main
+    targetRevision: v2
     path: overlays/production/user-service
   
   destination:

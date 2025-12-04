@@ -178,7 +178,7 @@ kubectl get pods -n argocd
 ### Phase 2: Deploy Platform Applications
 
 ```bash
-cd v0.2.0/platform/bootstrap
+cd platform/bootstrap
 
 # Deploy all platform applications via template system
 ./bootstrap-template-driven.sh deploy --stack all

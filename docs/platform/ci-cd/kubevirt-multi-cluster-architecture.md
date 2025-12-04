@@ -717,7 +717,7 @@ spec:
 
       source:
         repoURL: https://github.com/yourorg/gitops-config.git
-        targetRevision: main
+        targetRevision: v2
         path: 'overlays/{{environment}}/user-service'
 
         kustomize:

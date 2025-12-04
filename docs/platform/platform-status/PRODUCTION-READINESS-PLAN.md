@@ -40,7 +40,7 @@
 ### 🔴 URGENT - Immediate Action Required
 
 #### 1. Grafana Admin Password Exposed
-**Location**: `v0.2.0/platform/charts/grafana/values.yaml`
+**Location**: `platform/charts/grafana/values.yaml`
 **Issue**: Password "changeme" in plaintext
 **Risk**: High - Observability platform access
 **Impact**: 10/10 - Full access to all metrics and logs
@@ -55,7 +55,7 @@ adminPassword: ${GRAFANA_ADMIN_PASSWORD}  # From Vault
 ```
 
 #### 2. Keycloak Admin Credentials Hardcoded
-**Location**: `v0.2.0/platform/charts/keycloak/values.yaml`
+**Location**: `platform/charts/keycloak/values.yaml`
 **Issue**: Multiple passwords in plaintext
 **Risk**: Critical - SSO provider compromise
 **Impact**: 10/10 - Full control over all authenticated users
@@ -172,7 +172,7 @@ Web Origins: https://argocd.pnats.cloud
 
 #### ArgoCD Dex Configuration
 ```yaml
-# v0.2.0/platform/charts/argocd-self/values.yaml
+# platform/charts/argocd-self/values.yaml
 server:
   config:
     url: https://argocd.pnats.cloud
@@ -205,7 +205,7 @@ server:
 
 #### External Secret for Dex Client Secret
 ```yaml
-# v0.2.0/platform/charts/argocd-self/external-secrets/dex-keycloak-secret.yaml
+# platform/charts/argocd-self/external-secrets/dex-keycloak-secret.yaml
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -246,7 +246,7 @@ Web Origins: https://grafana.pnats.cloud
 
 #### Grafana Configuration
 ```yaml
-# v0.2.0/platform/charts/grafana/values.yaml
+# platform/charts/grafana/values.yaml
 grafana.ini:
   server:
     root_url: https://grafana.pnats.cloud
@@ -280,7 +280,7 @@ Map GitHub teams to Keycloak groups via Identity Provider mapper.
 
 #### External Secret for Grafana
 ```yaml
-# v0.2.0/platform/charts/grafana/external-secrets/grafana-auth.yaml
+# platform/charts/grafana/external-secrets/grafana-auth.yaml
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -329,7 +329,7 @@ Mappers:
 
 #### Harbor Configuration
 ```yaml
-# v0.2.0/platform/charts/harbor/values.yaml
+# platform/charts/harbor/values.yaml
 core:
   config:
     oidc:
@@ -422,7 +422,7 @@ Valid Redirect URIs:
 
 #### Kargo Configuration
 ```yaml
-# v0.2.0/platform/charts/kargo/values.yaml
+# platform/charts/kargo/values.yaml
 api:
   oidc:
     enabled: true
@@ -462,7 +462,7 @@ Valid Redirect URIs:
 
 #### OAuth2 Proxy Helm Chart
 ```yaml
-# v0.2.0/platform/charts/oauth2-proxy/values.yaml
+# platform/charts/oauth2-proxy/values.yaml
 config:
   clientID: oauth2-proxy
   clientSecret: ${OAUTH2_PROXY_CLIENT_SECRET}  # From Vault
@@ -634,7 +634,7 @@ vault kv put pn-kv/keycloak \
 
 Already configured:
 ```yaml
-# Existing: v0.2.0/platform/charts/external-secrets/cluster-secret-store.yaml
+# Existing: platform/charts/external-secrets/cluster-secret-store.yaml
 apiVersion: external-secrets.io/v1beta1
 kind: ClusterSecretStore
 metadata:
@@ -669,7 +669,7 @@ vault kv put pn-kv/grafana \
 
 **Step 2: Create ExternalSecret manifest**
 ```yaml
-# v0.2.0/platform/charts/grafana/external-secrets/grafana-auth.yaml
+# platform/charts/grafana/external-secrets/grafana-auth.yaml
 apiVersion: external-secrets.io/v1beta1
 kind: ExternalSecret
 metadata:
@@ -701,7 +701,7 @@ spec:
 
 **Step 3: Update application values.yaml**
 ```yaml
-# v0.2.0/platform/charts/grafana/values.yaml
+# platform/charts/grafana/values.yaml
 # Remove hardcoded password
 # adminPassword: changeme  ← DELETE
 
@@ -737,7 +737,7 @@ vault kv get -field=admin-password pn-kv/grafana
 **Step 7: Remove Sealed Secret (if exists)**
 ```bash
 # Delete sealed secret manifest from Git
-rm v0.2.0/platform/charts/grafana/secrets/grafana-sealed.yaml
+rm platform/charts/grafana/secrets/grafana-sealed.yaml
 git commit -am "refactor(grafana): migrate secrets to Vault"
 ```
 
@@ -790,7 +790,7 @@ Implement Crossplane compositions to provision common infrastructure resources d
 **Purpose**: Manage Kubernetes resources via Crossplane
 
 ```yaml
-# v0.2.0/platform/charts/crossplane/providers/provider-kubernetes.yaml
+# platform/charts/crossplane/providers/provider-kubernetes.yaml
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
@@ -806,7 +806,7 @@ spec:
 **Purpose**: Deploy Helm charts via Crossplane
 
 ```yaml
-# v0.2.0/platform/charts/crossplane/providers/provider-helm.yaml
+# platform/charts/crossplane/providers/provider-helm.yaml
 apiVersion: pkg.crossplane.io/v1
 kind: Provider
 metadata:
@@ -817,7 +817,7 @@ spec:
 
 #### ProviderConfig: Kubernetes
 ```yaml
-# v0.2.0/platform/charts/crossplane/provider-configs/kubernetes-config.yaml
+# platform/charts/crossplane/provider-configs/kubernetes-config.yaml
 apiVersion: kubernetes.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
@@ -829,7 +829,7 @@ spec:
 
 #### ProviderConfig: Helm
 ```yaml
-# v0.2.0/platform/charts/crossplane/provider-configs/helm-config.yaml
+# platform/charts/crossplane/provider-configs/helm-config.yaml
 apiVersion: helm.crossplane.io/v1beta1
 kind: ProviderConfig
 metadata:
@@ -846,7 +846,7 @@ spec:
 #### XRD: PostgreSQL Cluster
 
 ```yaml
-# v0.2.0/platform/charts/crossplane/compositions/xrd-postgresql.yaml
+# platform/charts/crossplane/compositions/xrd-postgresql.yaml
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
@@ -906,7 +906,7 @@ spec:
 #### Composition: PostgreSQL via Zalando Operator
 
 ```yaml
-# v0.2.0/platform/charts/crossplane/compositions/composition-postgresql.yaml
+# platform/charts/crossplane/compositions/composition-postgresql.yaml
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
@@ -1091,7 +1091,7 @@ spec:
 #### XRD: Redis Cluster
 
 ```yaml
-# v0.2.0/platform/charts/crossplane/compositions/xrd-redis.yaml
+# platform/charts/crossplane/compositions/xrd-redis.yaml
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
@@ -1152,7 +1152,7 @@ Similar pattern to PostgreSQL composition using Redis Operator CRDs.
 #### XRD: S3 Bucket (Ceph RGW)
 
 ```yaml
-# v0.2.0/platform/charts/crossplane/compositions/xrd-s3bucket.yaml
+# platform/charts/crossplane/compositions/xrd-s3bucket.yaml
 apiVersion: apiextensions.crossplane.io/v1
 kind: CompositeResourceDefinition
 metadata:
@@ -1195,7 +1195,7 @@ spec:
 #### Composition: S3 Bucket via ObjectBucketClaim
 
 ```yaml
-# v0.2.0/platform/charts/crossplane/compositions/composition-s3bucket.yaml
+# platform/charts/crossplane/compositions/composition-s3bucket.yaml
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
@@ -1236,7 +1236,7 @@ spec:
 **Target**: Crossplane PostgreSQL claim
 
 ```yaml
-# v0.2.0/platform/charts/temporal-db/postgresql-claim.yaml
+# platform/charts/temporal-db/postgresql-claim.yaml
 apiVersion: platform.pnats.cloud/v1alpha1
 kind: PostgreSQL
 metadata:
@@ -1273,7 +1273,7 @@ spec:
 **Target**: Crossplane S3Bucket claim
 
 ```yaml
-# v0.2.0/platform/charts/harbor/s3-bucket-claim.yaml
+# platform/charts/harbor/s3-bucket-claim.yaml
 apiVersion: platform.pnats.cloud/v1alpha1
 kind: S3Bucket
 metadata:
@@ -1586,7 +1586,7 @@ If External Secrets fail or Vault becomes unavailable:
 ```bash
 # Emergency: Revert Grafana to hardcoded password
 # Edit values.yaml
-cd v0.2.0/platform/charts/grafana
+cd platform/charts/grafana
 git revert <commit-hash-of-vault-migration>
 
 # Sync ArgoCD
@@ -1625,11 +1625,11 @@ If Vault External Secrets fail:
 ```bash
 # Restore sealed secret manifests from Git history
 git log --all --full-history -- "**/*sealed.yaml"
-git checkout <commit> -- v0.2.0/platform/charts/*/secrets/*sealed.yaml
+git checkout <commit> -- platform/charts/*/secrets/*sealed.yaml
 
 # Re-apply sealed secrets
-kubectl apply -f v0.2.0/platform/charts/backstage/secrets/
-kubectl apply -f v0.2.0/platform/charts/harbor/secrets/
+kubectl apply -f platform/charts/backstage/secrets/
+kubectl apply -f platform/charts/harbor/secrets/
 
 # Delete External Secrets
 kubectl delete externalsecret -n backstage backstage-secrets
@@ -1654,7 +1654,7 @@ kubectl exec -n postgres-temporal temporal-0 -- \
 kubectl delete postgresql temporal
 
 # Restore manual PostgreSQL manifest
-kubectl apply -f v0.2.0/platform/charts/temporal-db/postgresql-manual.yaml
+kubectl apply -f platform/charts/temporal-db/postgresql-manual.yaml
 
 # Restore data if needed
 kubectl exec -n temporal temporal-postgres-0 -- \

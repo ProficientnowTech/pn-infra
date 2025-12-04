@@ -33,10 +33,10 @@ spec:
 
   destinations:
     {{- range .destinations }}
-    - namespace: {{ .namespace }}
-      server: {{ .server | default "https://kubernetes.default.svc" }}
+    - namespace: {{ .namespace | default "*" | quote }}
+      server: {{ .server | default "https://kubernetes.default.svc" | quote }}
       {{- if .name }}
-      name: {{ .name }}
+      name: {{ .name | quote }}
       {{- end }}
     {{- end }}
 

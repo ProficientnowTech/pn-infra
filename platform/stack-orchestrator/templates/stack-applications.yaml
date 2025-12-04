@@ -27,10 +27,10 @@ metadata:
     {{ $k }}: {{ $v | quote }}
     {{- end }}
     {{- end }}
-{{- $automated := (coalesce $root.Values.default.syncPolicy.automated (dict)) -}}
-{{- $syncOpts := (coalesce $root.Values.default.syncPolicy.syncOptions (list "CreateNamespace=true" "RespectIgnoreDifferences=true")) -}}
-{{- $retry := (coalesce $root.Values.default.retry (dict)) -}}
-{{- $retryBackoff := (coalesce $retry.backoff (dict)) -}}
+{{- $automated := (coalesce $root.Values.default.syncPolicy.automated (dict)) }}
+{{- $syncOpts := (coalesce $root.Values.default.syncPolicy.syncOptions (list "CreateNamespace=true" "RespectIgnoreDifferences=true")) }}
+{{- $retry := (coalesce $root.Values.default.retry (dict)) }}
+{{- $retryBackoff := (coalesce $retry.backoff (dict)) }}
 spec:
   project: {{ .project | default $root.Values.default.project }}
   sources:

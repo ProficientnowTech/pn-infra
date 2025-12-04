@@ -556,15 +556,16 @@ delete_crds() {
 
 	log INFO "Found $(echo "$crds" | wc -l) CRDs"
 
-	# List of CRDs to keep (core Kubernetes and MetalLB CRDs)
+	# List of CRDs to keep (core Kubernetes, MetalLB, networking providers)
 	local protected_crds="certificatesigningrequests.certificates.k8s.io ipaddresspools.metallb.io l2advertisements.metallb.io bfdprofiles.metallb.io bgpadvertisements.metallb.io bgppeers.metallb.io communities.metallb.io"
+	local protected_crd_patterns="(certificatesigningrequests\.certificates\.k8s\.io|metallb\.io|projectcalico\.org|crd\.projectcalico\.org|tigera\.io|k8s\.cni\.cncf\.io)"
 
 	# Remove finalizers and delete CRDs
 	for crd in $crds; do
 		local crd_name=$(echo "$crd" | sed 's|customresourcedefinition.apiextensions.k8s.io/||')
 
 		# Skip protected CRDs
-		if echo "$protected_crds" | grep -q "$crd_name"; then
+		if echo "$protected_crds" | grep -q "$crd_name" || [[ "$crd_name" =~ $protected_crd_patterns ]]; then
 			log INFO "Skipping protected CRD: $crd_name"
 			continue
 		fi
@@ -583,7 +584,7 @@ delete_crds() {
 	local timeout=60
 	local elapsed=0
 	while [ $elapsed -lt $timeout ]; do
-		local remaining=$(kubectl get crds 2>/dev/null | grep -vE "^NAME|certificatesigningrequests|metallb.io" | wc -l)
+		local remaining=$(kubectl get crds 2>/dev/null | grep -vE "^NAME|certificatesigningrequests|metallb.io|projectcalico.org|crd.projectcalico.org|tigera.io|k8s.cni.cncf.io" | wc -l)
 		if [ "$remaining" -eq 0 ]; then
 			log SUCCESS "All CRDs deleted"
 			return 0
@@ -595,7 +596,7 @@ delete_crds() {
 
 	# Force delete remaining CRDs
 	log WARN "Timeout waiting for CRDs, forcing deletion..."
-	for crd in $(kubectl get crds -o name 2>/dev/null | grep -vE "certificatesigningrequests|metallb.io" || true); do
+	for crd in $(kubectl get crds -o name 2>/dev/null | grep -vE "certificatesigningrequests|metallb.io|projectcalico.org|crd.projectcalico.org|tigera.io|k8s.cni.cncf.io" || true); do
 		kubectl delete $crd --force --grace-period=0 2>/dev/null || true
 	done
 

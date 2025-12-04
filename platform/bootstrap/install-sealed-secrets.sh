@@ -4,7 +4,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NAMESPACE="${SEALED_SECRETS_NAMESPACE:-sealed-secrets}"
 RELEASE_NAME="${SEALED_SECRETS_RELEASE:-sealed-secrets}"
-CHART_VERSION="${SEALED_SECRETS_VERSION:-2.15.2}"
+CHART_NAME="${SEALED_SECRETS_CHART_NAME:-sealed-secrets}"
+CHART_VERSION="${SEALED_SECRETS_VERSION:-2.17.9}"
+HELM_REPO_NAME="${SEALED_SECRETS_HELM_REPO_NAME:-sealed-secrets}"
+HELM_REPO_URL="${SEALED_SECRETS_HELM_REPO_URL:-https://bitnami-labs.github.io/sealed-secrets/}"
 
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
@@ -36,12 +39,12 @@ sealed_secrets_ready() {
 install_chart() {
 	log "Installing sealed-secrets controller (release ${RELEASE_NAME}, namespace ${NAMESPACE})..."
 
-	if ! helm repo list | grep -q "^bitnami"; then
-		helm repo add bitnami https://charts.bitnami.com/bitnami >/dev/null
+	if ! helm repo list | awk 'NR>1 {print $1}' | grep -Fxq "${HELM_REPO_NAME}"; then
+		helm repo add "${HELM_REPO_NAME}" "${HELM_REPO_URL}" >/dev/null
 	fi
-	helm repo update >/dev/null
+	helm repo update "${HELM_REPO_NAME}" >/dev/null 2>&1 || helm repo update >/dev/null
 
-	helm upgrade --install "${RELEASE_NAME}" bitnami/sealed-secrets \
+	helm upgrade --install "${RELEASE_NAME}" "${HELM_REPO_NAME}/${CHART_NAME}" \
 		--namespace "${NAMESPACE}" \
 		--create-namespace \
 		--version "${CHART_VERSION}" \

@@ -69,5 +69,3 @@ kubeconfig
 
 platform/bootstrap/.generated/
 platform/bootstrap/secrets/.env.local
-
-inventory

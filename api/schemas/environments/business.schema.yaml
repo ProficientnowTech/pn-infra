@@ -1,0 +1,529 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Business Environment Configuration Schema
+description: Validates environment-specific overrides for the business module
+type: object
+
+required:
+  - configPackage
+  - environment
+
+properties:
+  configPackage:
+    type: string
+    description: Reference to the config package (always "core")
+    enum: ["core"]
+
+  environment:
+    type: string
+    description: Environment identifier (development, staging, production, etc.)
+    pattern: "^[a-z0-9-]+$"
+
+  # Application overrides
+  app_overrides:
+    type: object
+    description: Environment-specific application configuration overrides
+    additionalProperties:
+      type: object
+      properties:
+        # Application metadata
+        enabled:
+          type: boolean
+          description: Enable/disable this application
+          default: true
+        namespace:
+          type: string
+          description: Override namespace for this application
+          pattern: "^[a-z0-9-]+$"
+
+        # Image configuration
+        image:
+          type: object
+          properties:
+            registry:
+              type: string
+              description: Container registry override
+            repository:
+              type: string
+              description: Image repository override
+            tag:
+              type: string
+              description: Image tag override
+              pattern: "^[a-zA-Z0-9._-]+$"
+            pullPolicy:
+              type: string
+              enum: ["Always", "IfNotPresent", "Never"]
+              default: "IfNotPresent"
+
+        # Replica configuration
+        replicas:
+          type: integer
+          description: Number of replicas
+          minimum: 0
+          default: 1
+
+        # Resource limits
+        resources:
+          type: object
+          properties:
+            limits:
+              type: object
+              properties:
+                cpu:
+                  type: string
+                  pattern: "^[0-9]+(m)?$"
+                memory:
+                  type: string
+                  pattern: "^[0-9]+(Mi|Gi)$"
+            requests:
+              type: object
+              properties:
+                cpu:
+                  type: string
+                  pattern: "^[0-9]+(m)?$"
+                memory:
+                  type: string
+                  pattern: "^[0-9]+(Mi|Gi)$"
+
+        # Autoscaling
+        autoscaling:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              default: false
+            minReplicas:
+              type: integer
+              minimum: 1
+            maxReplicas:
+              type: integer
+              minimum: 1
+            targetCPUUtilizationPercentage:
+              type: integer
+              minimum: 1
+              maximum: 100
+            targetMemoryUtilizationPercentage:
+              type: integer
+              minimum: 1
+              maximum: 100
+
+        # Service configuration
+        service:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"]
+              default: "ClusterIP"
+            port:
+              type: integer
+              minimum: 1
+              maximum: 65535
+            targetPort:
+              type: integer
+              minimum: 1
+              maximum: 65535
+            nodePort:
+              type: integer
+              minimum: 30000
+              maximum: 32767
+            annotations:
+              type: object
+              additionalProperties:
+                type: string
+
+        # Ingress configuration
+        ingress:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              default: false
+            className:
+              type: string
+              pattern: "^[a-z0-9-]+$"
+            hosts:
+              type: array
+              items:
+                type: object
+                properties:
+                  host:
+                    type: string
+                    format: hostname
+                  paths:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                          pattern: "^/"
+                        pathType:
+                          type: string
+                          enum: ["Prefix", "Exact", "ImplementationSpecific"]
+                          default: "Prefix"
+            tls:
+              type: array
+              items:
+                type: object
+                properties:
+                  secretName:
+                    type: string
+                    pattern: "^[a-z0-9-]+$"
+                  hosts:
+                    type: array
+                    items:
+                      type: string
+                      format: hostname
+            annotations:
+              type: object
+              additionalProperties:
+                type: string
+
+        # Persistence
+        persistence:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+              default: false
+            storageClass:
+              type: string
+            accessMode:
+              type: string
+              enum: ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany"]
+              default: "ReadWriteOnce"
+            size:
+              type: string
+              pattern: "^[0-9]+(Mi|Gi|Ti)$"
+            mountPath:
+              type: string
+              pattern: "^/"
+            existingClaim:
+              type: string
+
+        # Environment variables
+        env:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                pattern: "^[A-Z_][A-Z0-9_]*$"
+              value:
+                type: string
+              valueFrom:
+                type: object
+                properties:
+                  secretKeyRef:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      key:
+                        type: string
+                  configMapKeyRef:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      key:
+                        type: string
+                  fieldRef:
+                    type: object
+                    properties:
+                      fieldPath:
+                        type: string
+            required:
+              - name
+
+        # Config maps
+        configMaps:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                pattern: "^[a-z0-9-]+$"
+              data:
+                type: object
+                additionalProperties:
+                  type: string
+              mountPath:
+                type: string
+                pattern: "^/"
+
+        # Secrets
+        secrets:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                pattern: "^[a-z0-9-]+$"
+              data:
+                type: object
+                additionalProperties:
+                  type: string
+              stringData:
+                type: object
+                additionalProperties:
+                  type: string
+              mountPath:
+                type: string
+                pattern: "^/"
+
+        # Health checks
+        livenessProbe:
+          type: object
+          properties:
+            httpGet:
+              type: object
+              properties:
+                path:
+                  type: string
+                  pattern: "^/"
+                port:
+                  type: integer
+                  minimum: 1
+                  maximum: 65535
+            tcpSocket:
+              type: object
+              properties:
+                port:
+                  type: integer
+            exec:
+              type: object
+              properties:
+                command:
+                  type: array
+                  items:
+                    type: string
+            initialDelaySeconds:
+              type: integer
+              minimum: 0
+            periodSeconds:
+              type: integer
+              minimum: 1
+            timeoutSeconds:
+              type: integer
+              minimum: 1
+            successThreshold:
+              type: integer
+              minimum: 1
+            failureThreshold:
+              type: integer
+              minimum: 1
+
+        readinessProbe:
+          type: object
+          properties:
+            httpGet:
+              type: object
+            tcpSocket:
+              type: object
+            exec:
+              type: object
+            initialDelaySeconds:
+              type: integer
+            periodSeconds:
+              type: integer
+            timeoutSeconds:
+              type: integer
+            successThreshold:
+              type: integer
+            failureThreshold:
+              type: integer
+
+        # Security context
+        securityContext:
+          type: object
+          properties:
+            runAsUser:
+              type: integer
+              minimum: 0
+            runAsGroup:
+              type: integer
+              minimum: 0
+            fsGroup:
+              type: integer
+              minimum: 0
+            runAsNonRoot:
+              type: boolean
+            readOnlyRootFilesystem:
+              type: boolean
+            allowPrivilegeEscalation:
+              type: boolean
+            capabilities:
+              type: object
+              properties:
+                add:
+                  type: array
+                  items:
+                    type: string
+                drop:
+                  type: array
+                  items:
+                    type: string
+
+        # Pod affinity/anti-affinity
+        affinity:
+          type: object
+          properties:
+            nodeAffinity:
+              type: object
+            podAffinity:
+              type: object
+            podAntiAffinity:
+              type: object
+
+        # Tolerations
+        tolerations:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              operator:
+                type: string
+                enum: ["Equal", "Exists"]
+              value:
+                type: string
+              effect:
+                type: string
+                enum: ["NoSchedule", "PreferNoSchedule", "NoExecute"]
+
+        # Node selector
+        nodeSelector:
+          type: object
+          additionalProperties:
+            type: string
+
+        # Init containers
+        initContainers:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                pattern: "^[a-z0-9-]+$"
+              image:
+                type: string
+              command:
+                type: array
+                items:
+                  type: string
+
+        # Sidecar containers
+        sidecars:
+          type: array
+          items:
+            type: object
+
+  # Namespace-specific configuration
+  namespace_configs:
+    type: object
+    description: Namespace-level configuration overrides
+    additionalProperties:
+      type: object
+      properties:
+        create:
+          type: boolean
+          description: Create namespace if it doesn't exist
+          default: true
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+        secrets:
+          type: array
+          description: Namespace-level secrets
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                pattern: "^[a-z0-9-]+$"
+              type:
+                type: string
+                enum: ["Opaque", "kubernetes.io/dockerconfigjson", "kubernetes.io/tls"]
+              data:
+                type: object
+                additionalProperties:
+                  type: string
+
+  # ArgoCD sync configuration
+  argocd:
+    type: object
+    description: ArgoCD-specific configuration for app-of-apps
+    properties:
+      sync_wave:
+        type: integer
+        description: Default sync wave for applications
+        default: 0
+      auto_sync:
+        type: boolean
+        description: Enable automatic sync
+        default: true
+      prune:
+        type: boolean
+        description: Enable resource pruning
+        default: true
+      self_heal:
+        type: boolean
+        description: Enable self-healing
+        default: true
+      retry:
+        type: object
+        properties:
+          limit:
+            type: integer
+            minimum: 0
+            default: 5
+          backoff:
+            type: object
+            properties:
+              duration:
+                type: string
+                pattern: "^[0-9]+(s|m|h)$"
+                default: "5s"
+              factor:
+                type: integer
+                minimum: 1
+                default: 2
+              maxDuration:
+                type: string
+                pattern: "^[0-9]+(s|m|h)$"
+                default: "3m"
+
+  # Global defaults
+  global:
+    type: object
+    description: Global defaults applied to all applications
+    properties:
+      imageRegistry:
+        type: string
+        description: Default image registry
+      imagePullSecrets:
+        type: array
+        description: Default image pull secrets
+        items:
+          type: string
+      storageClass:
+        type: string
+        description: Default storage class
+      ingressClassName:
+        type: string
+        description: Default ingress class
+      domain:
+        type: string
+        description: Default domain suffix for ingresses
+        format: hostname

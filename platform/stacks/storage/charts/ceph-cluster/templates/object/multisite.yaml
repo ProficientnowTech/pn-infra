@@ -1,0 +1,83 @@
+{{/*
+Multi-site configuration for Ceph Object Storage
+CephObjectRealm, CephObjectZoneGroup, CephObjectZone
+Not fully supported by upstream rook-ceph-cluster chart
+*/}}
+
+{{- if .Values.cephObjectRealm }}
+{{- if .Values.cephObjectRealm.enabled }}
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectRealm
+metadata:
+  name: {{ .Values.cephObjectRealm.name }}
+  namespace: {{ .Values.namespace | default "rook-ceph" }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.cephObjectRealm.name }}
+    app.kubernetes.io/component: cephobjectrealm
+    app.kubernetes.io/part-of: rook-ceph-cluster
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec: {}
+{{- end }}
+{{- end }}
+
+{{- if .Values.cephObjectZoneGroup }}
+{{- if .Values.cephObjectZoneGroup.enabled }}
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectZoneGroup
+metadata:
+  name: {{ .Values.cephObjectZoneGroup.name }}
+  namespace: {{ .Values.namespace | default "rook-ceph" }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.cephObjectZoneGroup.name }}
+    app.kubernetes.io/component: cephobjectzonegroup
+    app.kubernetes.io/part-of: rook-ceph-cluster
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  realm: {{ .Values.cephObjectZoneGroup.realm }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.cephObjectZone }}
+{{- if .Values.cephObjectZone.enabled }}
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectZone
+metadata:
+  name: {{ .Values.cephObjectZone.name }}
+  namespace: {{ .Values.namespace | default "rook-ceph" }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.cephObjectZone.name }}
+    app.kubernetes.io/component: cephobjectzone
+    app.kubernetes.io/part-of: rook-ceph-cluster
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  zoneGroup: {{ .Values.cephObjectZone.zoneGroup }}
+  # Metadata Pool
+  metadataPool:
+    failureDomain: {{ .Values.cephObjectZone.metadataPool.failureDomain | default "host" }}
+    {{- if .Values.cephObjectZone.metadataPool.erasureCoded }}
+    erasureCoded:
+      dataChunks: {{ .Values.cephObjectZone.metadataPool.erasureCoded.dataChunks }}
+      codingChunks: {{ .Values.cephObjectZone.metadataPool.erasureCoded.codingChunks }}
+    {{- else }}
+    replicated:
+      size: {{ .Values.cephObjectZone.metadataPool.replicated.size | default 3 }}
+    {{- end }}
+  # Data Pool
+  dataPool:
+    failureDomain: {{ .Values.cephObjectZone.dataPool.failureDomain | default "host" }}
+    {{- if .Values.cephObjectZone.dataPool.erasureCoded }}
+    erasureCoded:
+      dataChunks: {{ .Values.cephObjectZone.dataPool.erasureCoded.dataChunks }}
+      codingChunks: {{ .Values.cephObjectZone.dataPool.erasureCoded.codingChunks }}
+    {{- else }}
+    replicated:
+      size: {{ .Values.cephObjectZone.dataPool.replicated.size | default 3 }}
+    {{- end }}
+{{- end }}
+{{- end }}

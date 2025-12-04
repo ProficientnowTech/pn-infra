@@ -1,0 +1,78 @@
+{{/*
+Resource Management Policies
+Ensure proper resource requests and limits
+*/}}
+
+{{- if .Values.policies.resources.requireLimits.enabled }}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-limits
+  annotations:
+    policies.kyverno.io/title: Require Resource Limits
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      All containers must have CPU and memory limits defined to prevent resource exhaustion.
+spec:
+  validationFailureAction: {{ .Values.policies.resources.requireLimits.validationFailureAction }}
+  background: true
+  rules:
+    - name: check-resource-limits
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces: {{ toYaml .Values.policyExceptions.exemptNamespaces | nindent 16 }}
+      validate:
+        message: "CPU and memory limits are required for all containers."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+{{- end }}
+
+{{- if .Values.policies.resources.requireRequests.enabled }}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-resource-requests
+  annotations:
+    policies.kyverno.io/title: Require Resource Requests
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      All containers must have CPU and memory requests defined for proper scheduling.
+spec:
+  validationFailureAction: {{ .Values.policies.resources.requireRequests.validationFailureAction }}
+  background: true
+  rules:
+    - name: check-resource-requests
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces: {{ toYaml .Values.policyExceptions.exemptNamespaces | nindent 16 }}
+      validate:
+        message: "CPU and memory requests are required for all containers."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests:
+                    memory: "?*"
+                    cpu: "?*"
+{{- end }}

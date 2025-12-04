@@ -1,0 +1,21 @@
+{{- if .Values.L2Advertisement.enabled }}
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: {{ .Values.L2Advertisement.name }}
+  namespace: {{ .Values.L2Advertisement.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.L2Advertisement.name }}
+    app.kubernetes.io/component: l2advertisement
+    app.kubernetes.io/part-of: metallb
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  ipAddressPools:
+    {{- toYaml .Values.L2Advertisement.ipAddressPools | nindent 4 }}
+  {{- if .Values.L2Advertisement.interfaces }}
+  interfaces:
+    {{- toYaml .Values.L2Advertisement.interfaces | nindent 4 }}
+  {{- end }}
+{{- end }}

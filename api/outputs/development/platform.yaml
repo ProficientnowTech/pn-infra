@@ -1,0 +1,18 @@
+cluster: development
+stacks:
+  base:
+    enabled: true
+    applications:
+      - rook-ceph
+      - rook-ceph-cluster
+      - vault
+  monitoring:
+    enabled: true
+    applications:
+      - prometheus
+      - grafana
+  ml:
+    enabled: false
+git:
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  revision: HEAD

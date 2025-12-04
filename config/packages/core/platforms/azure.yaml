@@ -1,0 +1,64 @@
+# Azure Platform Configuration
+# Non-sensitive Azure-specific settings
+# Secrets (subscription_id, client_id, client_secret, tenant_id) come from infrastructure/environments/<env>.yaml
+
+azure:
+  # Location configuration
+  location: East US            # Azure region
+  resource_group_name: k8s-cluster-rg
+
+  # Virtual network configuration
+  vnet:
+    name: k8s-vnet
+    address_space: ["10.0.0.0/16"]
+
+  # Subnet configuration
+  subnets:
+    - name: k8s-subnet
+      address_prefixes: ["10.0.1.0/24"]
+    - name: k8s-pod-subnet
+      address_prefixes: ["10.1.0.0/16"]
+
+  # VM defaults
+  vm_defaults:
+    size: Standard_D2s_v3
+    admin_username: azureuser
+    disable_password_authentication: true
+    os_disk:
+      caching: ReadWrite
+      storage_account_type: Premium_LRS
+      disk_size_gb: 50
+    source_image_reference:
+      publisher: Canonical
+      offer: 0001-com-ubuntu-server-jammy
+      sku: 22_04-lts-gen2
+      version: latest
+
+  # Network security group
+  network_security_group:
+    name: k8s-nsg
+    security_rules:
+      - name: allow-ssh
+        priority: 100
+        direction: Inbound
+        access: Allow
+        protocol: Tcp
+        source_port_range: "*"
+        destination_port_range: "22"
+        source_address_prefix: "*"
+        destination_address_prefix: "*"
+      - name: allow-k8s-api
+        priority: 110
+        direction: Inbound
+        access: Allow
+        protocol: Tcp
+        source_port_range: "*"
+        destination_port_range: "6443"
+        source_address_prefix: "*"
+        destination_address_prefix: "*"
+
+  # Tags
+  tags:
+    Environment: "{{ .Environment }}"
+    ManagedBy: terraform
+    Project: kubernetes-cluster

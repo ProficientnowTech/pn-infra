@@ -1,0 +1,105 @@
+{{/*
+Keycloak Realm Configuration via Crossplane
+Declarative realm management with GitOps
+*/}}
+{{- if .Values.realm.enabled }}
+---
+apiVersion: realm.keycloak.crossplane.io/v1alpha1
+kind: Realm
+metadata:
+  name: {{ .Values.realm.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/component: realm
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    link.argocd.argoproj.io/external-link: https://{{ .Values.ingress.hostname }}/admin/master/console/#/{{ .Values.realm.name }}
+spec:
+  forProvider:
+    realm: {{ .Values.realm.name }}
+    displayName: {{ .Values.realm.displayName | default .Values.realm.name }}
+    displayNameHtml: "<b>{{ .Values.realm.displayName | default .Values.realm.name }}</b>"
+    enabled: true
+
+    # User Registration and Login
+    registrationAllowed: {{ .Values.realm.registrationAllowed | default false }}
+    registrationEmailAsUsername: {{ .Values.realm.registrationEmailAsUsername | default false }}
+    loginWithEmailAllowed: {{ .Values.realm.loginWithEmailAllowed | default true }}
+    duplicateEmailsAllowed: {{ .Values.realm.duplicateEmailsAllowed | default false }}
+    resetPasswordAllowed: {{ .Values.realm.resetPasswordAllowed | default true }}
+    editUsernameAllowed: {{ .Values.realm.editUsernameAllowed | default false }}
+    rememberMe: {{ .Values.realm.rememberMe | default true }}
+    verifyEmail: {{ .Values.realm.verifyEmail | default false }}
+    loginTheme: {{ .Values.realm.loginTheme | default "keycloak" }}
+
+    # Security Settings
+    sslRequired: {{ .Values.realm.sslRequired | default "external" }}
+    bruteForceProtected: {{ .Values.realm.bruteForceProtected | default true }}
+    permanentLockout: {{ .Values.realm.permanentLockout | default false }}
+    maxFailureWaitSeconds: {{ .Values.realm.maxFailureWaitSeconds | default 900 }}
+    minimumQuickLoginWaitSeconds: {{ .Values.realm.minimumQuickLoginWaitSeconds | default 60 }}
+    waitIncrementSeconds: {{ .Values.realm.waitIncrementSeconds | default 60 }}
+    quickLoginCheckMilliSeconds: {{ .Values.realm.quickLoginCheckMilliSeconds | default 1000 }}
+    maxDeltaTimeSeconds: {{ .Values.realm.maxDeltaTimeSeconds | default 43200 }}
+    failureFactor: {{ .Values.realm.failureFactor | default 5 }}
+
+    # Password Policy
+    {{- if .Values.realm.passwordPolicy }}
+    passwordPolicy: {{ .Values.realm.passwordPolicy | quote }}
+    {{- else }}
+    passwordPolicy: "length(12) and digits(1) and lowerCase(1) and upperCase(1) and specialChars(1) and notUsername"
+    {{- end }}
+
+    # Token Settings
+    accessTokenLifespan: {{ .Values.realm.accessTokenLifespan | default 300 }}
+    accessTokenLifespanForImplicitFlow: {{ .Values.realm.accessTokenLifespanForImplicitFlow | default 900 }}
+    ssoSessionIdleTimeout: {{ .Values.realm.ssoSessionIdleTimeout | default 1800 }}
+    ssoSessionMaxLifespan: {{ .Values.realm.ssoSessionMaxLifespan | default 36000 }}
+    offlineSessionIdleTimeout: {{ .Values.realm.offlineSessionIdleTimeout | default 2592000 }}
+
+    # Frontend URL
+    attributes:
+      frontendUrl: https://{{ .Values.ingress.hostname }}
+      {{- range $key, $value := .Values.realm.attributes }}
+      {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+    # SMTP Configuration (if provided)
+    {{- if .Values.realm.smtp.enabled }}
+    smtpServer:
+      host: {{ .Values.realm.smtp.host | quote }}
+      port: {{ .Values.realm.smtp.port | quote }}
+      from: {{ .Values.realm.smtp.from | quote }}
+      fromDisplayName: {{ .Values.realm.smtp.fromDisplayName | quote }}
+      replyTo: {{ .Values.realm.smtp.replyTo | quote }}
+      {{- if .Values.realm.smtp.auth }}
+      auth: "true"
+      user: {{ .Values.realm.smtp.user | quote }}
+      passwordSecretRef:
+        name: {{ .Values.realm.smtp.passwordSecretName }}
+        key: {{ .Values.realm.smtp.passwordSecretKey }}
+      {{- end }}
+      {{- if .Values.realm.smtp.ssl }}
+      ssl: "true"
+      {{- end }}
+      {{- if .Values.realm.smtp.starttls }}
+      starttls: "true"
+      {{- end }}
+    {{- end }}
+
+    # Internationalization
+    {{- if .Values.realm.internationalizationEnabled }}
+    internationalizationEnabled: true
+    supportedLocales:
+      {{- toYaml .Values.realm.supportedLocales | nindent 6 }}
+    defaultLocale: {{ .Values.realm.defaultLocale | default "en" }}
+    {{- end }}
+
+  deletionPolicy: {{ .Values.realm.deletionPolicy | default "Delete" }}
+  providerConfigRef:
+    name: {{ .Release.Name }}-provider-config
+{{- end }}

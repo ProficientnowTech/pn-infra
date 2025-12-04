@@ -1,0 +1,59 @@
+# Bare Metal Platform Configuration
+# Configuration for bare metal server deployments
+# Server credentials come from infrastructure/environments/<env>.yaml
+
+baremetal:
+  # IPMI/BMC configuration
+  bmc:
+    protocol: ipmi            # Options: ipmi, redfish
+    port: 623
+
+  # PXE boot configuration
+  pxe:
+    enabled: true
+    boot_server: 192.168.1.1
+    tftp_root: /var/lib/tftpboot
+    boot_image: ubuntu-22.04-netboot
+
+  # Network configuration
+  network:
+    bonding:
+      enabled: false
+      mode: 802.3ad         # LACP
+      interfaces: []
+
+  # RAID configuration (if applicable)
+  raid:
+    enabled: false
+    level: 1                # RAID level
+    controller: megaraid
+
+  # Firmware settings
+  firmware:
+    bios_mode: uefi         # Options: uefi, legacy
+    secure_boot: false
+    virtualization: true
+
+  # Power management
+  power_management:
+    enabled: true
+    idle_timeout: 3600      # seconds
+
+  # Installation method
+  installation:
+    method: pxe             # Options: pxe, iso, kickstart
+    os: ubuntu-22.04
+    partitioning: auto      # Options: auto, custom
+
+  # Hardware profiles (optional - for heterogeneous hardware)
+  hardware_profiles:
+    - name: dell-r640
+      cpu: Intel Xeon
+      memory: 128GB
+      network_cards: 2
+      disks: 4
+    - name: hp-dl360
+      cpu: Intel Xeon
+      memory: 256GB
+      network_cards: 2
+      disks: 8

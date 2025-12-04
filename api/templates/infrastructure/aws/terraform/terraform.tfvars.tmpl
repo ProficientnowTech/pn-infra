@@ -1,0 +1,73 @@
+# AWS Infrastructure Variables
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+# Platform: {{ .Infrastructure.Platform }}
+# Provider: {{ .Infrastructure.Provider }}
+
+# AWS credentials (from environment override)
+aws_region     = "{{ .Aws.Region }}"
+aws_access_key = "{{ .Aws.AccessKey }}"
+aws_secret_key = "{{ .Aws.SecretKey }}"
+
+# VPC configuration
+vpc_cidr_block           = "{{ .Aws.Vpc.CidrBlock }}"
+enable_dns_hostnames     = {{ .Aws.Vpc.EnableDnsHostnames }}
+enable_dns_support       = {{ .Aws.Vpc.EnableDnsSupport }}
+availability_zones       = {{ .Aws.AvailabilityZones | toJson }}
+
+# Subnets
+subnets = [
+{{- range .Aws.Subnets }}
+  {
+    name                    = "{{ .Name }}"
+    cidr_block              = "{{ .CidrBlock }}"
+    availability_zone       = "{{ .AvailabilityZone }}"
+    map_public_ip_on_launch = {{ .MapPublicIpOnLaunch }}
+  },
+{{- end }}
+]
+
+# EC2 instance defaults
+ami                = "{{ .Aws.InstanceDefaults.Ami }}"
+instance_type      = "{{ .Aws.InstanceDefaults.InstanceType }}"
+key_name           = "{{ .Aws.InstanceDefaults.KeyName }}"
+monitoring         = {{ .Aws.InstanceDefaults.Monitoring }}
+ebs_optimized      = {{ .Aws.InstanceDefaults.EbsOptimized }}
+root_volume_type   = "{{ .Aws.InstanceDefaults.RootVolume.VolumeType }}"
+root_volume_size   = {{ .Aws.InstanceDefaults.RootVolume.VolumeSize }}
+
+# SSH configuration
+ssh_public_key = "{{ .Ssh.PublicKey }}"
+ssh_user       = "{{ .Ssh.User }}"
+
+# Security groups
+security_groups = {{ .Aws.SecurityGroups | toJson }}
+
+# Hosts (EC2 instances)
+instances = {
+{{- range .Hosts }}
+  "{{ .Name }}" = {
+    name          = "{{ .Name }}"
+    instance_type = "{{ $.Aws.InstanceDefaults.InstanceType }}"
+    private_ip    = "{{ .Ip }}"
+    role          = "{{ .Role }}"
+    {{- if .Labels }}
+    tags = {
+{{- range .Labels }}
+      "Label" = "{{ . }}"
+{{- end }}
+    }
+    {{- end }}
+  }
+{{- end }}
+}
+
+# Tags
+tags = {
+  Environment = "{{ .Environment }}"
+  ManagedBy   = "terraform"
+  ConfigPkg   = "{{ .ConfigPackage }}"
+  {{- range $k, $v := .Aws.Tags }}
+  {{ $k }} = "{{ $v }}"
+  {{- end }}
+}

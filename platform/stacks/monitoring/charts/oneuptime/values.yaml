@@ -1,0 +1,798 @@
+oneuptime:
+  global:
+    storageClass: plt-blk-hdd-repl
+
+  # OneUptime Domain Configuration
+  host: uptime.pnats.cloud
+  httpProtocol: https
+
+  ssl:
+    # Let's Encrypt SSL handled by ingress controller
+    provision: true
+
+  # External Secrets Configuration - Use existing secrets from Vault
+  externalSecrets:
+    oneuptimeSecret:
+      existingSecret:
+        name: oneuptime-core-secrets
+        passwordKey: oneuptimeSecret
+    encryptionSecret:
+      existingSecret:
+        name: oneuptime-core-secrets
+        passwordKey: encryptionSecret
+
+  # High Availability Configuration
+  deployment:
+    replicaCount: 3 # Default HA replica count
+    updateStrategy:
+      type: RollingUpdate
+    includeTimestampLabel: true
+
+  # Ingress Configuration - OneUptime's built-in NGINX
+  nginx:
+    enabled: true
+    replicaCount: 2 # HA for ingress gateway
+    service:
+      type: ClusterIP
+
+  # PostgreSQL Configuration
+  postgresql:
+    enabled: true
+    auth:
+      database: oneuptimedb
+    primary:
+      persistence:
+        enabled: true
+        size: 50Gi # Production size
+        storageClass: plt-blk-hdd-repl
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 2000m
+          memory: 4Gi
+      configuration: |-
+        # Network and connection settings
+        listen_addresses = '*'
+        port = 5432
+        # Core tuning
+        max_connections = 200
+        shared_buffers = 128GB
+        effective_cache_size = 512MB
+        maintenance_work_mem = 256MB
+        checkpoint_completion_target = 0.9
+        wal_buffers = 16MB
+        default_statistics_target = 100
+        random_page_cost = 1.1
+        effective_io_concurrency = 200
+        work_mem = 5MB
+        min_wal_size = 1GB
+        max_wal_size = 4GB
+      hbaConfiguration: |-
+        host    all             all             0.0.0.0/0               md5
+        host    all             all             ::/0                    md5
+
+  # ClickHouse Configuration
+  clickhouse:
+    enabled: true
+    auth:
+      username: oneuptime
+    persistence:
+      enabled: true
+      size: 2Gi # Production size for telemetry data
+      storageClass: plt-blk-hdd-repl
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 101
+      fsGroup: 101
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+    configuration: |-
+      <clickhouse>
+          <logger>
+              <level>warning</level>
+              <console>true</console>
+          </logger>
+          <http_port>8123</http_port>
+          <tcp_port>9000</tcp_port>
+          <mysql_port>9004</mysql_port>
+          <postgresql_port>9005</postgresql_port>
+          <interserver_http_port>9009</interserver_http_port>
+          <listen_host>::</listen_host>
+          <users>
+              <${CLICKHOUSE_USER}>
+                  <password>${CLICKHOUSE_PASSWORD}</password>
+                  <networks>
+                      <ip>::/0</ip>
+                  </networks>
+                  <profile>default</profile>
+                  <quota>default</quota>
+                  <access_management>1</access_management>
+              </${CLICKHOUSE_USER}>
+          </users>
+          <quotas>
+              <default>
+                  <interval>
+                      <duration>3600</duration>
+                      <queries>0</queries>
+                      <errors>0</errors>
+                      <result_rows>0</result_rows>
+                      <read_rows>0</read_rows>
+                      <execution_time>0</execution_time>
+                  </interval>
+              </default>
+          </quotas>
+      </clickhouse>
+
+  # Redis Configuration
+  redis:
+    enabled: true
+    master:
+      service:
+        type: ClusterIP
+        ports:
+          redis: "6379"
+      persistence:
+        enabled: true
+        size: 20Gi
+        storageClass: plt-blk-hdd-repl
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+    commonConfiguration: |-
+      appendonly yes
+      save 900 1
+      save 300 10
+      save 60 10000
+      maxmemory-policy allkeys-lru
+
+  # Autoscaling Configuration
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: 80
+
+  nodeEnvironment: production
+
+  incidents:
+    disableAutomaticCreation: false
+
+  alerts:
+    disableAutomaticCreation: false
+
+  # Status Page Configuration
+  statusPage:
+    enabled: true
+    replicaCount: 3
+    cnameRecord: status.pnats.cloud
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 3105
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # Probe Configuration
+  probes:
+    one:
+      name: "Primary Probe"
+      description: "Primary monitoring probe for availability checks"
+      enabled: true
+      monitoringWorkers: 5
+      monitorFetchLimit: 20
+      monitorRetryLimit: 3
+      key: # Will be auto-generated
+      replicaCount: 3 # HA
+      syntheticMonitorScriptTimeoutInMs: 60000
+      customCodeMonitorScriptTimeoutInMs: 60000
+      disableTelemetryCollection: false
+      disableAutoscaler: false
+      ports:
+        http: 3874
+      proxy:
+        httpProxyUrl:
+        httpsProxyUrl:
+        noProxy:
+      keda:
+        enabled: true
+        minReplicas: 2
+        maxReplicas: 20
+        queueSizeThreshold: 15
+        pollingInterval: 30
+        cooldownPeriod: 300
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 2000m
+          memory: 4Gi
+      nodeSelector: {}
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containerSecurityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+          - ALL
+
+  testServer:
+    replicaCount: 1
+    enabled: false
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 3800
+    resources: {}
+    nodeSelector: {}
+    podSecurityContext: {}
+    containerSecurityContext: {}
+
+  openTelemetryExporter:
+    endpoint:
+    headers:
+
+      # Security Contexts
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+      - ALL
+    runAsNonRoot: true
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+
+  affinity: {}
+  tolerations: []
+  nodeSelector: {}
+
+  logLevel: INFO
+
+  # Cleanup CronJobs - disabled in production
+  cronJobs:
+    cleanup:
+      enabled: false
+    e2e:
+      enabled: false
+
+  # Let's Encrypt Configuration for Status Page Custom Domains
+  # These values are populated from oneuptime-letsencrypt-secret
+  letsEncrypt:
+    accountkey: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUpRZ0lCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQ1N3d2dna29BZ0VBQW9JQ0FRQ3VoNWU3UGFXMjAxRzIKclJzRjNMTUtUemxQNWl5akdEdGJzUzlMRU54cHpZTDBUY0xEY2QybG4rbnJmcWQ2M1ZGRDR1L2QwNTd1QTZ2dQpBUmw5YXU4YlVtZXNFZXU5RHE5VndvM0U1VkQyZkRTTzliWmRzOU1uRFhFV0VjS0hYd0RmdjFEZjNlSWwxaXdFCmRkSDUwaGlmYjljZWtlN2pyTUs2eXlGVFhXSU85WTNyZFRYOFp6UWZBRnI0bnpKNjRaRE41Mnk2Nk03YWg3Q3UKSGV1SUhKUVo5Ni9VMk5RUVY2VkkyZEZqRlhhZS90TWdXZmZpaW03L0lJT0FEUkNmRWFtMmNpeWl3RkhjZUpFdwpHSm4wUnlzS2Z1RGFlemFZeDRWTlJVaWtyNEZhVDBCRG9zT01DZUpRZEJ0V000Uk5VaE54TEM5a3A1bUkwWXZWCnJaaFFzMFZuc0o3L0QxZ2FOelQ3REhIN3VoRUx0by91bHJjRjZtOCtVd3FRR0I4NGlza1JRVXFWcjlQWFJZS3YKck1xcTVLK1gvcXp6R0dFbW1XejE2MndyVWlBdEVJZ1MxUmxSWjlnYVpCVE84ZVVhOXhXNjNTUHhvWVh6eFFKTgpGeXdicFFTckVOSVFDY1VQSUlVVWhVYjUwV29SUGZ5K2tlWEdsVjlxa2NRRlVucnhNUzg0bWRPV3gxY3VLL0JECmozaCsrQmxKc1dzNVRoWjlPSkM1M2kwNkU1N2pESkwxV3hsS01CUDFncDRMNUlzdlZzRHMyTDVJMXZxRkJsTWgKZkxuTzV0L01HTWVQWktTKyszS0loVE41NUQyRG1FemhmVGhSajFOZERCWXAwUXZseXdwZ0JTRGRzQitaZitxaQo4SXF6eGZoWGV0bG9JNmd0TkJhbkhZNWpQWTQzdndJREFRQUJBb0lDQURreU00NEh5bmFMYzJTSC8ycWc1TVgwCnA2WWhHekRKNEs0UWQ1ekVwazlBSy9IdlIrd3dOVUN4a3dIN3JGeE9Dbk5TZkdSNGxVV1FTM2lBd0w5QzI2QmIKRmFHazc5b3g1VkVZSk1qSmxBcHJNdmhFMnlLREs2aEpOZTNUSFNxcS9ralZWR1pCTzN0RjRJQUhzcXdKNThyYwpacVhja21ybnM1dHV0WG15Q1ZBNHRlMWJxTGtTZzFqRGo0eVo4M3VrejRWREdmVjVGVTAxbWJlK0UzRzBWKzdZCnByVjg1NmFCYXFmZ3hrZVFBYU5paElNK0tNZ0RzUk9JTHNBNHgrRXhjeXBZNlhyZXh4VVhLQkdZaGwreE1SQkwKKzFsdWRycUQ3SklocWdoYWdldzhPNlhPd2dIelBVazdlN2Y0d3h0cDBmaE5VQ3pPNWppWjM1ZER3RDUyT2NDUgp2UUZ0RldwaHJDdnVIcVBuTFlnbzdyL1RRcTBTR3BFQnFFN0lNZFJEdFNyeHNCTVhBNkgwRytuVWxlNGt4ZkZDCkd6WkpxWEZwM29lSGNzeUp0bUUvRmxEZmNZVWQ3K1daRDlZaFJUTHBPRHplSGRaWVJCS0FQTlNYWU1rRHNkZXIKQUJySmpSUEIzV1JvSmxqcXBselNPU2ZiSmNHdlZQUDZaUlBqWG1VN2pBb1JDOEMyWXZwQ1dOVE5kOGJBYVFXNgpjZnUxWmI5emJtQWU3V2hmTG5NdHNzN2I5Q2pmQUs4Q0RwMVpQMElkaktQTnlPdXp3b0xXVXZWN2xXS2Vxb25sCmt3WmVIcTRGVW9EWmw1d1VuOE1qZUVCQ3B4cWR1dCs0eHlPOS92UStRVEE3TEVwQklRdTBHR1B0ZW5ZSXNMbE0KbjUvaG42c0xzSmhDRlJidHc3REpBb0lCQVFEcGVZeXZYUTkxem5MMmhuOXl5b1ovY1NzelhueFN4Uk40OW5uawpnVnZ5SWdFb2RPcjlpdVlnUmlOZ042UnVVNHJRcEhBZmpYUHJ5dFBlZzc0UVI2YTNhVmNsb3l3amNmMG5jbDU2ClZLZGlkWXhIQVFON1Bid2hvU1I4MnNnRjVhdDNhSXUzc25HQnk3QllLNGtOd3ZkVCtIZkFjczR3eE55OG8xd1EKcjZzSGtmL0tpT2Rub0wzUEphOVJZdDhrK0tGRHR6SDMwdkFTZXpIZjZTMUorN0czQWlZVU90bUJZZTJNOXR0RgpTcERqVWlzeTI5WW4zNFNVVVgzd0tsNk16eGcxcFFQQWhwOE1qME5Ub2R6ZjNKc1MzakkvaS9pTkhHZ2lNSGVNCjc3YmljRnlPWGtYdk5yb0JGaWREdnkvRXRoaUIyeHlycVdzYmlGUkllSUpMaU9KSEFvSUJBUUMvWGpGOWhsNXYKVnlYM21oWlc2SnBkNXJQMjFNYWljejlJL0RaNU9BMWRRajhSUEZzQ0JIY1J6Q2VBbG5NSXdOUi9ETlBsQnFjWQpRL0pjYUNCQVgrNGtvY3MveFlXK1pQQ1J0Mkt1VVh3ZHFXKzNVVmhXdExMMEFUUCt6TlRSRlVxcmVwTitBT05ICktZQ2ZHSWdHYlpvbUJQMm9ydWpEK2I2NldaRTBSaVQvVTUrNHBCYjdadm5scXRGaXYyMGE4R0hyWGhOZS90SFYKSElQeFpmKzZsRkdqNEdtODVTUVhqK1pOV1ZiVFdGaWtGenZST2hxUk81Z2xhaGpteVVINC9ja24rZ2FuYjhvSApseTR3SFhmWmR1V0R4dUU0Wm9hNzBBUFN0YWtsWkM0Sk5zdlRXQjRBMTQ1YUlvYUM1a0c4cHo3ZC95Y25OZUkxClo4SkExdEFRTUFMSkFvSUJBQ2ZBRUJuVFNFeVFaN1pkVTltaGJhREpEY2ZqTUZ1UFBpOThGMmkyTllkV0RzaHEKajQrM1ZGTHVYaHVGbmJOQytnRm4zY2NoZURrUEFWK0RJcHIyK0FXR0k5WStuOGN4SXg3U05BK3oxZ1BIYTZpegpIWHFnR2lYSG44UzZJeEFOK0ZHT05TdURjQnZmS0JqNjRJeTlRd3JDNVBDWkcwM21Wb2F2Y1g5TnlWcXltdEJLCjJzc2o3TzBWeDNHZDJjd2JvS2s4eVg4ZUpNMmd0KzhkYmg2SWdjdGN6RXJwY2hxN0o0eTJnc0tiWFd1Mms3QkgKQ1lFa1p4Z3hmN1dpSVJMc04zejZxVmJnRkxnNHRBZkxLU1hjRTNMMDdhMHdFWk5FNE4zaFRwbHFQc0x5eW05YQowYUZXdWZoeFl5SC9yUXhhekhWZmJ0UXpOZzhyK04yVjF1a3hWd1VDZ2dFQUNuS2dEUlJhNzRVNGcyNGNMaDZBCjN3T0xhN3h1STh4YTlpY2U2anRQTDNwQWF6WjZXWC9ZNkZYWENrUXNmNXZYZmlBN0tWUFZwNU4rRmVGeGNWSkwKZENDSk1qQWNmeXFQbjhUOVZEc0twYXZzZDN1dmNQeG9rTDNJRXU4bjUwcGNTMFJqN1FzclhXVThxbkx5YWpkdApwUW04dDRybEZsMzZOYjVTR1NLRFBwVllNUUowWnNGV2YxMTJGUWdTY3RnUTRJTEFWLzFkZzE4TkxRNitpWGN6Cmhkam9yUEZ0cVFPb05TemRlcWhtSG45T09yd0xXMFovcGZ0RzVNSzBJVjNwcjQ4TThmTStlbStjaSsvdjdTVjYKbmxrclRxTDZWQ0tsTXNuTU5FaGw0d2JrMWVNSHNGQVVhNE5iQ0taOWpFa3RPMzJFcTdWYlprTUY3ZmhNWDdYZgpVUUtDQVFFQTBkQmJvVWM2RzJBdjZ5Szl0SmZDZnVGYmk2UkpZT1FqbzBFcjJzMWVQUFhCSUh6WTQwY3p1d2UrClFOajJjbGZXWHM1Tm5EZTN2OUxkNkZUTm1CbjF4Q2czVXFETk9POWdTekVoaStxZnhnbUFjdVpXZi92N3M5dHYKWFFmd0RndG1YZHlnU1dUQnVNcmU5M2Q1Z1pDNnhRb3dJZHpVaUgxeVFERUMxOThOeUxCa3N2QzJvRDZiYktMRwp4b0dOaXptY0xXcHdGVTdlSTJwMEd4dHVKdkpsZVRsK2Q0eTUrMGFUbnV6Tm5yZDVnbDZxbWtxSDBsMklLTS8wCjA1R2F1ZTBFZXlxVUFtZll0TzV0Q1Q3RXFvWXVZNXF6UXBQVC82YnhBRHhlWDNYc0ZPNzNxdnRZU3FQUlNxbUIKSXpMcjV2dzQ5WjRBU3g4R2g4YVNIS1lHUGhUUld3PT0KLS0tLS1FTkQgUFJJVkFURSBLRVktLS0tLQo=
+    email: platform-admin@pnats.cloud
+
+  script:
+    workflowScriptTimeoutInMs: 5000
+
+  extraTemplates: []
+
+  # External Database Configurations - All disabled, using internal
+
+  # Notification Webhooks (Slack) - using ExternalSecrets
+  notifications:
+    webhooks:
+      slack:
+        onCreateUser: "" # Populated from ExternalSecret
+        onDeleteProject: "" # Populated from ExternalSecret
+        onCreateProject: "" # Populated from ExternalSecret
+        onSubscriptionUpdate: ""
+          # Populated from ExternalSecret
+
+          # Health Probes Configuration
+  startupProbe:
+    enabled: true
+    periodSeconds: 60
+    failureThreshold: 18
+
+  livenessProbe:
+    enabled: true
+    periodSeconds: 60
+    timeoutSeconds: 120
+    initialDelaySeconds: 10
+
+  readinessProbe:
+    enabled: true
+    periodSeconds: 60
+    initialDelaySeconds: 10
+    timeoutSeconds: 120
+
+  # OpenTelemetry Collector
+  openTelemetryCollector:
+    enabled: true
+    replicaCount: 2 # HA
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      grpc: 4317
+      http: 4318
+    sendingQueue:
+      enabled: true
+      size: 10000
+      numConsumers: 5
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # Accounts Service
+  accounts:
+    enabled: true
+    replicaCount: 3 # HA
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 3003
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # Home Service
+  home:
+    enabled: true
+    replicaCount: 2
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 1444
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # Dashboard Service
+  dashboard:
+    enabled: true
+    replicaCount: 3 # HA - primary UI
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 3009
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # Admin Dashboard
+  adminDashboard:
+    enabled: true
+    replicaCount: 2
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 3158
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # Worker Service
+  worker:
+    enabled: true
+    replicaCount: 3 # HA
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    concurrency: 200
+    ports:
+      http: 1445
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    keda:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 20
+      queueSizeThreshold: 150
+      pollingInterval: 30
+      cooldownPeriod: 300
+
+  # Workflow Service
+  workflow:
+    enabled: true
+    replicaCount: 3 # HA
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    workflowTimeoutInMs: 5000
+    ports:
+      http: 3099
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # API Reference
+  apiReference:
+    enabled: true
+    replicaCount: 2
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 1446
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # Documentation
+  docs:
+    enabled: true
+    replicaCount: 2
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 1447
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # App Service
+  app:
+    enabled: true
+    replicaCount: 3 # HA
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 3002
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # Probe Ingest Service
+  probeIngest:
+    enabled: true
+    replicaCount: 3 # HA
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    concurrency: 200
+    ports:
+      http: 3400
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    keda:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 20
+      queueSizeThreshold: 150
+      pollingInterval: 30
+      cooldownPeriod: 300
+
+  # Telemetry Service
+  telemetry:
+    enabled: true
+    replicaCount: 3 # HA
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    concurrency: 200
+    ports:
+      http: 3403
+    resources:
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+      limits:
+        cpu: 4000m
+        memory: 8Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    keda:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 30
+      queueSizeThreshold: 150
+      pollingInterval: 30
+      cooldownPeriod: 300
+
+  # Incoming Request Ingest
+  incomingRequestIngest:
+    enabled: true
+    replicaCount: 3 # HA
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    concurrency: 200
+    ports:
+      http: 3402
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    keda:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 20
+      queueSizeThreshold: 150
+      pollingInterval: 30
+      cooldownPeriod: 300
+
+  # Isolated VM Service
+  isolatedVM:
+    enabled: true
+    replicaCount: 2
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    ports:
+      http: 4572
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+
+  # Server Monitor Ingest
+  serverMonitorIngest:
+    enabled: true
+    replicaCount: 3 # HA
+    disableTelemetryCollection: false
+    disableAutoscaler: false
+    concurrency: 200
+    ports:
+      http: 3404
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    nodeSelector: {}
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+    containerSecurityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+    keda:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 20
+      queueSizeThreshold: 150
+      pollingInterval: 30
+      cooldownPeriod: 300
+
+  # Slack App Integration (uses External Secrets)
+  slackApp:
+    # These will be populated from oneuptime-slack-app-secret
+    existingSecret: oneuptime-slack-app-secret
+    clientIdKey: client-id
+    clientSecretKey: client-secret
+    signingSecretKey: signing-secret # KEDA Autoscaling
+  keda:
+    enabled: true

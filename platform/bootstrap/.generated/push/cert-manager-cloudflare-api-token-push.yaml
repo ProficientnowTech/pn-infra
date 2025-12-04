@@ -1,0 +1,19 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: cloudflare-api-token-push
+  namespace: cert-manager
+spec:
+  refreshInterval: 1h
+  secretStoreRefs:
+    - name: vault-backend
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: cloudflare-api-token
+  data:
+    - match:
+        secretKey: api-token
+        remoteRef:
+          remoteKey: applications/infrastructure/cloudflare
+          property: api-token

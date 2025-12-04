@@ -1,0 +1,140 @@
+{{/*
+Crossplane ProviderConfig Resources
+Configures authentication for Kubernetes and Helm providers
+*/}}
+
+{{- if and .Values.providers.kubernetes.enabled .Values.providerConfig.kubernetes.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: provider-kubernetes
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: provider-kubernetes
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: provider-kubernetes
+    namespace: {{ .Release.Namespace }}
+
+---
+apiVersion: kubernetes.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  credentials:
+    source: InjectedIdentity
+{{- end }}
+
+{{- if and .Values.providers.helm.enabled .Values.providerConfig.helm.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: provider-helm
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: provider-helm
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: provider-helm
+    namespace: {{ .Release.Namespace }}
+
+---
+apiVersion: helm.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  credentials:
+    source: InjectedIdentity
+{{- end }}
+
+{{- if and .Values.providers.vault.enabled .Values.providerConfig.vault.enabled }}
+---
+apiVersion: vault.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: {{ .Values.providerConfig.vault.tokenSecretName }}
+      namespace: {{ .Release.Namespace }}
+      key: {{ .Values.providerConfig.vault.tokenSecretKey }}
+  configuration:
+    address: {{ .Values.providerConfig.vault.address }}
+    skipTlsVerify: {{ .Values.providerConfig.vault.skipTlsVerify }}
+{{- end }}
+
+{{- if and .Values.providers.azuread.enabled .Values.providerConfig.azuread.enabled }}
+---
+apiVersion: azuread.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: {{ .Values.providerConfig.azuread.credentialSecretName }}
+      namespace: {{ .Release.Namespace }}
+      key: {{ .Values.providerConfig.azuread.credentialSecretKey }}
+  {{- if .Values.providerConfig.azuread.tenantId }}
+  tenantID: {{ .Values.providerConfig.azuread.tenantId }}
+  {{- end }}
+{{- end }}
+
+{{- if and .Values.providers.argocd.enabled .Values.providerConfig.argocd.enabled }}
+---
+apiVersion: argocd.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  serverAddr: {{ .Values.providerConfig.argocd.serverAddr }}
+  insecure: {{ .Values.providerConfig.argocd.insecure }}
+  plainText: {{ .Values.providerConfig.argocd.plainText }}
+  credentials:
+    source: Secret
+    secretRef:
+      name: {{ .Values.providerConfig.argocd.tokenSecretName }}
+      namespace: {{ .Release.Namespace }}
+      key: {{ .Values.providerConfig.argocd.tokenSecretKey }}
+{{- end }}

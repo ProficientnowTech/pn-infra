@@ -1,0 +1,555 @@
+---
+# Rook-Ceph Cluster Configuration
+# Storage architecture based on: docs/platform/rfcs/STORAGE-ARCHITECTURE-QNA.md
+# Values passed to upstream rook-ceph-cluster chart
+
+rook-ceph-cluster:
+  # Operator namespace
+  operatorNamespace: rook-ceph
+
+  # Cluster name
+  clusterName: pn-k8s-storage-hyd-a
+
+  # Toolbox for debugging
+  toolbox:
+    enabled: true
+    resources:
+      limits:
+        memory: "1Gi"
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+
+  # Monitoring
+  monitoring:
+    enabled: true
+    createPrometheusRules: true
+
+  # =============================================================================
+  # CEPH CLUSTER SPECIFICATION
+  # Daemon resources (mon, osd, mgr) configuration
+  # =============================================================================
+  cephClusterSpec:
+    # Data directory on host
+    dataDirHostPath: /var/lib/rook
+
+    # Skip upgrade checks
+    skipUpgradeChecks: false
+    continueUpgradeAfterChecksEvenIfNotHealthy: false
+    waitTimeoutForHealthyOSDInMinutes: 10
+
+    # Monitor configuration
+    mon:
+      count: 3
+      allowMultiplePerNode: false
+
+    # Manager configuration
+    mgr:
+      count: 3
+      allowMultiplePerNode: false
+      modules:
+      - name: pg_autoscaler
+        enabled: true
+      - name: rook
+        enabled: true
+
+    # Dashboard configuration
+    dashboard:
+      enabled: true
+      ssl: true
+      port: 8443
+
+    # Monitoring configuration
+    monitoring:
+      enabled: true
+
+    # Network configuration
+    # Using dedicated storage VLANs:
+    # - storage_public (192.168.103.0/24): Client-facing traffic (mon, mgr, mds, rgw)
+    # - storage_private (192.168.104.0/24): OSD replication traffic (cluster network)
+    network:
+      provider: host
+      connections:
+        encryption:
+          enabled: false
+        compression:
+          enabled: false
+        requireMsgr2: false
+      # Use Dedicated storage networks
+      addressRanges:
+        public:
+        - "192.168.103.0/24"
+        cluster:
+        - "192.168.104.0/24"
+      # Crash collector
+    crashCollector:
+      disable: false
+
+    # Log collector
+    logCollector:
+      enabled: true
+      periodicity: daily
+      maxLogSize: 500M
+
+    # Cleanup policy
+    cleanupPolicy:
+      confirmation: "yes-really-destroy-data"
+      sanitizeDisks:
+        method: quick
+        dataSource: zero
+        iteration: 1
+      allowUninstallWithVolumes: false
+
+    # Placement for Ceph daemons
+    placement:
+      all:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: role
+                operator: In
+                values:
+                - storage
+              - key: ceph-osd
+                operator: In
+                values:
+                - enabled
+        tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+
+    # Storage Configuration - OSD nodes and devices
+    storage:
+      useAllNodes: false
+      useAllDevices: false
+      nodes:
+      - name: "k8s-master-01"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-master-02"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-master-03"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-02"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-10"
+        devices:
+        - name: "/dev/sda"
+        - name: "/dev/sdb"
+      - name: "k8s-master-04"
+        devices:
+        - name: "/dev/sda"
+        - name: "/dev/sdb"
+        - name: "/dev/sdc"
+        - name: "/dev/sdd"
+        - name: "/dev/sde"
+
+    removeOSDsIfOutAndSafeToRemove: false
+
+    # Priority classes
+    priorityClassNames:
+      mon: system-node-critical
+      osd: system-node-critical
+      mgr: system-cluster-critical
+
+    # Disruption management
+    disruptionManagement:
+      managePodBudgets: true
+      osdMaintenanceTimeout: 30
+      pgHealthCheckTimeout: 0
+      manageMachineDisruptionBudgets: false
+
+    # Resource limits/requests for Ceph daemons
+    resources:
+      mon:
+        limits:
+          cpu: "2000m"
+          memory: "2Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+      osd:
+        limits:
+          cpu: "2000m"
+          memory: "4Gi"
+        requests:
+          cpu: "1000m"
+          memory: "2Gi"
+      mgr:
+        limits:
+          cpu: "1000m"
+          memory: "1Gi"
+        requests:
+          cpu: "500m"
+          memory: "512Mi"
+      prepareosd:
+        requests:
+          cpu: "500m"
+          memory: "50Mi"
+      crashcollector:
+        limits:
+          cpu: "500m"
+          memory: "60Mi"
+        requests:
+          cpu: "100m"
+          memory: "60Mi"
+      logcollector:
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+        requests:
+          cpu: "100m"
+          memory: "100Mi"
+      cleanup:
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+        requests:
+          cpu: "100m"
+          memory: "100Mi"
+
+  # =============================================================================
+  # CEPH BLOCK POOLS (RBD)
+  # Naming convention: {layer}-{type}-{medium}-{tier/purpose}
+  # =============================================================================
+  cephBlockPools:
+  # ---------------------------------------------------------------------------
+  # Pool 1: Platform Critical-Replicated (3-way replication)
+  # Purpose: Platform DBs, K8s backups, secrets, GitOps state
+  # ---------------------------------------------------------------------------
+  - name: plt-critical-replicated
+    spec:
+      failureDomain: host
+      replicated:
+        size: 3
+        requireSafeReplicaSize: true
+    storageClass:
+      enabled: true
+      name: plt-blk-hdd-repl
+      isDefault: true
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      parameters:
+        imageFormat: "2"
+        imageFeatures: layering
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+        csi.storage.k8s.io/node-stage-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/fstype: ext4
+
+  # ---------------------------------------------------------------------------
+  # Pool 2: Application Critical-Replicated (3-way replication)
+  # Purpose: Application DBs, user data, critical app storage
+  # ---------------------------------------------------------------------------
+  - name: app-critical-replicated
+    spec:
+      failureDomain: host
+      replicated:
+        size: 3
+        requireSafeReplicaSize: true
+    storageClass:
+      enabled: true
+      name: app-blk-hdd-repl
+      isDefault: false
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      parameters:
+        imageFormat: "2"
+        imageFeatures: layering
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+        csi.storage.k8s.io/node-stage-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/fstype: ext4
+
+  # ---------------------------------------------------------------------------
+  # Pool 3: Bulk Erasure Coded (EC 4+2)
+  # Purpose: Telemetry, logs, metrics, traces, build artifacts
+  # Efficiency: 66.7% (can lose 2 chunks)
+  # ---------------------------------------------------------------------------
+  - name: bulk-ec
+    spec:
+      failureDomain: osd # OSD-level for EC on limited nodes
+      erasureCoded:
+        dataChunks: 4
+        codingChunks: 2
+    storageClass:
+      enabled: true
+      name: infra-blk-hdd-ec
+      isDefault: false
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      parameters:
+        imageFormat: "2"
+        imageFeatures: layering
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+        csi.storage.k8s.io/node-stage-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/fstype: ext4
+  # =============================================================================
+  # CEPH FILESYSTEMS (CephFS)
+  # Shared filesystem with tiered data pools
+  # =============================================================================
+  cephFileSystems:
+  - name: cephfs
+    spec:
+      metadataPool:
+        replicated:
+          size: 3
+          requireSafeReplicaSize: true
+      dataPools:
+      # Primary data pool - replicated for reliability
+      - name: data-replicated
+        failureDomain: host
+        replicated:
+          size: 3
+      # Bulk data pool - EC for capacity efficiency (Phase 2)
+      # Uncomment when you have enough OSDs for EC
+      # - name: data-ec
+      #   failureDomain: osd
+      #   erasureCoded:
+      #     dataChunks: 4
+      #     codingChunks: 2
+      metadataServer:
+        activeCount: 1
+        activeStandby: true
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "4Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+        priorityClassName: system-cluster-critical
+      preserveFilesystemOnDelete: false
+    storageClass:
+      enabled: true
+      name: ceph-filesystem
+      isDefault: false
+      pool: data-replicated
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      parameters:
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-cephfs-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-cephfs-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: "{{ .Release.Namespace }}"
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-cephfs-node
+        csi.storage.k8s.io/node-stage-secret-namespace: "{{ .Release.Namespace }}"
+  # =============================================================================
+  # CEPH OBJECT STORES (S3/RGW)
+  # Object storage with tiered pools
+  # =============================================================================
+  cephObjectStores:
+  # ---------------------------------------------------------------------------
+  # Application Object Store - Primary S3 for applications
+  # Purpose: User files, resumes, documents, application data
+  # ---------------------------------------------------------------------------
+  - name: app-objectstore
+    spec:
+      metadataPool:
+        failureDomain: host
+        replicated:
+          size: 3
+      dataPool:
+        failureDomain: host
+        replicated:
+          size: 3
+      preservePoolsOnDelete: true
+      gateway:
+        port: 80
+        instances: 2
+        priorityClassName: system-cluster-critical
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+    storageClass:
+      enabled: true
+      name: app-obj-s3
+      reclaimPolicy: Delete
+      volumeBindingMode: Immediate
+      parameters:
+        region: ap-south-2
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+      host:
+        name: app-obj-store.pnats.cloud
+        path: /
+      tls:
+      - hosts:
+        - app-obj-store.pnats.cloud
+        secretName: ceph-rgw-s3-tls
+
+  # ---------------------------------------------------------------------------
+  # Bulk Object Store - EC-based for telemetry/backups
+  # Purpose: Logs, metrics, traces, backups, build artifacts
+  # ---------------------------------------------------------------------------
+  - name: bulk-objectstore
+    spec:
+      metadataPool:
+        failureDomain: host
+        replicated:
+          size: 3
+      dataPool:
+        failureDomain: osd
+        erasureCoded:
+          dataChunks: 4
+          codingChunks: 2
+      preservePoolsOnDelete: true
+      gateway:
+        port: 80
+        instances: 1
+        priorityClassName: system-cluster-critical
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "1Gi"
+          requests:
+            cpu: "250m"
+            memory: "512Mi"
+    storageClass:
+      enabled: true
+      name: infra-obj-s3
+      reclaimPolicy: Delete
+      volumeBindingMode: Immediate
+      parameters:
+        region: ap-south-2
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+      host:
+        name: plt-obj-store.pnats.cloud
+        path: /
+      tls:
+      - hosts:
+        - plt-obj-store.pnats.cloud
+        secretName: ceph-rgw-s3-tls
+  # =============================================================================
+  # INGRESS - Ceph Dashboard
+  # =============================================================================
+  ingress:
+    dashboard:
+      ingressClassName: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+        nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+        nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+      host:
+        name: ceph.pnats.cloud
+        path: /
+      tls:
+      - hosts:
+        - ceph.pnats.cloud
+        secretName: ceph-dashboard-tls
+
+# =============================================================================
+# CUSTOM RESOURCES (Not in upstream rook-ceph-cluster chart)
+# These are rendered by our local templates
+# =============================================================================
+
+# Namespace for Ceph cluster (used by custom templates)
+namespace: pn-k8s-storage-hyd-a
+
+# -----------------------------------------------------------------------------
+# CEPH OBJECT STORE USERS
+# S3 user accounts with quotas and capabilities
+# -----------------------------------------------------------------------------
+cephObjectStoreUsers:
+- name: db-user
+  store: app-objectstore
+  displayName: "Databases Backup User"
+  quotas:
+    maxSize: "100Gi"
+    maxObjects: 10000
+
+- name: admin
+  store: app-objectstore
+  displayName: "Admin User"
+  quotas:
+    maxSize: "256Gi"
+    maxObjects: 1000000
+  capabilities:
+    user: "*"
+    bucket: "*"
+
+- name: telemetry-user
+  store: bulk-objectstore
+  displayName: "Telemetry Service User"
+  quotas:
+    maxSize: "500Gi"
+    maxObjects: 10000000
+
+# -----------------------------------------------------------------------------
+# Harbor Object Store Automation
+# -----------------------------------------------------------------------------
+harborObjectStore:
+  enabled: true
+  storeName: app-objectstore
+  storageClassName: app-obj-s3
+  bucketName: harbor
+  bucketMaxSize: 500Gi
+  bucketMaxObjects: 1000000
+  endpoint: https://app-obj-store.pnats.cloud
+  bootstrapSecretName: harbor-s3-bootstrap
+  pushSecretName: harbor-s3-vault-sync
+  secretStoreName: harbor-rgw-kubernetes
+  serviceAccountName: harbor-objectstore-sync
+  vaultPath: applications/developer-platform/harbor/s3
+  user:
+    name: harbor-registry
+    displayName: "Harbor Registry User"
+
+# -----------------------------------------------------------------------------
+# MULTI-SITE CONFIGURATION (Optional - for future multi-AZ)
+# -----------------------------------------------------------------------------
+cephObjectRealm:
+  enabled: true
+  name: pn-platform-realm
+
+cephObjectZoneGroup:
+  enabled: true
+  name: ap-south-2
+  realm: pn-platform-realm
+
+cephObjectZone:
+  enabled: true
+  name: ap-south-2a
+  zoneGroup: ap-south-2
+  metadataPool:
+    failureDomain: host
+    replicated:
+      size: 3
+  dataPool:
+    failureDomain: host
+    replicated:
+      size: 3

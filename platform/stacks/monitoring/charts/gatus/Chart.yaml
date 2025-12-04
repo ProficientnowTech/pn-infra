@@ -1,0 +1,31 @@
+apiVersion: v2
+name: pn-uptime-kuma
+description: Uptime Kuma monitoring for PN Infrastructure
+type: application
+version: 0.1.0
+appVersion: "v5.27.2"
+
+keywords:
+- status-pages-gatus
+- uptime-monitoring
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: monitoring
+  platform.pnats.cloud/component: status-monitoring
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'gatus'
+  platform.pnats.cloud/resource-type: application
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: status-monitoring
+  platform.pnats.cloud/component-category: monitoring
+
+dependencies:
+- name: gatus
+  version: 1.4.4
+  repository: https://twin.github.io/helm-charts

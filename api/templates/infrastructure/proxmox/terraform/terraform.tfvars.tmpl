@@ -1,0 +1,78 @@
+# Proxmox Infrastructure Variables
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+# Platform: {{ .Infrastructure.Platform }}
+# Provider: {{ .Infrastructure.Provider }}
+
+# Proxmox connection
+proxmox_api_url          = "{{ .Proxmox.Endpoint }}"
+proxmox_api_token_id     = "{{ .Proxmox.ApiTokenId }}"
+proxmox_api_token_secret = "{{ .Proxmox.ApiTokenSecret }}"
+
+# Proxmox node and storage
+proxmox_node      = "{{ .Proxmox.NodeName }}"
+proxmox_datastore = "{{ .Proxmox.Datastore }}"
+proxmox_iso_storage = "{{ .Proxmox.IsoStorage }}"
+
+# Resource pool
+resource_pool = "{{ .Proxmox.Pool }}"
+
+# Network configuration
+network_bridge    = "{{ .Proxmox.Network.Bridge }}"
+network_model     = "{{ .Proxmox.Network.Model }}"
+network_firewall  = {{ .Proxmox.Network.Firewall }}
+vlan_id          = {{ .Networks.Management.VlanId }}
+
+# Gateway and DNS
+gateway     = "{{ .Networks.Management.Gateway }}"
+dns_servers = {{ .Networks.Management.DnsServers | toJson }}
+
+# VM template
+template_id   = {{ .Proxmox.Template.Id }}
+template_name = "{{ .Proxmox.Template.Name }}"
+
+# VM defaults
+vm_os_type        = "{{ .Proxmox.VmDefaults.OsType }}"
+vm_boot_order     = "{{ .Proxmox.VmDefaults.BootOrder }}"
+vm_scsihw         = "{{ .Proxmox.VmDefaults.Scsihw }}"
+vm_agent          = "{{ .Proxmox.VmDefaults.Agent }}"
+vm_balloon        = {{ .Proxmox.VmDefaults.Balloon }}
+vm_cpu_type       = "{{ .Proxmox.VmDefaults.CpuType }}"
+vm_hotplug        = "{{ .Proxmox.VmDefaults.Hotplug }}"
+
+# Cloud-init
+cloudinit_enabled = {{ .Proxmox.Cloudinit.Enabled }}
+cloudinit_storage = "{{ .Proxmox.Cloudinit.Storage }}"
+
+# SSH configuration
+ssh_public_key  = "{{ .Ssh.PublicKey }}"
+ssh_user        = "{{ .Ssh.User }}"
+
+# Hosts
+hosts = {
+{{- range $i, $host := .Hosts }}
+  "{{ $host.Name }}" = {
+    vmid        = {{ add 100 $i }}
+    name        = "{{ $host.Name }}"
+    target_node = "{{ $.Proxmox.NodeName }}"
+    cores       = {{ $host.Cpu }}
+    sockets     = {{ $.Proxmox.Template.Sockets }}
+    memory      = {{ $host.Memory }}
+    disk_size   = "{{ $host.Disk }}G"
+    ip_address  = "{{ $host.Ip }}"
+    cidr        = {{ $.Networks.Management.Cidr | quote }}
+    gateway     = "{{ $.Networks.Management.Gateway }}"
+    role        = "{{ $host.Role }}"
+    {{- if $host.Labels }}
+    labels      = {{ $host.Labels | toJson }}
+    {{- end }}
+  }
+{{- end }}
+}
+
+# Tags
+tags = {
+  Environment = "{{ .Environment }}"
+  ManagedBy   = "terraform"
+  ConfigPkg   = "{{ .ConfigPackage }}"
+}

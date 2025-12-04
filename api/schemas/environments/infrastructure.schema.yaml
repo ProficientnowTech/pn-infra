@@ -1,0 +1,168 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Infrastructure Environment Configuration Schema
+description: Validates environment-specific overrides for the infrastructure module
+type: object
+
+required:
+  - configPackage
+  - environment
+
+properties:
+  configPackage:
+    type: string
+    description: Reference to the config package (always "core")
+    enum: ["core"]
+
+  environment:
+    type: string
+    description: Environment identifier (development, staging, production, etc.)
+    pattern: "^[a-z0-9-]+$"
+
+  # Proxmox-specific configuration
+  proxmox:
+    type: object
+    description: Proxmox platform secrets and overrides
+    properties:
+      api_token:
+        type: string
+        description: Proxmox API token for authentication
+        minLength: 1
+      endpoint:
+        type: string
+        description: Proxmox API endpoint URL (optional override)
+        format: uri
+      node_name:
+        type: string
+        description: Specific Proxmox node for deployment (optional override)
+      datastore:
+        type: string
+        description: Storage location for VM disks (optional override)
+    required:
+      - api_token
+
+  # AWS-specific configuration
+  aws:
+    type: object
+    description: AWS platform secrets and overrides
+    properties:
+      access_key:
+        type: string
+        description: AWS access key ID
+        pattern: "^AKIA[0-9A-Z]{16}$"
+      secret_key:
+        type: string
+        description: AWS secret access key
+        minLength: 1
+      region:
+        type: string
+        description: AWS region for deployment (optional override)
+        pattern: "^[a-z]{2}-[a-z]+-[0-9]$"
+      vpc_id:
+        type: string
+        description: VPC ID for resource deployment (optional override)
+    required:
+      - access_key
+      - secret_key
+
+  # GCP-specific configuration
+  gcp:
+    type: object
+    description: GCP platform secrets and overrides
+    properties:
+      credentials_json:
+        type: string
+        description: GCP service account credentials JSON
+        minLength: 1
+      project_id:
+        type: string
+        description: GCP project ID (optional override)
+      region:
+        type: string
+        description: GCP region for deployment (optional override)
+    required:
+      - credentials_json
+
+  # Azure-specific configuration
+  azure:
+    type: object
+    description: Azure platform secrets and overrides
+    properties:
+      subscription_id:
+        type: string
+        description: Azure subscription ID
+        format: uuid
+      client_id:
+        type: string
+        description: Azure service principal client ID
+        format: uuid
+      client_secret:
+        type: string
+        description: Azure service principal client secret
+        minLength: 1
+      tenant_id:
+        type: string
+        description: Azure tenant ID
+        format: uuid
+      resource_group:
+        type: string
+        description: Azure resource group (optional override)
+      location:
+        type: string
+        description: Azure location for deployment (optional override)
+    required:
+      - subscription_id
+      - client_id
+      - client_secret
+      - tenant_id
+
+  # SSH configuration
+  ssh:
+    type: object
+    description: SSH key paths for VM access
+    properties:
+      private_key_path:
+        type: string
+        description: Absolute path to SSH private key
+        pattern: "^/"
+      public_key:
+        type: string
+        description: SSH public key content
+      user:
+        type: string
+        description: SSH user for VM access (optional override)
+        pattern: "^[a-z_][a-z0-9_-]*$"
+      port:
+        type: integer
+        description: SSH port (optional override)
+        minimum: 1
+        maximum: 65535
+        default: 22
+    required:
+      - private_key_path
+
+  # Host overrides (optional environment-specific IP addresses)
+  host_overrides:
+    type: object
+    description: Environment-specific host configuration overrides
+    additionalProperties:
+      type: object
+      properties:
+        ip:
+          type: string
+          description: Override IP address for this host
+          format: ipv4
+        ansible_host:
+          type: string
+          description: Override Ansible connection host
+          format: ipv4
+        additional_disks:
+          type: array
+          description: Additional disk configurations
+          items:
+            type: object
+            properties:
+              size:
+                type: string
+                pattern: "^[0-9]+(G|T)$"
+              storage:
+                type: string

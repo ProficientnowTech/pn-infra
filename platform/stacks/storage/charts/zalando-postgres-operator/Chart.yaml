@@ -1,0 +1,36 @@
+apiVersion: v2
+name: postgres-operator
+description: Zalando PostgreSQL Operator for HA PostgreSQL clusters
+type: application
+version: 0.1.0
+appVersion: "v1.14.0"
+
+keywords:
+- postgresql
+- database
+- high-availability
+- operator
+- kubernetes
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: storage
+  platform.pnats.cloud/component: zalando-postgres-operator
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'zalando-postgres-operator'
+  platform.pnats.cloud/resource-type: CRDs
+  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb"]'
+
+labels:
+  platform.pnats.cloud/component: zolando-postgres-operator
+  platform.pnats.cloud/component-category: database
+  platform.pnats.cloud/db-type: relational-db
+  platform.pnats.cloud/db-name: postgres
+
+dependencies:
+- name: postgres-operator
+  version: 1.14.0
+  repository: https://opensource.zalando.com/postgres-operator/charts/postgres-operator

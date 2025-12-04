@@ -1,0 +1,37 @@
+# Platform-Agnostic Network Configuration
+# Network topology and addressing - platform-specific details in platform configs
+
+networks:
+  # Management network
+  - name: management
+    vlan_id: 106
+    cidr: 192.168.106.0/24
+    gateway: 192.168.106.1
+    dns_servers:
+      - 8.8.8.8
+      - 8.8.4.4
+    description: Management network for Kubernetes cluster nodes
+
+  # Pod network (for reference, actual CNI config in orchestrator)
+  - name: pod-network
+    cidr: 10.233.64.0/18
+    description: Kubernetes pod network (CNI managed)
+
+  # Service network (for reference, actual config in orchestrator)
+  - name: service-network
+    cidr: 10.233.0.0/18
+    description: Kubernetes service network
+
+# DNS configuration
+dns:
+  domain: cluster.local
+  search_domains:
+    - cluster.local
+    - svc.cluster.local
+
+# NTP servers
+ntp:
+  servers:
+    - 0.pool.ntp.org
+    - 1.pool.ntp.org
+    - 2.pool.ntp.org

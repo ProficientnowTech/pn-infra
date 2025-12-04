@@ -1,0 +1,96 @@
+# Kind Cluster Configuration
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+# Orchestrator: {{ .ContainerOrchestration.Orchestrator }}
+
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: {{ .Kind.Name }}
+
+# Networking configuration
+networking:
+  apiServerAddress: "{{ .Kind.Networking.ApiServerAddress }}"
+  apiServerPort: {{ .Kind.Networking.ApiServerPort }}
+  podSubnet: "{{ .Kind.Networking.PodSubnet }}"
+  serviceSubnet: "{{ .Kind.Networking.ServiceSubnet }}"
+  {{- if .Kind.Networking.DnsDomain }}
+  dnsDomain: "{{ .Kind.Networking.DnsDomain }}"
+  {{- end }}
+  disableDefaultCNI: {{ .Kind.Networking.DisableDefaultCni }}
+  kubeProxyMode: "{{ .Kind.Networking.KubeProxyMode }}"
+
+# Nodes configuration
+nodes:
+# Control plane nodes
+{{- $nodes := index .Kind "nodes" }}
+{{- $controlPlane := index $nodes "control_plane" }}
+{{- $controlPlaneCount := index $controlPlane "count" }}
+{{- $controlPlaneImage := index $controlPlane "image" }}
+{{- range $i := until $controlPlaneCount }}
+- role: control-plane
+  image: {{ $controlPlaneImage }}
+  {{- if $.Kind.PortMappings }}
+  {{- if eq $i 0 }}
+  # Port mappings (only on first control plane node)
+  extraPortMappings:
+  {{- range $.Kind.PortMappings }}
+  - containerPort: {{ .ContainerPort }}
+    hostPort: {{ .HostPort }}
+    protocol: {{ .Protocol }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+  {{- if $.Kind.ExtraMounts }}
+  extraMounts:
+  {{- range $.Kind.ExtraMounts }}
+  - hostPath: {{ .HostPath }}
+    containerPath: {{ .ContainerPath }}
+    {{- if .ReadOnly }}
+    readOnly: {{ .ReadOnly }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+
+# Worker nodes
+{{- range $i := until .Kind.Nodes.Workers.Count }}
+- role: worker
+  image: {{ $.Kind.Nodes.Workers.Image }}
+  {{- if $.Kind.ExtraMounts }}
+  extraMounts:
+  {{- range $.Kind.ExtraMounts }}
+  - hostPath: {{ .HostPath }}
+    containerPath: {{ .ContainerPath }}
+    {{- if .ReadOnly }}
+    readOnly: {{ .ReadOnly }}
+    {{- end }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+
+# Feature gates (optional)
+{{- if .Kind.FeatureGates }}
+featureGates: {{ .Kind.FeatureGates | toJson }}
+{{- end }}
+
+# Runtime config (optional)
+{{- if .Kind.RuntimeConfig }}
+runtimeConfig: {{ .Kind.RuntimeConfig | toJson }}
+{{- end }}
+
+# Kubeadm config patches (optional)
+{{- if .Kind.KubeadmConfigPatches }}
+kubeadmConfigPatches:
+{{- range .Kind.KubeadmConfigPatches }}
+- |
+{{ . | indent 2 }}
+{{- end }}
+{{- end }}
+
+# Container runtime
+{{- if .Kind.ContainerRuntime }}
+containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+    endpoint = ["https://registry-1.docker.io"]
+{{- end }}

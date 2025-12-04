@@ -1,0 +1,100 @@
+# Business Applications Configuration (App-of-Apps Helm Values)
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+
+# Global configuration
+global:
+  environment: {{ .Environment }}
+  domain: {{ .Environment }}.local
+  {{- if .Global }}
+  {{- if .Global.ImageRegistry }}
+  imageRegistry: {{ .Global.ImageRegistry }}
+  {{- end }}
+  {{- if .Global.ImagePullSecrets }}
+  imagePullSecrets: {{ .Global.ImagePullSecrets | toJson }}
+  {{- end }}
+  {{- if .Global.StorageClass }}
+  storageClass: {{ .Global.StorageClass }}
+  {{- end }}
+  {{- if .Global.IngressClassName }}
+  ingressClassName: {{ .Global.IngressClassName }}
+  {{- end }}
+  {{- end }}
+
+# ArgoCD app-of-apps configuration
+argocd:
+  namespace: argocd
+  project: default
+  {{- if .Argocd }}
+  syncWave: {{ .Argocd.SyncWave }}
+  autoSync: {{ .Argocd.AutoSync }}
+  prune: {{ .Argocd.Prune }}
+  selfHeal: {{ .Argocd.SelfHeal }}
+  {{- if .Argocd.Retry }}
+  retry:
+    limit: {{ .Argocd.Retry.Limit }}
+    backoff:
+      duration: {{ .Argocd.Retry.Backoff.Duration }}
+      factor: {{ .Argocd.Retry.Backoff.Factor }}
+      maxDuration: {{ .Argocd.Retry.Backoff.MaxDuration }}
+  {{- end }}
+  {{- end }}
+
+# Applications
+applications:
+{{- range .Applications }}
+{{- if .Enabled }}
+  - name: {{ .Name }}
+    namespace: {{ .Namespace }}
+    {{- if .SyncWave }}
+    syncWave: {{ .SyncWave }}
+    {{- end }}
+    source:
+      repoURL: https://github.com/your-org/your-repo.git
+      targetRevision: {{ .Source.TargetRevision }}
+      path: {{ .Source.Path }}
+      {{- if eq .Source.Type "helm" }}
+      helm:
+        releaseName: {{ .Name }}
+        values: |
+{{ .Values | toYaml | indent 10 }}
+      {{- end }}
+    {{- if .SyncPolicy }}
+    syncPolicy:
+      automated:
+        prune: {{ .SyncPolicy.Automated.Prune }}
+        selfHeal: {{ .SyncPolicy.Automated.SelfHeal }}
+      syncOptions:
+      {{- range .SyncPolicy.SyncOptions }}
+        - {{ . }}
+      {{- end }}
+    {{- end }}
+    {{- if .Dependencies }}
+    dependencies:
+    {{- range .Dependencies }}
+      - {{ . }}
+    {{- end }}
+    {{- end }}
+{{- end }}
+{{- end }}
+
+# Namespace configurations
+namespaces:
+{{- range $ns, $config := .NamespaceConfigs }}
+  {{ $ns }}:
+    create: {{ $config.Create }}
+    {{- if $config.Labels }}
+    labels: {{ $config.Labels | toJson }}
+    {{- end }}
+    {{- if $config.Annotations }}
+    annotations: {{ $config.Annotations | toJson }}
+    {{- end }}
+    {{- if $config.Secrets }}
+    secrets:
+    {{- range $config.Secrets }}
+      - name: {{ .Name }}
+        type: {{ .Type }}
+        data: {{ .Data | toJson }}
+    {{- end }}
+    {{- end }}
+{{- end }}

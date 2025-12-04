@@ -1,0 +1,6 @@
+applications:
+  - name: fuma-docs
+    namespace: docs
+    chartPath: docs/fuma-docs/chart
+    repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    targetRevision: HEAD

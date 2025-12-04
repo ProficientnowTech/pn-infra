@@ -1,0 +1,72 @@
+# Kubespray Orchestrator Configuration
+# Kubernetes cluster settings for Kubespray deployment
+# Environment-specific overrides come from container-orchestration/environments/<env>.yaml
+
+kubespray:
+  # Kubernetes version
+  kube_version: v1.28.3
+
+  # Cluster identity
+  cluster_name: "{{ .Environment }}-cluster"
+  kube_dns_domain: "{{ .Environment }}.cluster.local"
+
+  # Network plugin
+  kube_network_plugin: cilium # Options: calico, cilium, flannel, weave, canal, kube-ovn, kube-router
+  kube_network_plugin_multus: true
+  cilium_cni_exclusive: false
+
+  # Network ranges
+  kube_service_addresses: 10.233.0.0/18
+  kube_pods_subnet: 10.233.64.0/18
+
+  # DNS configuration
+  dns_mode: coredns # Options: coredns, coredns_dual, manual
+  enable_nodelocaldns: false
+  nodelocaldns_ip: 169.254.25.10
+
+  # Container runtime
+  container_manager: containerd # Options: containerd, cri-o, docker
+
+  # API server configuration
+  kube_apiserver_port: 6443
+  kube_proxy_mode: iptables # Options: iptables, ipvs, none
+
+  # Etcd configuration
+  etcd_deployment_type: host # Options: host, docker, kubeadm
+  etcd_memory_limit: 8192M
+  etcd_quota_backend_bytes: 8GB
+
+  # Addons
+  helm_enabled: true
+  metrics_server_enabled: true
+  ingress_nginx_enabled: false
+  cert_manager_enabled: false
+  dashboard_enabled: false
+  local_path_provisioner_enabled: false
+
+  # MetalLB configuration (for bare metal)
+  metallb_enabled: false
+  # metallb_ip_range: "192.168.1.240-192.168.1.250"
+
+  # Download configuration
+  download_container: true
+  download_force_cache: false
+  download_run_once: true
+
+  # Upgrade configuration
+  upgrade_cluster_setup: false
+  drain_nodes: true
+  drain_grace_period: 600
+  drain_timeout: 900
+
+  # Node configuration
+  kubelet_max_pods: 110
+  kube_read_only_port: 0 # Disabled for security
+  # Feature gates (optional)
+  # kube_feature_gates:
+  #   - "EphemeralContainers=true"
+  #   - "CSIMigration=true"
+
+  # Custom registries (optional)
+  # docker_insecure_registries: []
+  # docker_registry_mirrors: []

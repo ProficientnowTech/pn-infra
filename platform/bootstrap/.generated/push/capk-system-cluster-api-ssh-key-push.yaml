@@ -1,0 +1,19 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: cluster-api-ssh-key-push
+  namespace: capk-system
+spec:
+  refreshInterval: 1h
+  secretStoreRefs:
+    - name: vault-backend
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: cluster-api-ssh-key
+  data:
+    - match:
+        secretKey: ssh-privatekey
+        remoteRef:
+          remoteKey: applications/developer-platform/clusterapi/ssh
+          property: ssh-privatekey

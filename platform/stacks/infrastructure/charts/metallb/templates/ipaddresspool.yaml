@@ -1,0 +1,18 @@
+{{- if .Values.IPAddressPool.enabled }}
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: {{ .Values.IPAddressPool.name }}
+  namespace: {{ .Values.IPAddressPool.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.IPAddressPool.name }}
+    app.kubernetes.io/component: ipaddresspool
+    app.kubernetes.io/part-of: metallb
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  addresses:
+    {{- toYaml .Values.IPAddressPool.addresses | nindent 4 }}
+  autoAssign: {{ .Values.IPAddressPool.autoAssign | default true }}
+{{- end }}

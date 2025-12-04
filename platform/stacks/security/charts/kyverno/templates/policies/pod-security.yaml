@@ -1,0 +1,187 @@
+{{/*
+Pod Security Policies
+Enforce container security best practices
+*/}}
+
+{{- if .Values.policies.podSecurity.requireNonRoot.enabled }}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-non-root-user
+  annotations:
+    policies.kyverno.io/title: Require Non-Root User
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Containers must run as non-root users to minimize privilege escalation risks.
+spec:
+  validationFailureAction: {{ .Values.policies.podSecurity.requireNonRoot.validationFailureAction }}
+  background: true
+  rules:
+    - name: check-runAsNonRoot
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces: {{ toYaml .Values.policyExceptions.exemptNamespaces | nindent 16 }}
+      validate:
+        message: "Running as root is not allowed. Set runAsNonRoot to true."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+            containers:
+              - securityContext:
+                  runAsNonRoot: true
+{{- end }}
+
+{{- if .Values.policies.podSecurity.disallowPrivilegeEscalation.enabled }}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privilege-escalation
+  annotations:
+    policies.kyverno.io/title: Disallow Privilege Escalation
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Privilege escalation must be disabled to prevent containers from gaining more privileges than their parent process.
+spec:
+  validationFailureAction: {{ .Values.policies.podSecurity.disallowPrivilegeEscalation.validationFailureAction }}
+  background: true
+  rules:
+    - name: check-allowPrivilegeEscalation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces: {{ toYaml .Values.policyExceptions.exemptNamespaces | nindent 16 }}
+      validate:
+        message: "Privilege escalation is not allowed. Set allowPrivilegeEscalation to false."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  allowPrivilegeEscalation: false
+{{- end }}
+
+{{- if .Values.policies.podSecurity.requireROFilesystem.enabled }}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-ro-filesystem
+  annotations:
+    policies.kyverno.io/title: Require Read-Only Root Filesystem
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Root filesystem must be read-only to prevent malicious code execution.
+spec:
+  validationFailureAction: {{ .Values.policies.podSecurity.requireROFilesystem.validationFailureAction }}
+  background: true
+  rules:
+    - name: check-readOnlyRootFilesystem
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                {{- toYaml .Values.policyExceptions.exemptNamespaces | nindent 16 }}
+                {{- if .Values.policies.podSecurity.requireROFilesystem.exclude.namespaces }}
+                {{- toYaml .Values.policies.podSecurity.requireROFilesystem.exclude.namespaces | nindent 16 }}
+                {{- end }}
+      validate:
+        message: "Root filesystem must be read-only. Set readOnlyRootFilesystem to true."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  readOnlyRootFilesystem: true
+{{- end }}
+
+{{- if .Values.policies.podSecurity.dropAllCapabilities.enabled }}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: drop-all-capabilities
+  annotations:
+    policies.kyverno.io/title: Drop All Capabilities
+    policies.kyverno.io/category: Pod Security Standards (Restricted)
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Containers must drop all Linux capabilities and add back only what is required.
+spec:
+  validationFailureAction: {{ .Values.policies.podSecurity.dropAllCapabilities.validationFailureAction }}
+  background: true
+  rules:
+    - name: check-drop-all-capabilities
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces: {{ toYaml .Values.policyExceptions.exemptNamespaces | nindent 16 }}
+      validate:
+        message: "All capabilities must be dropped. Set drop: ['ALL'] in capabilities."
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  capabilities:
+                    drop:
+                      - ALL
+{{- end }}
+
+{{- if .Values.policies.podSecurity.restrictHostNamespaces.enabled }}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-host-namespaces
+  annotations:
+    policies.kyverno.io/title: Restrict Host Namespaces
+    policies.kyverno.io/category: Pod Security Standards (Baseline)
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Sharing the host namespaces must be disallowed to prevent container breakout.
+spec:
+  validationFailureAction: {{ .Values.policies.podSecurity.restrictHostNamespaces.validationFailureAction }}
+  background: true
+  rules:
+    - name: check-host-namespaces
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces: {{ toYaml .Values.policyExceptions.exemptNamespaces | nindent 16 }}
+      validate:
+        message: "Sharing host namespaces is not allowed. Set hostNetwork, hostIPC, and hostPID to false."
+        pattern:
+          spec:
+            =(hostNetwork): false
+            =(hostIPC): false
+            =(hostPID): false
+{{- end }}

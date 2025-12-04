@@ -1,0 +1,129 @@
+# EnvironmentConfig Examples
+# These resources provide shared configuration data for Crossplane compositions
+
+---
+# Platform-wide defaults
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: EnvironmentConfig
+metadata:
+  name: platform-defaults
+data:
+  # Network and domain settings
+  domain: pnats.cloud
+  clusterIssuer: letsencrypt-prod
+
+  # Storage settings
+  storageClass: plt-blk-hdd-repl
+  backupStorageClass: plt-blk-hdd-repl
+
+  # Azure settings
+  azureRegion: eastus
+  azureResourceGroupPrefix: pn-platform
+
+  # Default resource settings
+  defaultReplicas: 2
+  defaultCPULimit: "1000m"
+  defaultMemoryLimit: "1Gi"
+
+  # Monitoring and observability
+  metricsEnabled: true
+  tracingEnabled: false
+  loggingLevel: info
+
+  # Security settings
+  networkPoliciesEnabled: true
+  podSecurityStandard: restricted
+
+---
+# Development environment overrides
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: EnvironmentConfig
+metadata:
+  name: dev-environment
+  labels:
+    environment: dev
+    tier: non-production
+data:
+  # Development-specific overrides
+  defaultReplicas: 1
+  backupEnabled: false
+  loggingLevel: debug
+  metricsEnabled: true
+
+  # Cost optimization for dev
+  defaultCPULimit: "500m"
+  defaultMemoryLimit: "512Mi"
+
+  # Relaxed policies for development
+  podSecurityStandard: baseline
+
+---
+# Staging environment overrides
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: EnvironmentConfig
+metadata:
+  name: staging-environment
+  labels:
+    environment: staging
+    tier: non-production
+data:
+  # Staging-specific settings
+  defaultReplicas: 2
+  backupEnabled: true
+  backupRetentionDays: 7
+  loggingLevel: info
+
+  # Production-like but smaller
+  defaultCPULimit: "1000m"
+  defaultMemoryLimit: "1Gi"
+
+---
+# Production environment overrides
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: EnvironmentConfig
+metadata:
+  name: production-environment
+  labels:
+    environment: production
+    tier: production
+data:
+  # Production-specific settings
+  defaultReplicas: 3
+  backupEnabled: true
+  backupRetentionDays: 30
+  loggingLevel: warn
+
+  # High availability settings
+  defaultCPULimit: "2000m"
+  defaultMemoryLimit: "2Gi"
+
+  # Enhanced monitoring
+  metricsEnabled: true
+  tracingEnabled: true
+
+  # Strict security
+  podSecurityStandard: restricted
+  networkPoliciesEnabled: true
+
+---
+# Example: Team-specific configuration
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: EnvironmentConfig
+metadata:
+  name: backend-team-config
+  labels:
+    team: backend
+data:
+  # Team-specific settings
+  gitRepoPrefix: "https://github.com/proficientnow/backend-"
+  argocdProject: backend
+  namespace: backend
+
+  # Team resource quotas
+  cpuQuota: "10"
+  memoryQuota: "20Gi"
+  storageQuota: "100Gi"
+
+  # Team-specific integrations
+  slackChannel: "#backend-alerts"
+  oncallTeam: backend-oncall

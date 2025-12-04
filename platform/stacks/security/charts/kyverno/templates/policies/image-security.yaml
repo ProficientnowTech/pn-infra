@@ -1,0 +1,83 @@
+{{/*
+Image Security Policies
+Enforce container image best practices
+*/}}
+
+{{- if .Values.policies.images.requirePullPolicy.enabled }}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-imagepullpolicy
+  annotations:
+    policies.kyverno.io/title: Require Image Pull Policy
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: low
+    policies.kyverno.io/description: >-
+      All containers must have imagePullPolicy set to Always or IfNotPresent.
+spec:
+  validationFailureAction: {{ .Values.policies.images.requirePullPolicy.validationFailureAction }}
+  background: true
+  rules:
+    - name: check-imagepullpolicy
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces: {{ toYaml .Values.policyExceptions.exemptNamespaces | nindent 16 }}
+      validate:
+        message: "imagePullPolicy must be set to 'Always' or 'IfNotPresent'."
+        pattern:
+          spec:
+            containers:
+              - imagePullPolicy: "Always | IfNotPresent"
+{{- end }}
+
+{{- if .Values.policies.images.disallowLatestTag.enabled }}
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Disallow Latest Tag
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      Using the ':latest' tag is not allowed as it's mutable and can lead to unexpected deployments.
+spec:
+  validationFailureAction: {{ .Values.policies.images.disallowLatestTag.validationFailureAction }}
+  background: true
+  rules:
+    - name: check-image-tag
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                {{- toYaml .Values.policyExceptions.exemptNamespaces | nindent 16 }}
+                {{- if .Values.policies.images.disallowLatestTag.exclude.namespaces }}
+                {{- toYaml .Values.policies.images.disallowLatestTag.exclude.namespaces | nindent 16 }}
+                {{- end }}
+      validate:
+        message: "Using the ':latest' tag is not allowed. Specify a specific version tag."
+        foreach:
+          - list: "request.object.spec.containers"
+            deny:
+              conditions:
+                any:
+                  - key: "{{ "{{" }} element.image {{ "}}" }}"
+                    operator: Equals
+                    value: "*:latest"
+                  - key: "{{ "{{" }} element.image {{ "}}" }}"
+                    operator: Equals
+                    value: "*"
+{{- end }}

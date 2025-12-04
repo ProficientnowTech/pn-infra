@@ -1,0 +1,36 @@
+apiVersion: v2
+name: pn-falco
+description: Cloud-native runtime security and threat detection for Kubernetes
+namespace: falco
+type: application
+version: 1.0.0
+appVersion: "0.38.2"
+
+keywords:
+  - security
+  - runtime-security
+  - threat-detection
+  - intrusion-detection
+  - audit
+  - compliance
+  - ebpf
+
+maintainers:
+  - name: Platform Team
+    email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: runtime-security
+  platform.pnats.cloud/component: threat-detection
+  platform.pnats.cloud/docs: 'https://falco.org/docs/'
+  platform.pnats.cloud/deploys: 'falco'
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: threat-detection
+  platform.pnats.cloud/component-category: 'security/runtime'
+
+dependencies:
+  - name: falco
+    version: 4.9.0
+    repository: https://falcosecurity.github.io/charts

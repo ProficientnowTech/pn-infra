@@ -1,0 +1,343 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Provisioner Environment Configuration Schema
+description: Validates environment-specific overrides for the provisioner module
+type: object
+
+required:
+  - configPackage
+  - environment
+
+properties:
+  configPackage:
+    type: string
+    description: Reference to the config package (always "core")
+    enum: ["core"]
+
+  environment:
+    type: string
+    description: Environment identifier (development, staging, production, etc.)
+    pattern: "^[a-z0-9-]+$"
+
+  # Ansible configuration
+  ansible:
+    type: object
+    description: Ansible-specific configuration and secrets
+    properties:
+      vault_password:
+        type: string
+        description: Ansible Vault password for encrypted variables
+        minLength: 8
+      vault_password_file:
+        type: string
+        description: Path to Ansible Vault password file
+        pattern: "^/"
+      connection_timeout:
+        type: integer
+        description: SSH connection timeout in seconds
+        minimum: 1
+        default: 30
+      forks:
+        type: integer
+        description: Number of parallel processes
+        minimum: 1
+        maximum: 50
+        default: 5
+      become_method:
+        type: string
+        description: Privilege escalation method
+        enum: ["sudo", "su", "pbrun", "pfexec", "doas", "dzdo", "ksu"]
+        default: "sudo"
+
+  # SSH configuration
+  ssh:
+    type: object
+    description: SSH access configuration for target hosts
+    properties:
+      private_key_path:
+        type: string
+        description: Absolute path to SSH private key
+        pattern: "^/"
+      user:
+        type: string
+        description: SSH user for host access
+        pattern: "^[a-z_][a-z0-9_-]*$"
+      port:
+        type: integer
+        description: SSH port
+        minimum: 1
+        maximum: 65535
+        default: 22
+      strict_host_key_checking:
+        type: boolean
+        description: Enable strict host key checking
+        default: true
+    required:
+      - private_key_path
+      - user
+
+  # Role-specific overrides
+  role_overrides:
+    type: object
+    description: Environment-specific overrides for provisioner roles
+    additionalProperties:
+      type: object
+      properties:
+        # Base role overrides
+        base:
+          type: object
+          properties:
+            timezone:
+              type: string
+              pattern: "^[A-Za-z]+/[A-Za-z_]+$"
+            locale:
+              type: string
+              pattern: "^[a-z]{2}_[A-Z]{2}\\.[A-Z0-9-]+$"
+            ntp_servers:
+              type: array
+              items:
+                type: string
+                format: hostname
+
+        # Software role overrides
+        software:
+          type: object
+          properties:
+            packages:
+              type: array
+              description: Additional packages to install
+              items:
+                type: string
+            repositories:
+              type: array
+              description: Additional package repositories
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  url:
+                    type: string
+                    format: uri
+                  gpg_key:
+                    type: string
+                    format: uri
+
+        # System settings overrides
+        system_settings:
+          type: object
+          properties:
+            kernel_modules:
+              type: array
+              items:
+                type: string
+            sysctl_params:
+              type: object
+              additionalProperties:
+                oneOf:
+                  - type: string
+                  - type: number
+                  - type: boolean
+            systemd_services:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  enabled:
+                    type: boolean
+                  state:
+                    type: string
+                    enum: ["started", "stopped", "restarted", "reloaded"]
+
+        # Disk management overrides
+        disk_management:
+          type: object
+          properties:
+            partitions:
+              type: array
+              items:
+                type: object
+                properties:
+                  device:
+                    type: string
+                  number:
+                    type: integer
+                  size:
+                    type: string
+                  fstype:
+                    type: string
+            mounts:
+              type: array
+              items:
+                type: object
+                properties:
+                  path:
+                    type: string
+                    pattern: "^/"
+                  src:
+                    type: string
+                  fstype:
+                    type: string
+                  opts:
+                    type: string
+
+        # Identity/users overrides
+        identity_users:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                type: object
+                properties:
+                  username:
+                    type: string
+                    pattern: "^[a-z_][a-z0-9_-]*$"
+                  uid:
+                    type: integer
+                    minimum: 1000
+                  groups:
+                    type: array
+                    items:
+                      type: string
+                  shell:
+                    type: string
+                  ssh_keys:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - username
+
+        # Directory management overrides
+        directories:
+          type: object
+          properties:
+            paths:
+              type: array
+              items:
+                type: object
+                properties:
+                  path:
+                    type: string
+                    pattern: "^/"
+                  owner:
+                    type: string
+                  group:
+                    type: string
+                  mode:
+                    type: string
+                    pattern: "^[0-7]{3,4}$"
+                  recurse:
+                    type: boolean
+                required:
+                  - path
+
+        # Networking overrides
+        networking:
+          type: object
+          properties:
+            interfaces:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  method:
+                    type: string
+                    enum: ["static", "dhcp"]
+                  address:
+                    type: string
+                    format: ipv4
+                  netmask:
+                    type: string
+                  gateway:
+                    type: string
+                    format: ipv4
+            dns_servers:
+              type: array
+              items:
+                type: string
+                format: ipv4
+            firewall_rules:
+              type: array
+              items:
+                type: object
+                properties:
+                  port:
+                    oneOf:
+                      - type: integer
+                      - type: string
+                  protocol:
+                    type: string
+                    enum: ["tcp", "udp", "icmp"]
+                  source:
+                    type: string
+                  action:
+                    type: string
+                    enum: ["allow", "deny"]
+
+        # Security overrides
+        security:
+          type: object
+          properties:
+            enable_selinux:
+              type: boolean
+            enable_apparmor:
+              type: boolean
+            enable_firewall:
+              type: boolean
+            ssh_hardening:
+              type: object
+              properties:
+                disable_root_login:
+                  type: boolean
+                disable_password_auth:
+                  type: boolean
+                allowed_users:
+                  type: array
+                  items:
+                    type: string
+            fail2ban:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                bantime:
+                  type: integer
+                maxretry:
+                  type: integer
+
+  # Output configuration
+  output:
+    type: object
+    description: Output artifact configuration
+    properties:
+      image_format:
+        type: string
+        description: Image output format
+        enum: ["qcow2", "raw", "vmdk", "vdi"]
+        default: "qcow2"
+      compression:
+        type: boolean
+        description: Enable output compression
+        default: false
+      remote_storage:
+        type: object
+        description: Remote storage configuration for artifacts
+        properties:
+          enabled:
+            type: boolean
+            default: false
+          type:
+            type: string
+            enum: ["s3", "gcs", "azure_blob"]
+          bucket:
+            type: string
+          prefix:
+            type: string
+          credentials:
+            type: object
+            additionalProperties: true

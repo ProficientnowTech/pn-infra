@@ -1,0 +1,230 @@
+# Kyverno Configuration for PN Platform
+# Policy engine for security, compliance, and best practices
+
+kyverno:
+  # Admission Controller Configuration
+  admissionController:
+    replicas: 2
+
+    # Resource Limits
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+    # Container Options
+    container:
+      extraArgs:
+        enableTracing: false
+        loggingFormat: json
+
+    # Service Monitor for Prometheus
+    serviceMonitor:
+      enabled: true
+
+    # Pod Security Context
+    podSecurityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+      fsGroup: 1000
+      seccompProfile:
+        type: RuntimeDefault
+
+  # Background Controller (for policy reports and cleanup)
+  backgroundController:
+    enabled: true
+    replicas: 1
+
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+    serviceMonitor:
+      enabled: true
+
+  # Cleanup Controller (for TTL and resource cleanup)
+  cleanupController:
+    enabled: true
+    replicas: 1
+
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+    serviceMonitor:
+      enabled: true
+
+  # Reports Controller (generates policy reports)
+  reportsController:
+    enabled: true
+    replicas: 1
+
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+    serviceMonitor:
+      enabled: true
+
+  # CRDs
+  crds:
+    install: true
+
+  # Config
+  config:
+    # Generate success events
+    generateSuccessEvents: false
+
+    # Resource filters (exclude system namespaces)
+    resourceFilters:
+      - "[Event,*,*]"
+      - "[*,kube-system,*]"
+      - "[*,kube-public,*]"
+      - "[*,kube-node-lease,*]"
+      - "[Node,*,*]"
+      - "[APIService,*,*]"
+      - "[TokenReview,*,*]"
+      - "[SubjectAccessReview,*,*]"
+      - "[SelfSubjectAccessReview,*,*]"
+      - "[Binding,*,*]"
+      - "[ReplicaSet,*,*]"
+      - "[AdmissionReport,*,*]"
+      - "[ClusterAdmissionReport,*,*]"
+      - "[BackgroundScanReport,*,*]"
+      - "[ClusterBackgroundScanReport,*,*]"
+
+    # Webhook configuration
+    webhooks:
+      - namespaceSelector:
+          matchExpressions:
+            - key: kubernetes.io/metadata.name
+              operator: NotIn
+              values:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+
+  # Grafana Dashboard
+  grafana:
+    enabled: true
+
+# Policy Configuration
+policies:
+  # Pod Security Policies
+  podSecurity:
+    # Require non-root containers
+    requireNonRoot:
+      enabled: true
+      validationFailureAction: Audit  # Change to Enforce in production
+
+    # Disallow privilege escalation
+    disallowPrivilegeEscalation:
+      enabled: true
+      validationFailureAction: Audit
+
+    # Require read-only root filesystem
+    requireROFilesystem:
+      enabled: true
+      validationFailureAction: Audit
+      exclude:
+        namespaces:
+          - cert-manager
+          - kube-system
+
+    # Drop all capabilities
+    dropAllCapabilities:
+      enabled: true
+      validationFailureAction: Audit
+
+    # Restrict host namespaces
+    restrictHostNamespaces:
+      enabled: true
+      validationFailureAction: Enforce
+
+  # Resource Management Policies
+  resources:
+    # Require resource limits
+    requireLimits:
+      enabled: true
+      validationFailureAction: Audit
+
+    # Require resource requests
+    requireRequests:
+      enabled: true
+      validationFailureAction: Audit
+
+  # Image Security Policies
+  images:
+    # Require image pull policy
+    requirePullPolicy:
+      enabled: true
+      validationFailureAction: Audit
+
+    # Disallow latest tag
+    disallowLatestTag:
+      enabled: true
+      validationFailureAction: Audit
+      exclude:
+        namespaces:
+          - development
+          - testing
+
+  # Network Policies
+  network:
+    # Require network policies
+    requireNetworkPolicy:
+      enabled: false  # Enable once network policies are in place
+      validationFailureAction: Audit
+
+  # Metadata Policies
+  metadata:
+    # Require labels
+    requireLabels:
+      enabled: true
+      validationFailureAction: Audit
+      requiredLabels:
+        - app.kubernetes.io/name
+        - app.kubernetes.io/instance
+
+    # Add default labels
+    addDefaultLabels:
+      enabled: true
+      labels:
+        managed-by: kyverno
+
+  # Namespace Policies
+  namespace:
+    # Restrict namespace creation
+    restrictNamespaceCreation:
+      enabled: false
+      validationFailureAction: Enforce
+
+# Policy Exceptions
+policyExceptions:
+  # Namespaces exempt from ALL policies
+  exemptNamespaces:
+    - kube-system
+    - kube-public
+    - kube-node-lease
+    - kyverno
+    - cert-manager
+    - crossplane-system
+
+  # Per-policy exceptions
+  exceptions: []

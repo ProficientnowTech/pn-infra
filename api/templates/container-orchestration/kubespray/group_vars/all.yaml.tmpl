@@ -1,0 +1,52 @@
+# Kubespray Group Variables - All Nodes
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+# Orchestrator: {{ .ContainerOrchestration.Orchestrator }}
+
+# Cluster identity
+cluster_name: "{{ .Kubespray.ClusterName }}"
+
+# Container runtime
+container_manager: {{ .Kubespray.ContainerManager }}
+
+# Network plugin
+kube_network_plugin: {{ .Kubespray.KubeNetworkPlugin }}
+
+# Network configuration
+kube_service_addresses: {{ .Kubespray.KubeServiceAddresses }}
+kube_pods_subnet: {{ .Kubespray.KubePodsSubnet }}
+kube_dns_domain: {{ .Kubespray.KubeDnsDomain }}
+
+# DNS configuration
+dns_mode: {{ .Kubespray.DnsMode }}
+enable_nodelocaldns: {{ .Kubespray.EnableNodelocaldns }}
+{{- if .Kubespray.NodelocaldnsIp }}
+nodelocaldns_ip: {{ .Kubespray.NodelocaldnsIp }}
+{{- end }}
+
+# Download configuration
+download_container: {{ .Kubespray.DownloadContainer }}
+download_force_cache: {{ .Kubespray.DownloadForceCache }}
+download_run_once: {{ .Kubespray.DownloadRunOnce }}
+
+# Ansible configuration
+ansible_ssh_user: {{ .Ssh.User }}
+ansible_ssh_port: {{ .Ssh.Port }}
+ansible_ssh_private_key_file: {{ .Ssh.KeyPath }}
+
+# Become settings
+ansible_become: true
+ansible_become_method: sudo
+
+# Python interpreter
+ansible_python_interpreter: /usr/bin/python3
+
+# SSH connection settings
+ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+
+{{- if .ClusterOverrides }}
+# Environment-specific cluster overrides
+{{- range $key, $value := .ClusterOverrides }}
+{{ $key }}: {{ $value }}
+{{- end }}
+{{- end }}

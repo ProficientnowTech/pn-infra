@@ -1,0 +1,36 @@
+apiVersion: v2
+name: pn-kyverno
+description: Kubernetes native policy management for security, compliance, and automation
+namespace: kyverno
+type: application
+version: 1.0.0
+appVersion: "v1.12.0"
+
+keywords:
+  - policy
+  - security
+  - compliance
+  - admission-controller
+  - governance
+  - pod-security
+  - best-practices
+
+maintainers:
+  - name: Platform Team
+    email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: policy-management
+  platform.pnats.cloud/component: policy-engine
+  platform.pnats.cloud/docs: 'https://kyverno.io/docs/'
+  platform.pnats.cloud/deploys: 'kyverno'
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: policy-engine
+  platform.pnats.cloud/component-category: 'security/policy'
+
+dependencies:
+  - name: kyverno
+    version: 3.2.0
+    repository: https://kyverno.github.io/kyverno/

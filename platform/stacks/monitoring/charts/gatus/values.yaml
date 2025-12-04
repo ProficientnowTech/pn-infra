@@ -1,0 +1,27 @@
+---
+uptime-kuma:
+  ingress:
+    enabled: true
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      external-dns.alpha.kubernetes.io/ttl: "60"
+    hosts:
+    - gatus.pnats.cloud
+    tls:
+    - secretName: gatus-tls
+      hosts:
+      - gatus.pnats.cloud
+
+  persistence:
+    enabled: true
+    storageClassName: bulk-ec
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

@@ -1,0 +1,78 @@
+secrets:
+  externalSecret:
+    enabled: true
+    secretName: verdaccio-credentials
+    creationPolicy: Merge
+    data:
+      - secretKey: oauth-client-id
+        remoteRef:
+          key: applications/security/keycloak/clients/verdaccio
+          property: client-id
+      - secretKey: oauth-client-secret
+        remoteRef:
+          key: applications/security/keycloak/clients/verdaccio
+          property: client-secret
+      - secretKey: oauth-cookie-secret
+        remoteRef:
+          key: applications/developer-platform/verdaccio/app
+          property: oauthCookieSecret
+      - secretKey: npm-robot-username
+        remoteRef:
+          key: applications/developer-platform/verdaccio/app
+          property: npmRobotUsername
+      - secretKey: npm-robot-password
+        remoteRef:
+          key: applications/developer-platform/verdaccio/app
+          property: npmRobotPassword
+      - secretKey: htpasswd
+        remoteRef:
+          key: applications/developer-platform/verdaccio/app
+          property: htpasswd
+
+oauth2Proxy:
+  enabled: true
+  image:
+    repository: quay.io/oauth2-proxy/oauth2-proxy
+    tag: v7.6.0
+  replicaCount: 2
+  ingress:
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      external-dns.alpha.kubernetes.io/ttl: "60"
+      external-dns.alpha.kubernetes.io/hostname: "npm.pnats.cloud"
+    className: nginx
+    host: npm.pnats.cloud
+    tlsSecret: verdaccio-tls
+  upstreamPort: 4873
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  extraArgs:
+    - --provider=keycloak
+    - --redirect-url=https://npm.pnats.cloud/oauth2/callback
+    - --oidc-issuer-url=https://keycloak.pnats.cloud/realms/proficientnow
+    - --email-domain=*
+    - --set-authorization-header=true
+    - --set-xauthrequest=true
+    - --pass-authorization-header=true
+    - --pass-access-token=true
+    - --pass-claims=groups
+    - --cookie-secure=true
+    - --cookie-refresh=1h
+    - --cookie-expire=8h
+    - --allowed-group=verdaccio-publishers
+    - --allowed-group=verdaccio-readers
+
+# Disable built-in ingress; oauth2-proxy handles exposure
+ingress:
+  enabled: false
+
+persistence:
+  enabled: true
+  storageClass: app-critical-replicated
+  accessMode: ReadWriteOnce
+  size: 8Gi

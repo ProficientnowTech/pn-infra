@@ -1,0 +1,35 @@
+stackgres-operator:
+  cert:
+    certManager:
+      autoConfigure: true
+  authentication:
+    # -- Specify the authentication mechanism to use. By default is `jwt`, see https://stackgres.io/doc/latest/api/rbac#local-secret-mechanism.
+    #   If set to `oidc` then see https://stackgres.io/doc/latest/api/rbac/#openid-connect-provider-mechanism.
+    type: jwt
+    # -- (boolean) When `true` will create the secret used to store the `admin` user credentials to access the UI.
+    createAdminSecret: true
+    # -- The admin username that will be required to access the UI
+    user: admin
+    # -- (string) The admin password that will be required to access the UI
+    password: admin
+    oidc:
+      # tlsVerification -- (string) Can be one of `required`, `certificate-validation` or `none`
+      # tlsVerification:
+      # authServerUrl -- (string) 
+      # authServerUrl:
+      # clientId -- (string) 
+      # clientId:
+      # credentialsSecret -- (string) 
+      # credentialsSecret:
+      # clientIdSecretRef -- (object)
+      # clientIdSecretRef:
+      # name -- (string) 
+      # name:
+      # key -- (string) 
+      # key: 
+      # credentialsSecretSecretRef -- (object)
+      # credentialsSecretSecretRef:
+      # name -- (string) 
+      # name:
+      # key -- (string) 
+      # key:

@@ -1,0 +1,42 @@
+# Proxmox Platform Configuration
+# Non-sensitive Proxmox-specific settings
+# Secrets (API token, endpoint) come from infrastructure/environments/<env>.yaml
+
+proxmox:
+  # Proxmox node configuration
+  node_name: pve              # Default Proxmox node for VM deployment
+
+  # Storage configuration
+  datastore: local-lvm        # Default datastore for VM disks
+  iso_storage: local          # ISO storage location
+
+  # VM template configuration
+  template:
+    id: 9000                  # Base template VM ID
+    name: ubuntu-22.04-template
+    cores_per_socket: 1
+    sockets: 1
+
+  # Network bridge
+  network:
+    bridge: vmbr0             # Proxmox network bridge
+    model: virtio             # Network adapter model
+    firewall: false
+
+  # VM defaults (can be overridden per host)
+  vm_defaults:
+    os_type: l26              # Linux kernel 2.6+
+    boot_order: "order=scsi0;ide2;net0"
+    scsihw: virtio-scsi-pci
+    agent: enabled=1
+    balloon: 0
+    cpu_type: host
+    hotplug: network,disk,usb
+
+  # Cloud-init configuration
+  cloudinit:
+    enabled: true
+    storage: local-lvm
+
+  # Resource pool (optional)
+  pool: kubernetes            # Proxmox resource pool name

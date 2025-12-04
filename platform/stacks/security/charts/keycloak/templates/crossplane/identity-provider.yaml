@@ -1,0 +1,160 @@
+{{/*
+Keycloak Identity Providers via Crossplane
+Declarative IDP management (GitHub, Google, Azure AD, etc.)
+*/}}
+{{- range .Values.identityProviders }}
+{{- if .enabled }}
+---
+apiVersion: identityprovider.keycloak.crossplane.io/v1alpha1
+kind: IdentityProvider
+metadata:
+  name: {{ $.Values.realm.name }}-idp-{{ .alias }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    app.kubernetes.io/component: identity-provider
+    keycloak.crossplane.io/realm: {{ $.Values.realm.name }}
+    keycloak.crossplane.io/idp: {{ .alias }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  forProvider:
+    realmId: {{ $.Values.realm.name }}
+    alias: {{ .alias }}
+    providerId: {{ .providerId }}
+    displayName: {{ .displayName | default .alias }}
+    enabled: {{ .enabled | default true }}
+
+    # Trust Settings
+    trustEmail: {{ .trustEmail | default false }}
+    storeToken: {{ .storeToken | default false }}
+    addReadTokenRoleOnCreate: {{ .addReadTokenRoleOnCreate | default false }}
+    authenticateByDefault: {{ .authenticateByDefault | default false }}
+    linkOnly: {{ .linkOnly | default false }}
+
+    # First Login Flow
+    firstBrokerLoginFlowAlias: {{ .firstBrokerLoginFlowAlias | default "first broker login" }}
+    {{- if .postBrokerLoginFlowAlias }}
+    postBrokerLoginFlowAlias: {{ .postBrokerLoginFlowAlias }}
+    {{- end }}
+
+    # Update Profile Settings
+    updateProfileFirstLoginMode: {{ .updateProfileFirstLoginMode | default "on" }}
+
+    # Configuration (Provider-specific)
+    config:
+      {{- if eq .providerId "github" }}
+      {{- $clientId := .config.clientId | default "" }}
+      {{- if .config.clientIdSecretName }}
+        {{- $secret := lookup "v1" "Secret" $.Release.Namespace .config.clientIdSecretName }}
+        {{- if not $secret }}
+          {{- fail (printf "Secret %s not found for GitHub clientId" .config.clientIdSecretName) }}
+        {{- end }}
+        {{- $key := .config.clientIdSecretKey | default "client-id" }}
+        {{- $data := index $secret.data $key }}
+        {{- if not $data }}
+          {{- fail (printf "Key %s missing in secret %s" $key .config.clientIdSecretName) }}
+        {{- end }}
+        {{- $clientId = $data | b64dec }}
+      {{- end }}
+      {{- if not $clientId }}
+        {{- fail (printf "clientId missing for GitHub identity provider %s" .alias) }}
+      {{- end }}
+      clientId: {{ $clientId | quote }}
+      clientSecretSecretRef:
+        name: {{ .config.clientSecretSecretName | default (printf "%s-github-oauth" $.Values.realm.name) }}
+        key: {{ .config.clientSecretSecretKey | default "client-secret" }}
+      defaultScope: {{ .config.defaultScope | default "read:user user:email" | quote }}
+      {{- end }}
+
+      {{- if eq .providerId "google" }}
+      {{- $clientId := .config.clientId | default "" }}
+      {{- if .config.clientIdSecretName }}
+        {{- $secret := lookup "v1" "Secret" $.Release.Namespace .config.clientIdSecretName }}
+        {{- if not $secret }}
+          {{- fail (printf "Secret %s not found for Google clientId" .config.clientIdSecretName) }}
+        {{- end }}
+        {{- $key := .config.clientIdSecretKey | default "client-id" }}
+        {{- $data := index $secret.data $key }}
+        {{- if not $data }}
+          {{- fail (printf "Key %s missing in secret %s" $key .config.clientIdSecretName) }}
+        {{- end }}
+        {{- $clientId = $data | b64dec }}
+      {{- end }}
+      {{- if not $clientId }}
+        {{- fail (printf "clientId missing for Google identity provider %s" .alias) }}
+      {{- end }}
+      clientId: {{ $clientId | quote }}
+      clientSecretSecretRef:
+        name: {{ .config.clientSecretSecretName | default (printf "%s-google-oauth" $.Values.realm.name) }}
+        key: {{ .config.clientSecretSecretKey | default "client-secret" }}
+      hostedDomain: {{ .config.hostedDomain | default "" | quote }}
+      defaultScope: {{ .config.defaultScope | default "openid profile email" | quote }}
+      {{- end }}
+
+      {{- if eq .providerId "oidc" }}
+      {{- $clientId := .config.clientId | default "" }}
+      {{- if .config.clientIdSecretName }}
+        {{- $secret := lookup "v1" "Secret" $.Release.Namespace .config.clientIdSecretName }}
+        {{- if not $secret }}
+          {{- fail (printf "Secret %s not found for OIDC clientId (%s)" .config.clientIdSecretName .alias) }}
+        {{- end }}
+        {{- $key := .config.clientIdSecretKey | default "client-id" }}
+        {{- $data := index $secret.data $key }}
+        {{- if not $data }}
+          {{- fail (printf "Key %s missing in secret %s" $key .config.clientIdSecretName) }}
+        {{- end }}
+        {{- $clientId = $data | b64dec }}
+      {{- end }}
+      {{- if not $clientId }}
+        {{- fail (printf "clientId missing for OIDC identity provider %s" .alias) }}
+      {{- end }}
+      clientId: {{ $clientId | quote }}
+      clientSecretSecretRef:
+        name: {{ .config.clientSecretSecretName }}
+        key: {{ .config.clientSecretSecretKey | default "client-secret" }}
+      authorizationUrl: {{ .config.authorizationUrl | quote }}
+      tokenUrl: {{ .config.tokenUrl | quote }}
+      userInfoUrl: {{ .config.userInfoUrl | quote }}
+      {{- if .config.jwksUrl }}
+      jwksUrl: {{ .config.jwksUrl | quote }}
+      {{- end }}
+      {{- if .config.issuer }}
+      issuer: {{ .config.issuer | quote }}
+      {{- end }}
+      defaultScope: {{ .config.defaultScope | default "openid profile email" | quote }}
+      {{- end }}
+
+      {{- if eq .providerId "saml" }}
+      singleSignOnServiceUrl: {{ .config.singleSignOnServiceUrl | quote }}
+      {{- if .config.singleLogoutServiceUrl }}
+      singleLogoutServiceUrl: {{ .config.singleLogoutServiceUrl | quote }}
+      {{- end }}
+      {{- if .config.signingCertificate }}
+      signingCertificate: {{ .config.signingCertificate | quote }}
+      {{- end }}
+      nameIDPolicyFormat: {{ .config.nameIDPolicyFormat | default "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent" | quote }}
+      {{- if .config.principalType }}
+      principalType: {{ .config.principalType | quote }}
+      {{- end }}
+      {{- if .config.principalAttribute }}
+      principalAttribute: {{ .config.principalAttribute | quote }}
+      {{- end }}
+      {{- end }}
+
+      # Sync Mode
+      syncMode: {{ .config.syncMode | default "IMPORT" | quote }}
+
+      # Additional config
+      {{- range $key, $value := .config.additional }}
+      {{ $key }}: {{ $value | quote }}
+      {{- end }}
+
+  deletionPolicy: {{ .deletionPolicy | default "Delete" }}
+  providerConfigRef:
+    name: {{ $.Release.Name }}-provider-config
+{{- end }}
+{{- end }}

@@ -1,0 +1,40 @@
+# Platform-Agnostic Host Definitions
+# Used to generate inventory for provisioner and container-orchestration
+# Platform-specific details (Proxmox VM ID, AWS instance type, etc.) come from platform configs
+
+hosts:
+  - name: k8s-master-01
+    role: k8s-master
+    ip: 192.168.106.10
+    cpu: 4
+    memory: 8192  # MB
+    disk: 100     # GB
+    labels:
+      - control-plane
+      - etcd
+    groups:
+      - kube_control_plane
+      - etcd
+      - kube_node
+
+  - name: k8s-worker-01
+    role: k8s-worker
+    ip: 192.168.106.11
+    cpu: 4
+    memory: 16384  # MB
+    disk: 200      # GB
+    labels:
+      - worker
+    groups:
+      - kube_node
+
+  - name: k8s-worker-02
+    role: k8s-worker
+    ip: 192.168.106.12
+    cpu: 4
+    memory: 16384  # MB
+    disk: 200      # GB
+    labels:
+      - worker
+    groups:
+      - kube_node

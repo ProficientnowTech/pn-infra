@@ -1,0 +1,31 @@
+# Reservation for control plane kubernetes components (optimized for 8GB)
+kube_memory_reserved: 2048Mi
+kube_cpu_reserved: 1000m
+kube_ephemeral_storage_reserved: 10Gi
+kube_pid_reserved: "2000"
+
+# Reservation for control plane host system (optimized for 8GB)
+system_memory_reserved: 1536Mi
+system_cpu_reserved: 500m
+system_ephemeral_storage_reserved: 5Gi
+system_pid_reserved: "1000"
+
+# Control plane specific eviction thresholds for 8GB RAM nodes
+eviction_hard_control_plane:
+  memory.available: "500Mi"
+  nodefs.available: "5%"
+  imagefs.available: "5%"
+  pid.available: "5%"
+
+# Control plane kubelet configuration for resource-constrained masters
+kubelet_max_pods_control_plane: 50
+kubelet_serialize_image_pulls: true
+kubelet_image_gc_high_threshold: 85
+kubelet_image_gc_low_threshold: 80
+
+# Enable resource enforcement for control plane
+kubelet_enforce_node_allocatable_control_plane: "pods,kube-reserved,system-reserved"
+
+# Control plane specific cgroup settings
+kubelet_runtime_cgroups_control_plane: "/system.slice/containerd.service"
+kubelet_kubelet_cgroups_control_plane: "/system.slice/kubelet.service"

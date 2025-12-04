@@ -1,0 +1,131 @@
+# Platform Stacks Configuration
+# Defines which platform services/stacks to deploy
+# Environment-specific settings (credentials, secrets) come from platform/environments/<env>.yaml
+
+stacks:
+  # Bootstrap stack (Phase 0) - Always deployed first
+  bootstrap:
+    enabled: true
+    sync_wave: -5
+    components:
+      - namespaces         # Core namespaces
+      - sealed-secrets     # Secret management
+      - external-secrets   # Optional: External Secrets Operator
+
+  # Secrets Management stack
+  secrets_management:
+    enabled: true
+    sync_wave: -4
+    provider: sealed-secrets  # Options: sealed-secrets, external-secrets, vault
+    components:
+      - sealed-secrets-controller
+      # - external-secrets-operator
+      # - vault-operator
+
+  # Storage stack
+  storage:
+    enabled: true
+    sync_wave: -3
+    default_storage_class: local-path
+    components:
+      - local-path-provisioner
+      # - longhorn
+      # - rook-ceph
+      # - openebs
+
+  # Ingress stack
+  ingress:
+    enabled: true
+    sync_wave: -2
+    controller: nginx        # Options: nginx, traefik, haproxy
+    components:
+      - ingress-nginx
+      - cert-manager         # TLS certificate management
+
+  # GitOps stack (ArgoCD)
+  gitops:
+    enabled: true
+    sync_wave: -1
+    components:
+      - argocd-core
+      - argocd-apps         # App-of-apps for platform services
+
+  # Monitoring stack
+  monitoring:
+    enabled: true
+    sync_wave: 0
+    components:
+      - prometheus-operator
+      - prometheus
+      - grafana
+      - alertmanager
+      - node-exporter
+      - kube-state-metrics
+    retention:
+      prometheus: 15d
+    storage:
+      prometheus: 50Gi
+      grafana: 10Gi
+
+  # Logging stack
+  logging:
+    enabled: true
+    sync_wave: 1
+    backend: loki           # Options: loki, elasticsearch, fluentd
+    components:
+      - loki
+      - promtail
+      # - elasticsearch
+      # - kibana
+      # - fluentd
+    retention:
+      loki: 7d
+    storage:
+      loki: 100Gi
+
+  # Tracing stack (optional)
+  tracing:
+    enabled: false
+    sync_wave: 2
+    backend: tempo          # Options: tempo, jaeger, zipkin
+    components:
+      - tempo
+
+  # Service mesh (optional)
+  service_mesh:
+    enabled: false
+    sync_wave: 3
+    provider: istio         # Options: istio, linkerd, consul
+    components:
+      - istio-base
+      - istiod
+      - istio-ingress
+      - istio-egress
+
+  # Backup stack (optional)
+  backup:
+    enabled: false
+    sync_wave: 4
+    provider: velero        # Options: velero, kasten, stash
+    components:
+      - velero
+    schedule: "0 2 * * *"   # Daily at 2 AM
+
+  # Database operators (optional)
+  database_operators:
+    enabled: false
+    sync_wave: 5
+    components:
+      # - postgres-operator
+      # - mysql-operator
+      # - mongodb-operator
+      # - redis-operator
+
+  # Message queue operators (optional)
+  message_queue_operators:
+    enabled: false
+    sync_wave: 6
+    components:
+      # - rabbitmq-operator
+      # - kafka-operator
+      # - nats-operator

@@ -1,0 +1,95 @@
+{{/*
+Crossplane Provider Installation
+Declarative provider management for Keycloak, Kubernetes, and Helm
+*/}}
+
+{{- if .Values.providers.keycloak.enabled }}
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-keycloak
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  package: {{ .Values.providers.keycloak.package }}:{{ .Values.providers.keycloak.version }}
+  packagePullPolicy: IfNotPresent
+{{- end }}
+
+{{- if .Values.providers.kubernetes.enabled }}
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-kubernetes
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  package: {{ .Values.providers.kubernetes.package }}:{{ .Values.providers.kubernetes.version }}
+  packagePullPolicy: IfNotPresent
+{{- end }}
+
+{{- if .Values.providers.helm.enabled }}
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-helm
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  package: {{ .Values.providers.helm.package }}:{{ .Values.providers.helm.version }}
+  packagePullPolicy: IfNotPresent
+{{- end }}
+
+{{- if .Values.providers.vault.enabled }}
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-vault
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  package: {{ .Values.providers.vault.package }}:{{ .Values.providers.vault.version }}
+  packagePullPolicy: IfNotPresent
+{{- end }}
+
+{{- if .Values.providers.azuread.enabled }}
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-azuread
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  package: {{ .Values.providers.azuread.package }}:{{ .Values.providers.azuread.version }}
+  packagePullPolicy: IfNotPresent
+{{- end }}
+
+{{- if .Values.providers.argocd.enabled }}
+---
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  package: {{ .Values.providers.argocd.package }}:{{ .Values.providers.argocd.version }}
+  packagePullPolicy: IfNotPresent
+{{- end }}
+
+{{- if .Values.functions.environmentConfigs.enabled }}
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: function-environment-configs
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  package: {{ .Values.functions.environmentConfigs.package }}:{{ .Values.functions.environmentConfigs.version }}
+  packagePullPolicy: IfNotPresent
+{{- end }}

@@ -1,0 +1,60 @@
+{{/*
+CephObjectStoreUser - S3 user accounts with quotas and capabilities
+Not supported by upstream rook-ceph-cluster chart
+*/}}
+{{- range .Values.cephObjectStoreUsers }}
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: {{ .name }}
+  namespace: {{ $.Values.namespace | default "rook-ceph" }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: cephobjectstoreuser
+    app.kubernetes.io/part-of: rook-ceph-cluster
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+  {{- if .annotations }}
+  annotations:
+    {{- toYaml .annotations | nindent 4 }}
+  {{- end }}
+spec:
+  store: {{ .store }}
+  {{- if .displayName }}
+  displayName: {{ .displayName | quote }}
+  {{- end }}
+  {{- if .quotas }}
+  quotas:
+    {{- if .quotas.maxSize }}
+    maxSize: {{ .quotas.maxSize | quote }}
+    {{- end }}
+    {{- if .quotas.maxBuckets }}
+    maxBuckets: {{ .quotas.maxBuckets }}
+    {{- end }}
+    {{- if .quotas.maxObjects }}
+    maxObjects: {{ .quotas.maxObjects }}
+    {{- end }}
+  {{- end }}
+  {{- if .capabilities }}
+  capabilities:
+    {{- if .capabilities.user }}
+    user: {{ .capabilities.user | quote }}
+    {{- end }}
+    {{- if .capabilities.bucket }}
+    bucket: {{ .capabilities.bucket | quote }}
+    {{- end }}
+    {{- if .capabilities.metadata }}
+    metadata: {{ .capabilities.metadata | quote }}
+    {{- end }}
+    {{- if .capabilities.usage }}
+    usage: {{ .capabilities.usage | quote }}
+    {{- end }}
+    {{- if .capabilities.zone }}
+    zone: {{ .capabilities.zone | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}

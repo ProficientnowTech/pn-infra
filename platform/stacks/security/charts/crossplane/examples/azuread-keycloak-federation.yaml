@@ -1,0 +1,171 @@
+# Azure AD ↔ Keycloak Federation Configuration
+# Allows Microsoft users to authenticate via Azure AD and access platform applications
+
+---
+# Step 1: Azure AD Application Registration for Keycloak OIDC
+apiVersion: application.azuread.upbound.io/v1beta1
+kind: Application
+metadata:
+  name: keycloak-oidc-federation
+  labels:
+    app: keycloak-federation
+spec:
+  forProvider:
+    displayName: "ProficientNow Platform - Keycloak OIDC"
+    signInAudience: "AzureADMyOrg"  # Single tenant
+
+    # OIDC Web Application Configuration
+    web:
+      - redirectUris:
+          # Keycloak broker callback URL
+          - "https://keycloak.pnats.cloud/realms/proficientnow/broker/azuread/endpoint"
+        implicitGrant:
+          - accessTokenIssuanceEnabled: false
+            idTokenIssuanceEnabled: true
+
+    # API Permissions Required
+    requiredResourceAccess:
+      # Microsoft Graph API
+      - resourceAppId: "00000003-0000-0000-c000-000000000000"
+        resourceAccess:
+          # User.Read - Sign in and read user profile
+          - id: "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
+            type: "Scope"
+          # User.Read.All - Read all users' full profiles
+          - id: "a154be20-db9c-4678-8ab7-66f6cc099a59"
+            type: "Scope"
+          # GroupMember.Read.All - Read group memberships
+          - id: "bc024368-1153-4739-b217-4326f2e966d0"
+            type: "Scope"
+
+    # Optional Claims Configuration (include groups in token)
+    optionalClaims:
+      - idToken:
+          - name: "email"
+            essential: true
+          - name: "groups"
+            essential: false
+            additionalProperties:
+              - "sam_account_name"
+              - "dns_domain_and_sam_account_name"
+
+  providerConfigRef:
+    name: default
+
+---
+# Step 2: Service Principal for the Application
+apiVersion: serviceprincipal.azuread.upbound.io/v1beta1
+kind: ServicePrincipal
+metadata:
+  name: keycloak-federation-sp
+  labels:
+    app: keycloak-federation
+spec:
+  forProvider:
+    applicationIdSelector:
+      matchLabels:
+        app: keycloak-federation
+
+    # Allow assignment to users/groups
+    appRoleAssignmentRequired: false
+
+    # Tags for management
+    tags:
+      - "WindowsAzureActiveDirectoryIntegratedApp"
+
+  providerConfigRef:
+    name: default
+
+---
+# Step 3: Application Password (Client Secret)
+apiVersion: applicationpassword.azuread.upbound.io/v1beta1
+kind: ApplicationPassword
+metadata:
+  name: keycloak-federation-secret
+  labels:
+    app: keycloak-federation
+spec:
+  forProvider:
+    applicationObjectIdSelector:
+      matchLabels:
+        app: keycloak-federation
+
+    displayName: "Keycloak OIDC Client Secret"
+    endDate: "2026-12-31T23:59:59Z"
+
+  # Output client secret to Kubernetes secret
+  writeConnectionSecretToRef:
+    name: azuread-keycloak-oidc-credentials
+    namespace: keycloak
+
+  providerConfigRef:
+    name: default
+
+---
+# Step 4: Azure AD Groups for Platform Access
+apiVersion: group.azuread.upbound.io/v1beta1
+kind: Group
+metadata:
+  name: platform-admins-azuread
+  labels:
+    platform-group: admins
+spec:
+  forProvider:
+    displayName: "Platform Admins"
+    description: "Full admin access to ProficientNow platform"
+    mailEnabled: false
+    securityEnabled: true
+
+  providerConfigRef:
+    name: default
+
+---
+apiVersion: group.azuread.upbound.io/v1beta1
+kind: Group
+metadata:
+  name: platform-developers-azuread
+  labels:
+    platform-group: developers
+spec:
+  forProvider:
+    displayName: "Platform Developers"
+    description: "Developer access to ProficientNow platform"
+    mailEnabled: false
+    securityEnabled: true
+
+  providerConfigRef:
+    name: default
+
+---
+apiVersion: group.azuread.upbound.io/v1beta1
+kind: Group
+metadata:
+  name: platform-viewers-azuread
+  labels:
+    platform-group: viewers
+spec:
+  forProvider:
+    displayName: "Platform Viewers"
+    description: "Read-only access to ProficientNow platform"
+    mailEnabled: false
+    securityEnabled: true
+
+  providerConfigRef:
+    name: default
+
+---
+# Step 5: Assign Users to Groups (Example)
+# Add your Microsoft users here by their object IDs
+# apiVersion: groupmember.azuread.upbound.io/v1beta1
+# kind: GroupMember
+# metadata:
+#   name: admin-user-john-doe
+# spec:
+#   forProvider:
+#     groupObjectIdSelector:
+#       matchLabels:
+#         platform-group: admins
+#     # Get user object ID from Azure AD
+#     memberObjectId: "00000000-0000-0000-0000-000000000000"
+#   providerConfigRef:
+#     name: default

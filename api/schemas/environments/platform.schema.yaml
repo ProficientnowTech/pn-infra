@@ -1,0 +1,441 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Platform Environment Configuration Schema
+description: Validates environment-specific overrides for the platform module
+type: object
+
+required:
+  - configPackage
+  - environment
+
+properties:
+  configPackage:
+    type: string
+    description: Reference to the config package (always "core")
+    enum: ["core"]
+
+  environment:
+    type: string
+    description: Environment identifier (development, staging, production, etc.)
+    pattern: "^[a-z0-9-]+$"
+
+  # ArgoCD configuration
+  argocd:
+    type: object
+    description: ArgoCD credentials and configuration
+    properties:
+      admin_password:
+        type: string
+        description: ArgoCD admin password (plaintext - will be bcrypt hashed)
+        minLength: 8
+      admin_password_bcrypt:
+        type: string
+        description: Pre-hashed ArgoCD admin password (bcrypt format)
+        pattern: "^\\$2[ayb]\\$.{56}$"
+      server_url:
+        type: string
+        description: ArgoCD server URL override
+        format: uri
+      insecure:
+        type: boolean
+        description: Disable TLS verification
+        default: false
+      sso_enabled:
+        type: boolean
+        description: Enable SSO integration
+        default: false
+      sso_config:
+        type: object
+        description: SSO provider configuration
+        properties:
+          provider:
+            type: string
+            enum: ["dex", "oidc"]
+          issuer:
+            type: string
+            format: uri
+          client_id:
+            type: string
+          client_secret:
+            type: string
+    anyOf:
+      - required: ["admin_password"]
+      - required: ["admin_password_bcrypt"]
+
+  # Sealed Secrets configuration
+  sealed_secrets:
+    type: object
+    description: Sealed Secrets controller configuration
+    properties:
+      encryption_key:
+        type: string
+        description: Sealed Secrets encryption private key (PEM format)
+        minLength: 1
+      encryption_cert:
+        type: string
+        description: Sealed Secrets encryption certificate (PEM format)
+        minLength: 1
+      namespace:
+        type: string
+        description: Namespace for sealed-secrets controller
+        pattern: "^[a-z0-9-]+$"
+        default: "kube-system"
+    required:
+      - encryption_key
+      - encryption_cert
+
+  # External Secrets Operator configuration
+  external_secrets:
+    type: object
+    description: External Secrets Operator configuration
+    properties:
+      enabled:
+        type: boolean
+        description: Enable External Secrets Operator
+        default: false
+      vault:
+        type: object
+        description: Vault backend configuration
+        properties:
+          address:
+            type: string
+            description: Vault server address
+            format: uri
+          token:
+            type: string
+            description: Vault authentication token
+            minLength: 1
+          namespace:
+            type: string
+            description: Vault namespace
+          ca_cert:
+            type: string
+            description: Vault CA certificate (PEM format)
+          skip_tls_verify:
+            type: boolean
+            description: Skip TLS verification
+            default: false
+
+  # Stack enablement flags
+  stacks:
+    type: object
+    description: Platform stack enablement configuration
+    properties:
+      ingress:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          controller:
+            type: string
+            enum: ["nginx", "traefik", "haproxy"]
+            default: "nginx"
+
+      storage:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          default_class:
+            type: string
+            description: Default storage class name
+
+      monitoring:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          prometheus:
+            type: object
+            properties:
+              retention:
+                type: string
+                pattern: "^[0-9]+(d|w|y)$"
+                default: "15d"
+              storage_size:
+                type: string
+                pattern: "^[0-9]+(Gi|Ti)$"
+                default: "50Gi"
+          grafana:
+            type: object
+            properties:
+              admin_user:
+                type: string
+                default: "admin"
+              admin_password:
+                type: string
+                minLength: 8
+
+      logging:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          elasticsearch:
+            type: object
+            properties:
+              replicas:
+                type: integer
+                minimum: 1
+                default: 3
+              storage_size:
+                type: string
+                pattern: "^[0-9]+(Gi|Ti)$"
+                default: "100Gi"
+
+      secrets_management:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          provider:
+            type: string
+            enum: ["sealed-secrets", "external-secrets", "vault"]
+            default: "sealed-secrets"
+
+      cert_manager:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: true
+          email:
+            type: string
+            format: email
+          cluster_issuer:
+            type: string
+            enum: ["letsencrypt-staging", "letsencrypt-prod", "self-signed"]
+
+      backup:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: false
+          velero:
+            type: object
+            properties:
+              provider:
+                type: string
+                enum: ["aws", "gcp", "azure", "restic"]
+              bucket:
+                type: string
+              credentials:
+                type: object
+                additionalProperties: true
+
+      service_mesh:
+        type: object
+        properties:
+          enabled:
+            type: boolean
+            default: false
+          provider:
+            type: string
+            enum: ["istio", "linkerd", "consul"]
+
+  # Secret environment variables
+  secret_env_vars:
+    type: object
+    description: Environment variables for secret specs (referenced in bootstrap/secrets/specs/*.yaml)
+    additionalProperties:
+      type: string
+    examples:
+      - GRAFANA_ADMIN_USER: "admin"
+        GRAFANA_ADMIN_PASSWORD: "strongpassword123"
+        POSTGRES_PASSWORD: "dbpassword456"
+        REDIS_PASSWORD: "redispass789"
+
+  # Custom resource definitions
+  custom_crds:
+    type: array
+    description: Additional CRD URLs to install
+    items:
+      type: string
+      format: uri
+
+  # Namespace configuration
+  namespaces:
+    type: object
+    description: Additional namespace configurations
+    additionalProperties:
+      type: object
+      properties:
+        labels:
+          type: object
+          additionalProperties:
+            type: string
+        annotations:
+          type: object
+          additionalProperties:
+            type: string
+        resource_quotas:
+          type: object
+          properties:
+            cpu:
+              type: string
+              pattern: "^[0-9]+(m)?$"
+            memory:
+              type: string
+              pattern: "^[0-9]+(Mi|Gi)$"
+            pods:
+              type: integer
+              minimum: 1
+        limit_ranges:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum: ["Container", "Pod", "PersistentVolumeClaim"]
+              max:
+                type: object
+                additionalProperties:
+                  type: string
+              min:
+                type: object
+                additionalProperties:
+                  type: string
+              default:
+                type: object
+                additionalProperties:
+                  type: string
+
+  # RBAC configuration
+  rbac:
+    type: object
+    description: Custom RBAC policies
+    properties:
+      additional_cluster_roles:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+              pattern: "^[a-z0-9-]+$"
+            rules:
+              type: array
+              items:
+                type: object
+                properties:
+                  apiGroups:
+                    type: array
+                    items:
+                      type: string
+                  resources:
+                    type: array
+                    items:
+                      type: string
+                  verbs:
+                    type: array
+                    items:
+                      type: string
+      additional_roles:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+              pattern: "^[a-z0-9-]+$"
+            namespace:
+              type: string
+              pattern: "^[a-z0-9-]+$"
+            rules:
+              type: array
+              items:
+                type: object
+
+  # Network policies
+  network_policies:
+    type: object
+    description: Custom network policies
+    additionalProperties:
+      type: object
+      properties:
+        podSelector:
+          type: object
+        policyTypes:
+          type: array
+          items:
+            type: string
+            enum: ["Ingress", "Egress"]
+        ingress:
+          type: array
+        egress:
+          type: array
+
+  # Pod security policies/standards
+  pod_security:
+    type: object
+    description: Pod security configuration
+    properties:
+      enforce:
+        type: string
+        description: Pod Security Standard enforcement level
+        enum: ["privileged", "baseline", "restricted"]
+        default: "baseline"
+      audit:
+        type: string
+        enum: ["privileged", "baseline", "restricted"]
+      warn:
+        type: string
+        enum: ["privileged", "baseline", "restricted"]
+
+  # Image pull secrets
+  image_pull_secrets:
+    type: array
+    description: Docker registry credentials
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+          pattern: "^[a-z0-9-]+$"
+        registry:
+          type: string
+          format: uri
+        username:
+          type: string
+        password:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+        - name
+        - registry
+        - username
+        - password
+
+  # DNS configuration
+  dns:
+    type: object
+    description: Cluster DNS configuration overrides
+    properties:
+      cluster_domain:
+        type: string
+        pattern: "^[a-z0-9.-]+$"
+        default: "cluster.local"
+      service_ip:
+        type: string
+        description: DNS service IP
+        format: ipv4
+      upstream_servers:
+        type: array
+        items:
+          type: string
+          format: ipv4
+
+  # Feature gates
+  feature_gates:
+    type: object
+    description: Kubernetes feature gates
+    additionalProperties:
+      type: boolean

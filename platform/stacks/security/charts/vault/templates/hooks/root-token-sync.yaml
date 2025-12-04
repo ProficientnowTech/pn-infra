@@ -1,0 +1,123 @@
+{{- if .Values.rootTokenSync.enabled }}
+{{- $cfg := .Values.rootTokenSync }}
+{{- $sa := $cfg.serviceAccountName | default "vault-root-token-sync" }}
+{{- $sourceNamespace := $cfg.sourceNamespace | default .Release.Namespace }}
+{{- $sourceSecret := $cfg.sourceSecret | default "vault-init" }}
+{{- $targetNamespace := $cfg.targetNamespace | default "crossplane-system" }}
+{{- $targetSecret := $cfg.targetSecret | default "vault-admin-token" }}
+{{- $image := $cfg.image | default "docker.io/bitnami/kubectl:1.30.3" }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $sa }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "vault.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: root-token-sync
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "vault.fullname" . }}-root-token-reader
+  namespace: {{ $sourceNamespace }}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames:
+  - {{ $sourceSecret }}
+  verbs: ["get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "vault.fullname" . }}-root-token-reader
+  namespace: {{ $sourceNamespace }}
+subjects:
+- kind: ServiceAccount
+  name: {{ $sa }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "vault.fullname" . }}-root-token-reader
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "vault.fullname" . }}-root-token-writer
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "create", "update", "patch"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "create"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "vault.fullname" . }}-root-token-writer
+subjects:
+- kind: ServiceAccount
+  name: {{ $sa }}
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "vault.fullname" . }}-root-token-writer
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "vault.fullname" . }}-root-token-sync
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,BeforeHookCreation
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "vault.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: root-token-sync
+    spec:
+      serviceAccountName: {{ $sa }}
+      restartPolicy: OnFailure
+      containers:
+      - name: sync
+        image: {{ $image }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euo pipefail
+          SRC_NS="{{ $sourceNamespace }}"
+          SRC_SECRET="{{ $sourceSecret }}"
+          TARGET_NS="{{ $targetNamespace }}"
+          TARGET_SECRET="{{ $targetSecret }}"
+
+          if ! kubectl get secret -n "${SRC_NS}" "${SRC_SECRET}" >/dev/null 2>&1; then
+            echo "Source secret ${SRC_NS}/${SRC_SECRET} not found; skipping."
+            exit 0
+          fi
+
+          TOKEN=$(kubectl get secret -n "${SRC_NS}" "${SRC_SECRET}" -o jsonpath='{.data.root_token}' | base64 -d)
+          if [ -z "$TOKEN" ]; then
+            echo "root_token empty; skipping."
+            exit 0
+          fi
+
+          kubectl create namespace "${TARGET_NS}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+          kubectl create secret generic "${TARGET_SECRET}" -n "${TARGET_NS}" \
+            --from-literal=token="${TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          echo "Synced Vault admin token into ${TARGET_NS}/${TARGET_SECRET}"
+{{- end }}

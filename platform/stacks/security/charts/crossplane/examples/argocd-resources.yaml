@@ -1,0 +1,186 @@
+# ArgoCD Provider Examples
+# Declarative ArgoCD project and application management
+
+---
+# ArgoCD Project for Platform Team
+apiVersion: project.argocd.crossplane.io/v1alpha1
+kind: Project
+metadata:
+  name: platform-project
+spec:
+  forProvider:
+    metadata:
+      name: platform
+    spec:
+      description: "Platform infrastructure and core services"
+
+      # Source repositories allowed
+      sourceRepos:
+        - "https://github.com/proficientnow/pn-infra-main"
+        - "https://github.com/proficientnow/platform-*"
+
+      # Destination clusters and namespaces
+      destinations:
+        - namespace: "*"
+          server: "https://kubernetes.default.svc"
+
+      # Cluster resource allow list
+      clusterResourceWhitelist:
+        - group: "*"
+          kind: "*"
+
+      # Roles and RBAC
+      roles:
+        - name: admin
+          description: "Full admin access to platform project"
+          policies:
+            - "p, proj:platform:admin, applications, *, platform/*, allow"
+            - "p, proj:platform:admin, repositories, *, *, allow"
+          groups:
+            - "platform-admins"
+
+        - name: developer
+          description: "Developer access to platform project"
+          policies:
+            - "p, proj:platform:developer, applications, get, platform/*, allow"
+            - "p, proj:platform:developer, applications, sync, platform/*, allow"
+          groups:
+            - "platform-developers"
+
+  providerConfigRef:
+    name: default
+
+---
+# ArgoCD Project for Application Team
+apiVersion: project.argocd.crossplane.io/v1alpha1
+kind: Project
+metadata:
+  name: backend-team-project
+spec:
+  forProvider:
+    metadata:
+      name: backend
+    spec:
+      description: "Backend team applications"
+
+      sourceRepos:
+        - "https://github.com/proficientnow/backend-*"
+
+      destinations:
+        - namespace: "backend-*"
+          server: "https://kubernetes.default.svc"
+
+      # Namespace-scoped resources only
+      namespaceResourceWhitelist:
+        - group: "*"
+          kind: "*"
+
+      roles:
+        - name: developer
+          description: "Backend team developers"
+          policies:
+            - "p, proj:backend:developer, applications, *, backend/*, allow"
+          groups:
+            - "backend-team"
+
+  providerConfigRef:
+    name: default
+
+---
+# ArgoCD Application (Declarative App Definition)
+apiVersion: application.argocd.crossplane.io/v1alpha1
+kind: Application
+metadata:
+  name: security-stack
+spec:
+  forProvider:
+    metadata:
+      name: security-stack
+      namespace: argocd
+    spec:
+      project: platform
+
+      source:
+        repoURL: "https://github.com/proficientnow/pn-infra-main"
+        targetRevision: main
+        path: platform/stacks/security
+
+      destination:
+        server: "https://kubernetes.default.svc"
+        namespace: security
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+
+  providerConfigRef:
+    name: default
+
+---
+# ArgoCD Repository Connection
+apiVersion: repository.argocd.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: platform-infra-repo
+spec:
+  forProvider:
+    metadata:
+      name: pn-infra-main
+    spec:
+      repo: "https://github.com/proficientnow/pn-infra-main"
+      type: git
+      # For private repos, reference credentials secret
+      # usernameSecretRef:
+      #   name: git-credentials
+      #   key: username
+      # passwordSecretRef:
+      #   name: git-credentials
+      #   key: password
+
+  providerConfigRef:
+    name: default
+
+---
+# Multi-environment Application with Environment-specific Configuration
+apiVersion: application.argocd.crossplane.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp-dev
+spec:
+  forProvider:
+    metadata:
+      name: myapp-dev
+      namespace: argocd
+    spec:
+      project: backend
+
+      source:
+        repoURL: "https://github.com/proficientnow/backend-myapp"
+        targetRevision: main
+        path: deploy/helm
+        helm:
+          valueFiles:
+            - values-dev.yaml
+
+      destination:
+        server: "https://kubernetes.default.svc"
+        namespace: myapp-dev
+
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+
+  providerConfigRef:
+    name: default

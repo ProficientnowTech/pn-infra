@@ -1,0 +1,114 @@
+{{/*
+Keycloak OIDC Clients via Crossplane
+Declarative client management for platform services
+*/}}
+{{- range .Values.clients }}
+{{- if .enabled }}
+{{- $defaultSecretName := printf "%s-%s-client-secret" $.Values.realm.name .name }}
+{{- $secretName := $defaultSecretName }}
+{{- $secretKey := "client-secret" }}
+{{- if .secretRef }}
+  {{- if .secretRef.name }}
+    {{- $secretName = .secretRef.name }}
+  {{- end }}
+  {{- if .secretRef.key }}
+    {{- $secretKey = .secretRef.key }}
+  {{- end }}
+{{- end }}
+{{- $bootstrapSecret := lookup "v1" "Secret" $.Release.Namespace $secretName }}
+{{- if not $bootstrapSecret }}
+  {{- fail (printf "Bootstrap secret %s not found for client %s" $secretName .name) }}
+{{- end }}
+{{- $encodedSecret := required (printf "Key %s missing in secret %s" $secretKey $secretName) (index $bootstrapSecret.data $secretKey) }}
+{{- $clientSecret := $encodedSecret | b64dec }}
+---
+apiVersion: openidclient.keycloak.crossplane.io/v1alpha1
+kind: Client
+metadata:
+  name: {{ $.Values.realm.name }}-{{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    app.kubernetes.io/component: oidc-client
+    keycloak.crossplane.io/realm: {{ $.Values.realm.name }}
+    keycloak.crossplane.io/client: {{ .name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  forProvider:
+    realmId: {{ $.Values.realm.name }}
+    clientId: {{ .clientId | default .name }}
+    name: {{ .displayName | default .name }}
+    description: {{ .description | default "" }}
+    enabled: {{ .enabled | default true }}
+
+    # Client Type
+    publicClient: {{ .publicClient | default false }}
+    {{- if not .publicClient }}
+    clientAuthenticatorType: {{ .clientAuthenticatorType | default "client-secret" }}
+    secret: {{ $clientSecret | quote }}
+    {{- end }}
+
+    # Protocol
+    protocol: {{ .protocol | default "openid-connect" }}
+
+    # Access Settings
+    standardFlowEnabled: {{ .standardFlowEnabled | default true }}
+    implicitFlowEnabled: {{ .implicitFlowEnabled | default false }}
+    directAccessGrantsEnabled: {{ .directAccessGrantsEnabled | default true }}
+    serviceAccountsEnabled: {{ .serviceAccountsEnabled | default false }}
+
+    # Authorization
+    authorizationServicesEnabled: {{ .authorizationServicesEnabled | default false }}
+
+    # URLs
+    rootUrl: {{ .rootUrl | default "" }}
+    baseUrl: {{ .baseUrl | default "" }}
+    {{- if .redirectUris }}
+    redirectUris:
+      {{- toYaml .redirectUris | nindent 6 }}
+    {{- end }}
+    {{- if .webOrigins }}
+    webOrigins:
+      {{- toYaml .webOrigins | nindent 6 }}
+    {{- end }}
+    {{- if .adminUrl }}
+    adminUrl: {{ .adminUrl }}
+    {{- end }}
+
+    # Consent
+    consentRequired: {{ .consentRequired | default false }}
+
+    # Scopes
+    fullScopeAllowed: {{ .fullScopeAllowed | default true }}
+    {{- if .defaultClientScopes }}
+    defaultClientScopes:
+      {{- toYaml .defaultClientScopes | nindent 6 }}
+    {{- end }}
+    {{- if .optionalClientScopes }}
+    optionalClientScopes:
+      {{- toYaml .optionalClientScopes | nindent 6 }}
+    {{- end }}
+
+    # Advanced Settings
+    {{- if .attributes }}
+    attributes:
+      {{- range $key, $value := .attributes }}
+      {{ $key }}: {{ $value | quote }}
+      {{- end }}
+    {{- end }}
+
+    # Authentication Flow Overrides
+    {{- if .authenticationFlowBindingOverrides }}
+    authenticationFlowBindingOverrides:
+      {{- toYaml .authenticationFlowBindingOverrides | nindent 6 }}
+    {{- end }}
+
+  deletionPolicy: {{ .deletionPolicy | default "Delete" }}
+  providerConfigRef:
+    name: {{ $.Release.Name }}-provider-config
+{{- end }}
+{{- end }}

@@ -1,0 +1,78 @@
+# Business Applications Configuration
+# Defines which tenant/business applications to deploy via ArgoCD app-of-apps
+# Environment-specific settings come from business/environments/<env>.yaml
+
+applications:
+  # Example application: Documentation site
+  - name: fuma-docs
+    enabled: true
+    namespace: docs
+    sync_wave: 0
+    source:
+      type: helm              # Options: helm, kustomize, directory
+      path: business/apps/fuma-docs/chart
+      target_revision: HEAD
+    sync_policy:
+      automated:
+        prune: true
+        self_heal: true
+      sync_options:
+        - CreateNamespace=true
+    values:
+      replicas: 2
+      image:
+        repository: nginx
+        tag: alpine
+      service:
+        type: ClusterIP
+        port: 80
+      ingress:
+        enabled: true
+        className: nginx
+        hosts:
+          - host: docs.{{ .Environment }}.local
+            paths:
+              - path: /
+                pathType: Prefix
+        tls: []
+
+  # Example application: Frontend app
+  # - name: frontend-app
+  #   enabled: false
+  #   namespace: apps
+  #   sync_wave: 1
+  #   source:
+  #     type: helm
+  #     path: business/apps/frontend-app/chart
+  #     target_revision: HEAD
+  #   sync_policy:
+  #     automated:
+  #       prune: true
+  #       self_heal: true
+  #   values:
+  #     replicas: 3
+  #     image:
+  #       repository: myregistry/frontend-app
+  #       tag: latest
+
+  # Example application: Backend API
+  # - name: backend-api
+  #   enabled: false
+  #   namespace: apps
+  #   sync_wave: 2
+  #   source:
+  #     type: helm
+  #     path: business/apps/backend-api/chart
+  #     target_revision: HEAD
+  #   dependencies:
+  #     - postgres-db
+  #     - redis-cache
+  #   sync_policy:
+  #     automated:
+  #       prune: true
+  #       self_heal: true
+  #   values:
+  #     replicas: 3
+  #     database:
+  #       host: postgres.database.svc.cluster.local
+  #       port: 5432

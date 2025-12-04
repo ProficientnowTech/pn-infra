@@ -1,0 +1,42 @@
+# Kubespray Inventory (INI format)
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+# Orchestrator: {{ .ContainerOrchestration.Orchestrator }}
+
+# All hosts with connection details
+[all]
+{{- range .Hosts }}
+{{ .Name }} ansible_host={{ .Ip }} ip={{ .Ip }}
+{{- end }}
+
+# Control plane nodes (Kubernetes masters)
+[kube_control_plane]
+{{- range .Hosts }}
+{{- if has "kube_control_plane" .Groups }}
+{{ .Name }}
+{{- end }}
+{{- end }}
+
+# Etcd nodes (typically same as control plane)
+[etcd]
+{{- range .Hosts }}
+{{- if has "etcd" .Groups }}
+{{ .Name }}
+{{- end }}
+{{- end }}
+
+# Worker nodes (can include control plane if co-located)
+[kube_node]
+{{- range .Hosts }}
+{{- if has "kube_node" .Groups }}
+{{ .Name }}
+{{- end }}
+{{- end }}
+
+# Kubernetes cluster (union of control plane and workers)
+[k8s_cluster:children]
+kube_control_plane
+kube_node
+
+# Calico route reflectors (optional - if using Calico BGP)
+[calico_rr]

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: business-cluster-apps
+description: App-of-apps chart for business workloads
+version: 0.1.0
+appVersion: 0.1.0

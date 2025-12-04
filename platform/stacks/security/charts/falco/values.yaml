@@ -1,0 +1,254 @@
+# Falco Configuration for PN Platform
+# Runtime security and threat detection
+
+falco:
+  # Driver Configuration - eBPF (modern driver)
+  driver:
+    enabled: true
+    kind: ebpf  # Use eBPF instead of kernel module for better compatibility
+    ebpf:
+      hostNetwork: true
+      leastPrivileged: false
+
+  # Falco Configuration
+  falco:
+    # Rules configuration
+    rules_file:
+      - /etc/falco/falco_rules.yaml
+      - /etc/falco/falco_rules.local.yaml
+      - /etc/falco/k8s_audit_rules.yaml
+      - /etc/falco/rules.d
+
+    # JSON output for easier parsing
+    json_output: true
+    json_include_output_property: true
+    json_include_tags_property: true
+
+    # Log every single drop/rate limit event
+    log_stderr: true
+    log_syslog: false
+    log_level: info
+
+    # Output channels
+    outputs:
+      rate: 1
+      max_burst: 1000
+
+    # System call buffer
+    syscall_event_drops:
+      actions:
+        - log
+        - alert
+      rate: 0.03333
+      max_burst: 1
+
+    # Priority
+    priority: warning
+
+    # Buffered outputs
+    buffered_outputs: false
+
+    # Output timeouts
+    outputs_timeout:
+      ms: 2000
+
+  # Resource Limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Tolerations (run on all nodes including masters)
+  tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/control-plane
+
+  # Priority Class
+  priorityClassName: system-node-critical
+
+  # Service Account
+  serviceAccount:
+    create: true
+    name: falco
+
+  # Pod Security Context
+  podSecurityContext:
+    runAsNonRoot: false  # Falco requires root for system calls
+    runAsUser: 0
+
+  # RBAC
+  rbac:
+    create: true
+
+  # Service Monitor for Prometheus
+  serviceMonitor:
+    enabled: true
+
+  # Falcosidekick integration (for alerting)
+  falcosidekick:
+    enabled: true
+    webui:
+      enabled: true
+
+    # Output destinations
+    config:
+      slack:
+        enabled: false
+        webhookurl: ""
+        minimumpriority: warning
+
+      webhook:
+        enabled: false
+        address: ""
+
+      elasticsearch:
+        enabled: false
+
+  # Custom Rules
+  customRules:
+    # Platform-specific rules
+    platform-rules.yaml: |-
+      # Detect shell spawned in container
+      - rule: Shell Spawned in Container
+        desc: Detect shell spawned inside a container
+        condition: >
+          spawned_process
+          and container
+          and proc.name in (shell_binaries)
+          and not proc.pname in (known_shell_spawn_processes)
+        output: >
+          Shell spawned in container (user=%user.name user_uid=%user.uid user_loginuid=%user.loginuid
+          process=%proc.name proc_exepath=%proc.exepath parent=%proc.pname command=%proc.cmdline terminal=%proc.tty
+          container_id=%container.id container_name=%container.name image=%container.image.repository:%container.image.tag)
+        priority: WARNING
+        tags: [shell, container, mitre_execution]
+
+      # Detect privileged container
+      - rule: Privileged Container Started
+        desc: Detect privileged container being started
+        condition: >
+          evt.type=container
+          and container.privileged=true
+          and not container.image.repository in (falco_privileged_images)
+        output: >
+          Privileged container started (user=%user.name user_uid=%user.uid
+          container_id=%container.id container_name=%container.name
+          image=%container.image.repository:%container.image.tag)
+        priority: ERROR
+        tags: [container, privilege_escalation]
+
+      # Detect sensitive file access
+      - rule: Read Sensitive File
+        desc: Detect reads of sensitive files
+        condition: >
+          open_read
+          and container
+          and fd.name in (sensitive_files)
+          and not proc.name in (known_sensitive_file_readers)
+        output: >
+          Sensitive file read (user=%user.name user_uid=%user.uid command=%proc.cmdline
+          file=%fd.name container_id=%container.id container_name=%container.name
+          image=%container.image.repository:%container.image.tag)
+        priority: WARNING
+        tags: [filesystem, mitre_credential_access]
+
+      # Detect network connection from container
+      - rule: Unexpected Outbound Connection
+        desc: Detect unexpected outbound network connection from container
+        condition: >
+          outbound
+          and container
+          and not proc.name in (allowed_network_processes)
+          and not fd.sip in (allowed_ips)
+        output: >
+          Unexpected outbound connection (user=%user.name command=%proc.cmdline
+          connection=%fd.name container_id=%container.id container_name=%container.name
+          image=%container.image.repository:%container.image.tag)
+        priority: NOTICE
+        tags: [network, mitre_exfiltration]
+
+# Custom lists and macros
+customLists:
+  # Allowed privileged images
+  falco_privileged_images:
+    - falco/falco
+    - sysdig/falco
+    - falcosecurity/falco
+    - calico/node
+    - cilium/cilium
+
+  # Shell binaries
+  shell_binaries:
+    - sh
+    - bash
+    - dash
+    - ash
+    - zsh
+    - ksh
+    - csh
+    - tcsh
+
+  # Known processes that can spawn shells
+  known_shell_spawn_processes:
+    - docker
+    - containerd
+    - crio
+    - kubelet
+    - systemd
+    - sshd
+
+  # Sensitive files
+  sensitive_files:
+    - /etc/shadow
+    - /etc/sudoers
+    - /etc/pam.conf
+    - /etc/security/pwquality.conf
+    - /root/.ssh/id_rsa
+    - /root/.ssh/id_dsa
+    - /root/.ssh/id_ecdsa
+    - /root/.ssh/id_ed25519
+
+  # Known sensitive file readers
+  known_sensitive_file_readers:
+    - sshd
+    - systemd
+    - login
+    - su
+    - sudo
+
+  # Allowed network processes
+  allowed_network_processes:
+    - kubelet
+    - kube-proxy
+    - coredns
+    - flannel
+    - calico-node
+    - cilium-agent
+
+  # Allowed IPs (internal cluster networks)
+  allowed_ips:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 127.0.0.1
+
+# Alert Routing
+alerting:
+  # Slack integration
+  slack:
+    enabled: false
+    channel: "#security-alerts"
+    webhookURL: ""
+
+  # Webhook integration
+  webhook:
+    enabled: false
+    url: ""
+
+  # Minimum priority to alert
+  minimumPriority: WARNING

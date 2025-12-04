@@ -1,0 +1,33 @@
+# MetalLB Configuration
+# IP Address Pool and L2 Advertisement for LoadBalancer services
+
+IPAddressPool:
+  enabled: true
+  name: public-pool
+  namespace: metallb-system
+  addresses:
+  - 103.110.174.18-103.110.174.23
+  autoAssign: true
+
+L2Advertisement:
+  enabled: true
+  name: public-l2-advertisement
+  namespace: metallb-system
+  ipAddressPools:
+  - public-pool
+  interfaces:
+  - public_traffic
+
+# MetalLB subchart configuration
+metallb:
+  prometheus:
+    namespace: monitoring
+    # ServiceAccount for Prometheus RBAC
+    serviceAccount: prometheus-kube-prometheus-prometheus
+    # Note: Cannot enable both podMonitor and serviceMonitor
+    podMonitor:
+      enabled: false
+    serviceMonitor:
+      enabled: true
+    prometheusRule:
+      enabled: true

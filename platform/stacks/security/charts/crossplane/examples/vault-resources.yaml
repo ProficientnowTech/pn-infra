@@ -1,0 +1,217 @@
+# Vault Provider Examples
+# Declarative Vault configuration management
+
+---
+# KV v2 Secret Engine Mount
+apiVersion: mount.vault.upbound.io/v1alpha1
+kind: Mount
+metadata:
+  name: app-secrets
+spec:
+  forProvider:
+    path: secret/applications
+    type: kv-v2
+    description: "Application secrets storage"
+    options:
+      version: "2"
+  providerConfigRef:
+    name: default
+
+---
+# Kubernetes Authentication Backend
+apiVersion: authbackend.vault.upbound.io/v1alpha1
+kind: AuthBackend
+metadata:
+  name: kubernetes-auth
+spec:
+  forProvider:
+    type: kubernetes
+    path: kubernetes
+    description: "Kubernetes authentication for ESO and applications"
+  providerConfigRef:
+    name: default
+
+---
+# Vault Policy for External Secrets Operator
+apiVersion: policy.vault.upbound.io/v1alpha1
+kind: Policy
+metadata:
+  name: external-secrets-policy
+spec:
+  forProvider:
+    name: external-secrets-policy
+    policy: |
+      # Allow reading all secrets under secret/data/*
+      path "secret/data/*" {
+        capabilities = ["read", "list"]
+      }
+
+      # Allow reading secret metadata
+      path "secret/metadata/*" {
+        capabilities = ["list", "read"]
+      }
+  providerConfigRef:
+    name: default
+
+---
+# Kubernetes Auth Backend Role for ESO
+apiVersion: kubernetesauthbackendrole.vault.upbound.io/v1alpha1
+kind: KubernetesAuthBackendRole
+metadata:
+  name: external-secrets-role
+spec:
+  forProvider:
+    backend: kubernetes
+    roleName: external-secrets
+    boundServiceAccountNames:
+      - external-secrets
+    boundServiceAccountNamespaces:
+      - external-secrets
+    tokenPolicies:
+      - external-secrets-policy
+    tokenTtl: 3600
+    tokenMaxTtl: 7200
+  providerConfigRef:
+    name: default
+
+---
+# Application-specific Secret Engine
+apiVersion: mount.vault.upbound.io/v1alpha1
+kind: Mount
+metadata:
+  name: myapp-secrets
+spec:
+  forProvider:
+    path: secret/applications/myapp
+    type: kv-v2
+    description: "MyApp application secrets"
+    options:
+      version: "2"
+      maxVersions: "10"
+  providerConfigRef:
+    name: default
+
+---
+# Application-specific Vault Policy
+apiVersion: policy.vault.upbound.io/v1alpha1
+kind: Policy
+metadata:
+  name: myapp-policy
+spec:
+  forProvider:
+    name: myapp-policy
+    policy: |
+      # Allow read/write to myapp secrets
+      path "secret/data/applications/myapp/*" {
+        capabilities = ["create", "read", "update", "delete", "list"]
+      }
+
+      path "secret/metadata/applications/myapp/*" {
+        capabilities = ["list", "read", "delete"]
+      }
+  providerConfigRef:
+    name: default
+
+---
+# Kubernetes Auth Role for Application
+apiVersion: kubernetesauthbackendrole.vault.upbound.io/v1alpha1
+kind: KubernetesAuthBackendRole
+metadata:
+  name: myapp-role
+spec:
+  forProvider:
+    backend: kubernetes
+    roleName: myapp
+    boundServiceAccountNames:
+      - myapp
+    boundServiceAccountNamespaces:
+      - myapp
+    tokenPolicies:
+      - myapp-policy
+    tokenTtl: 1800
+    tokenMaxTtl: 3600
+  providerConfigRef:
+    name: default
+
+---
+# PKI Secret Engine for Certificate Management
+apiVersion: mount.vault.upbound.io/v1alpha1
+kind: Mount
+metadata:
+  name: pki-internal
+spec:
+  forProvider:
+    path: pki/internal
+    type: pki
+    description: "Internal PKI for service certificates"
+    defaultLeaseTtl: "87600h"  # 10 years
+    maxLeaseTtl: "87600h"
+  providerConfigRef:
+    name: default
+
+---
+# Transit Encryption Engine
+apiVersion: mount.vault.upbound.io/v1alpha1
+kind: Mount
+metadata:
+  name: transit-encryption
+spec:
+  forProvider:
+    path: transit
+    type: transit
+    description: "Encryption as a service"
+  providerConfigRef:
+    name: default
+
+---
+# GitOps-managed KV secret for Backstage (developer-platform)
+apiVersion: secrets.vault.upbound.io/v1alpha1
+kind: KVSecretV2
+metadata:
+  name: developer-platform-backstage-example
+spec:
+  forProvider:
+    mount: secret
+    path: applications/developer-platform/backstage/app
+    dataJson: |
+      {
+        "keycloakClientSecret": "example-keycloak-secret",
+        "githubToken": "ghp_exampletoken"
+      }
+  providerConfigRef:
+    name: default
+
+---
+# Policy + Role limiting access to Backstage secrets
+apiVersion: policy.vault.upbound.io/v1alpha1
+kind: Policy
+metadata:
+  name: developer-platform-backstage-policy
+spec:
+  forProvider:
+    name: developer-platform-backstage
+    policy: |
+      path "secret/data/applications/developer-platform/backstage/*" {
+        capabilities = ["create","read","update","delete","list"]
+      }
+  providerConfigRef:
+    name: default
+
+---
+apiVersion: kubernetesauthbackendrole.vault.upbound.io/v1alpha1
+kind: KubernetesAuthBackendRole
+metadata:
+  name: developer-platform-backstage-role
+spec:
+  forProvider:
+    backend: kubernetes
+    roleName: developer-platform-backstage
+    boundServiceAccountNames:
+      - backstage
+    boundServiceAccountNamespaces:
+      - backstage
+    tokenPolicies:
+      - developer-platform-backstage
+    tokenTtl: 1800
+  providerConfigRef:
+    name: default

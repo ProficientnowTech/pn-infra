@@ -1,0 +1,59 @@
+# GCP Platform Configuration
+# Non-sensitive GCP-specific settings
+# Secrets (credentials_json) come from infrastructure/environments/<env>.yaml
+
+gcp:
+  # Project configuration
+  project_id: my-k8s-project   # GCP project ID
+  region: us-central1           # Default GCP region
+  zone: us-central1-a           # Default zone
+
+  # VPC network configuration
+  network:
+    name: k8s-network
+    auto_create_subnetworks: false
+
+  # Subnet configuration
+  subnets:
+    - name: k8s-subnet
+      ip_cidr_range: 10.0.0.0/24
+      region: us-central1
+      private_ip_google_access: true
+      secondary_ip_ranges:
+        - range_name: pods
+          ip_cidr_range: 10.1.0.0/16
+        - range_name: services
+          ip_cidr_range: 10.2.0.0/20
+
+  # Compute instance defaults
+  instance_defaults:
+    machine_type: n1-standard-2
+    image_family: ubuntu-2204-lts
+    image_project: ubuntu-os-cloud
+    boot_disk:
+      size_gb: 50
+      type: pd-standard
+    network_tags:
+      - k8s-cluster
+      - allow-ssh
+
+  # Firewall rules
+  firewall_rules:
+    - name: allow-ssh
+      direction: INGRESS
+      source_ranges: ["0.0.0.0/0"]
+      allowed:
+        - protocol: tcp
+          ports: ["22"]
+    - name: allow-k8s-api
+      direction: INGRESS
+      source_ranges: ["0.0.0.0/0"]
+      allowed:
+        - protocol: tcp
+          ports: ["6443"]
+
+  # Labels
+  labels:
+    environment: "{{ .Environment }}"
+    managed_by: terraform
+    project: kubernetes-cluster

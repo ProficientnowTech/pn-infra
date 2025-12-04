@@ -1,0 +1,51 @@
+{
+  "staticConfig": {
+    "baseImage": "ubuntu-22.04",
+    "artifactFormat": "qcow2",
+    "kernelTweaks": [
+      { "name": "net.bridge.bridge-nf-call-iptables", "value": 1 },
+      { "name": "net.ipv4.ip_forward", "value": 1 }
+    ]
+  },
+  "dynamicConfig": {
+    "sshUsers": [
+      {
+        "name": "ansible",
+        "authorizedKeys": [
+          "~/.ssh/id_rsa.pub"
+        ]
+      }
+    ],
+    "roles": {
+      "k8s-master": {
+        "hostnamePrefix": "k8s-master",
+        "packages": ["kubeadm", "kubelet"],
+        "filesystems": { "root": "120G" }
+      },
+      "k8s-worker": {
+        "hostnamePrefix": "k8s-worker",
+        "packages": ["kubelet", "containerd"],
+        "filesystems": { "root": "160G" }
+      },
+      "ans-controller": {
+        "hostnamePrefix": "ans-controller",
+        "packages": ["ansible", "python3"]
+      },
+      "k8s-storage": {
+        "hostnamePrefix": "k8s-storage",
+        "packages": ["ceph-common"],
+        "filesystems": { "root": "200G" }
+      }
+    }
+  },
+  "artifacts": {
+    "local": {
+      "directory": "provisioner/outputs"
+    },
+    "remote": {
+      "bucket": "pn-images",
+      "prefix": "development/",
+      "enabled": false
+    }
+  }
+}

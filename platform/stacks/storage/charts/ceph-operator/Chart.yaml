@@ -1,0 +1,33 @@
+apiVersion: v2
+name: pn-rook-ceph
+description: Rook-Ceph storage operator for distributed storage platform
+type: application
+version: 1.0.0
+appVersion: "v1.18.7"
+
+keywords:
+- storage
+- ceph
+- distributed-storage
+- rook-ceph-operator
+- rook-ceph
+- k8s-storage
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: storage
+  platform.pnats.cloud/component: rook-ceph
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'rook-ceph-operator'
+  platform.pnats.cloud/resource-type: CRDs
+  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb"]'
+
+labels: []
+
+dependencies:
+- name: rook-ceph
+  version: 1.18.7
+  repository: https://charts.rook.io/release

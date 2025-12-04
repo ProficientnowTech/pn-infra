@@ -1,0 +1,117 @@
+# Platform Services Configuration (Helm Values)
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+
+# Global configuration
+global:
+  environment: {{ .Environment }}
+  domain: {{ .Environment }}.cluster.local
+  storageClass: local-path
+
+# Stacks configuration
+stacks:
+{{- range $stackName, $stack := .Stacks }}
+  {{ $stackName }}:
+    enabled: {{ $stack.Enabled }}
+    {{- if $stack.SyncWave }}
+    syncWave: {{ $stack.SyncWave }}
+    {{- end }}
+    {{- if $stack.Components }}
+    components: {{ $stack.Components | toJson }}
+    {{- end }}
+    {{- if eq $stackName "secrets_management" }}
+    provider: {{ $stack.Provider }}
+    {{- end }}
+    {{- if eq $stackName "storage" }}
+    defaultStorageClass: {{ $stack.DefaultStorageClass }}
+    {{- end }}
+    {{- if eq $stackName "ingress" }}
+    controller: {{ $stack.Controller }}
+    {{- end }}
+    {{- if eq $stackName "monitoring" }}
+    retention:
+      prometheus: {{ $stack.Retention.Prometheus }}
+    storage:
+      prometheus: {{ $stack.Storage.Prometheus }}
+      grafana: {{ $stack.Storage.Grafana }}
+    {{- end }}
+    {{- if eq $stackName "logging" }}
+    backend: {{ $stack.Backend }}
+    retention:
+      loki: {{ $stack.Retention.Loki }}
+    storage:
+      loki: {{ $stack.Storage.Loki }}
+    {{- end }}
+    {{- if eq $stackName "tracing" }}
+    backend: {{ $stack.Backend }}
+    {{- end }}
+    {{- if eq $stackName "service_mesh" }}
+    provider: {{ $stack.Provider }}
+    {{- end }}
+    {{- if eq $stackName "backup" }}
+    provider: {{ $stack.Provider }}
+    {{- if $stack.Schedule }}
+    schedule: {{ $stack.Schedule }}
+    {{- end }}
+    {{- end }}
+{{- end }}
+
+# ArgoCD configuration
+argocd:
+  server:
+    ingress:
+      enabled: true
+      hosts:
+        - argocd.{{ .Environment }}.local
+  configs:
+    secret:
+      # ArgoCD admin password (bcrypt hashed)
+      # Override in platform/environments/<env>.yaml
+      argocdServerAdminPassword: ""
+
+# Sealed Secrets configuration
+sealed-secrets:
+  # Encryption keys provided via platform/environments/<env>.yaml
+
+# Monitoring stack
+monitoring:
+  prometheus:
+    prometheusSpec:
+      retention: {{ .Stacks.Monitoring.Retention.Prometheus }}
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: {{ .Stacks.Monitoring.Storage.Prometheus }}
+  grafana:
+    persistence:
+      enabled: true
+      size: {{ .Stacks.Monitoring.Storage.Grafana }}
+    adminUser: admin
+    # adminPassword overridden in platform/environments/<env>.yaml
+
+# Logging stack
+logging:
+  loki:
+    persistence:
+      enabled: true
+      size: {{ .Stacks.Logging.Storage.Loki }}
+    config:
+      table_manager:
+        retention_deletes_enabled: true
+        retention_period: {{ .Stacks.Logging.Retention.Loki }}
+
+# Ingress controller
+ingress-nginx:
+  controller:
+    service:
+      type: LoadBalancer
+    ingressClassResource:
+      name: nginx
+      default: true
+
+# Cert Manager
+cert-manager:
+  installCRDs: true

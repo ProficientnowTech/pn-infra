@@ -1,0 +1,73 @@
+---
+# Main Ingress for OneUptime Dashboard and Services
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: oneuptime-ingress
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: oneuptime
+    app.kubernetes.io/component: ingress
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    external-dns.alpha.kubernetes.io/ttl: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    # WebSocket support for real-time features
+    nginx.ingress.kubernetes.io/websocket-services: "oneuptime-nginx"
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - uptime.pnats.cloud
+    secretName: oneuptime-main-tls
+  rules:
+  - host: uptime.pnats.cloud
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Release.Name }}-oneuptime-nginx
+            port:
+              number: 80
+
+# ---
+# # Status Page Ingress (for public status pages)
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: oneuptime-status-ingress
+#   namespace: {{ .Release.Namespace }}
+#   labels:
+#     app.kubernetes.io/name: oneuptime
+#     app.kubernetes.io/component: status-page
+#   annotations:
+#     cert-manager.io/cluster-issuer: letsencrypt-production
+#     external-dns.alpha.kubernetes.io/ttl: "60"
+#     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+#     nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+# spec:
+#   ingressClassName: nginx
+#   tls:
+#   - hosts:
+#     - status.pnats.cloud
+#     secretName: oneuptime-status-tls
+#   rules:
+#   - host: status.pnats.cloud
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: {{ .Release.Name }}-oneuptime-status-page
+#             port:
+#               number: 3105

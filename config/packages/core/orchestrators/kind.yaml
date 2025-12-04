@@ -1,0 +1,70 @@
+# Kind Orchestrator Configuration
+# Kubernetes-in-Docker configuration for local development
+# Kind runs Kubernetes clusters using Docker containers as nodes
+
+kind:
+  # Cluster name
+  name: "{{ .Environment }}-cluster"
+
+  # Kubernetes version
+  kubernetes_version: v1.28.3
+
+  # Networking configuration
+  networking:
+    api_server_address: "127.0.0.1"
+    api_server_port: 6443
+    pod_subnet: "10.244.0.0/16"
+    service_subnet: "10.96.0.0/16"
+    dns_domain: cluster.local
+    disable_default_cni: false    # Use kindnet CNI by default
+    kube_proxy_mode: iptables
+
+  # Nodes configuration
+  nodes:
+    control_plane:
+      count: 1
+      image: kindest/node:v1.28.3
+      extra_mounts: []
+      extra_port_mappings: []
+    workers:
+      count: 2
+      image: kindest/node:v1.28.3
+
+  # Feature gates
+  feature_gates: {}
+
+  # Runtime configuration
+  runtime_config: {}
+
+  # Container runtime
+  container_runtime: containerd
+
+  # Port mappings (for ingress access)
+  port_mappings:
+    - container_port: 80
+      host_port: 80
+      protocol: TCP
+    - container_port: 443
+      host_port: 443
+      protocol: TCP
+
+  # Volume mounts (for local development)
+  extra_mounts: []
+  # Example:
+  # - host_path: /path/on/host
+  #   container_path: /path/in/container
+  #   read_only: false
+
+  # Kubeadm config patches
+  kubeadm_config_patches: []
+
+  # Ingress controller
+  ingress:
+    enabled: true
+    type: nginx            # Deploy NGINX ingress by default
+
+  # Local registry
+  local_registry:
+    enabled: false
+    name: kind-registry
+    port: 5001

@@ -1,0 +1,33 @@
+apiVersion: v2
+name: pn-oneuptime
+description: Uptime monitoring, status pages, incident management, on-call and alerts, APM or logs management, one platform oneuptime for all
+type: application
+version: 0.1.0
+appVersion: "9.1.0"
+
+keywords:
+- incident-management
+- on-call-and-alerting
+- appliation-performance-monitoring
+- uptime-monitoring
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: monitoring
+  platform.pnats.cloud/component: oneuptime
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'oneuptime'
+  platform.pnats.cloud/resource-type: application
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: oneuptime
+  platform.pnats.cloud/component-category: monitoring
+
+dependencies:
+- name: oneuptime
+  version: 9.1.0
+  repository: https://helm-chart.oneuptime.com/

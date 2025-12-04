@@ -1,0 +1,64 @@
+# Kubekey Orchestrator Configuration
+# Kubernetes cluster settings for Kubekey deployment
+# KubeKey is a lightweight installer for Kubernetes and cloud-native addons
+
+kubekey:
+  # Kubernetes version
+  kubernetes_version: v1.28.3
+
+  # Cluster configuration
+  cluster:
+    name: "{{ .Environment }}-cluster"
+    control_plane_endpoint:
+      domain: lb.{{ .Environment }}.local
+      address: ""             # Load balancer IP (optional)
+      port: 6443
+
+  # Network configuration
+  network:
+    plugin: calico           # Options: calico, cilium, flannel, kubeovn
+    pod_cidr: 10.233.64.0/18
+    service_cidr: 10.233.0.0/18
+    dns_domain: cluster.local
+
+  # Container runtime
+  container_runtime: containerd  # Options: containerd, crio, docker
+
+  # Etcd configuration
+  etcd:
+    type: kubekey            # Options: kubekey, external
+    # external_endpoints: []
+
+  # Storage configuration
+  storage:
+    default_storage_class: local-storage
+    local_volume_provisioner_enabled: true
+
+  # Registry configuration
+  registry:
+    type: none              # Options: none, harbor, docker
+    # insecure_registries: []
+    # private_registries: []
+
+  # Addons
+  addons:
+    - name: metrics-server
+      enabled: true
+    - name: openebs
+      enabled: false
+    - name: kubesphere
+      enabled: false
+
+  # Node configuration
+  kubelet:
+    max_pods: 110
+
+  # SSH configuration for deployment
+  ssh:
+    port: 22
+    timeout: 30
+
+  # Installation options
+  installation:
+    skip_pull_images: false
+    skip_push_images: false

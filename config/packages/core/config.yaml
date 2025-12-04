@@ -1,0 +1,22 @@
+# Master Configuration
+# Declares platform and orchestrator choices for the infrastructure stack
+version: v1.0.0
+
+# Infrastructure platform and provider selection
+# For Kind, infrastructure is not needed (uses local Docker)
+infrastructure:
+  platform: none           # Options: proxmox, aws, gcp, azure, baremetal, none
+  provider: none           # Options: terraform, pulumi, ansible, none
+
+# Container orchestration selection
+container_orchestration:
+  orchestrator: kind       # Options: kubespray, kubekey, kind
+  provider: docker         # Options: docker, podman, native
+
+# Platform services configuration
+platform:
+  deployment_method: helm  # Options: helm, kustomize, argocd
+
+# Business applications configuration
+business:
+  deployment_method: argocd  # Options: argocd, helm, kustomize

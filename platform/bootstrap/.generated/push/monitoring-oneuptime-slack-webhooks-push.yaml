@@ -1,0 +1,19 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: oneuptime-slack-webhooks-push
+  namespace: monitoring
+spec:
+  refreshInterval: 1h
+  secretStoreRefs:
+    - name: vault-backend
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: oneuptime-slack-webhooks
+  data:
+    - match:
+        secretKey: webhook-on-subscription-update
+        remoteRef:
+          remoteKey: applications/monitoring/oneuptime/slack
+          property: webhook-on-subscription-update

@@ -1,0 +1,62 @@
+# Kubespray Group Variables - Kubernetes Cluster
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+# Orchestrator: {{ .ContainerOrchestration.Orchestrator }}
+
+# Kubernetes version
+kube_version: {{ .Kubespray.KubeVersion }}
+
+# API server configuration
+kube_apiserver_port: {{ .Kubespray.KubeapiserverPort }}
+
+# Proxy configuration
+kube_proxy_mode: {{ .Kubespray.KubeProxyMode }}
+
+# Etcd configuration
+etcd_deployment_type: {{ .Kubespray.EtcdDeploymentType }}
+{{- if .Kubespray.EtcdMemoryLimit }}
+etcd_memory_limit: {{ .Kubespray.EtcdMemoryLimit }}
+{{- end }}
+{{- if .Kubespray.EtcdQuotaBackendBytes }}
+etcd_quota_backend_bytes: {{ .Kubespray.EtcdQuotaBackendBytes }}
+{{- end }}
+
+# Addons
+helm_enabled: {{ .Kubespray.HelmEnabled }}
+metrics_server_enabled: {{ .Kubespray.MetricsServerEnabled }}
+ingress_nginx_enabled: {{ .Kubespray.IngressNginxEnabled }}
+cert_manager_enabled: {{ .Kubespray.CertManagerEnabled }}
+dashboard_enabled: {{ .Kubespray.DashboardEnabled }}
+local_path_provisioner_enabled: {{ .Kubespray.LocalPathProvisionerEnabled }}
+
+# MetalLB (for bare metal load balancing)
+metallb_enabled: {{ .Kubespray.MetallbEnabled }}
+{{- if .Kubespray.MetallbIpRange }}
+metallb_ip_range: "{{ .Kubespray.MetallbIpRange }}"
+{{- end }}
+
+# Upgrade configuration
+upgrade_cluster_setup: {{ .Kubespray.UpgradeClusterSetup }}
+drain_nodes: {{ .Kubespray.DrainNodes }}
+drain_grace_period: {{ .Kubespray.DrainGracePeriod }}
+drain_timeout: {{ .Kubespray.DrainTimeout }}
+
+# Node configuration
+kubelet_max_pods: {{ .Kubespray.KubeletMaxPods }}
+kube_read_only_port: {{ .Kubespray.KubeReadOnlyPort }}
+
+# Feature gates (optional)
+{{- if .Kubespray.KubeFeatureGates }}
+kube_feature_gates:
+{{- range .Kubespray.KubeFeatureGates }}
+  - "{{ . }}"
+{{- end }}
+{{- end }}
+
+# Custom registries (optional)
+{{- if .Kubespray.DockerInsecureRegistries }}
+docker_insecure_registries: {{ .Kubespray.DockerInsecureRegistries | toJson }}
+{{- end }}
+{{- if .Kubespray.DockerRegistryMirrors }}
+docker_registry_mirrors: {{ .Kubespray.DockerRegistryMirrors | toJson }}
+{{- end }}

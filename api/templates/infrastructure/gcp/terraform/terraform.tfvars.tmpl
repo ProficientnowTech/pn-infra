@@ -1,0 +1,73 @@
+# GCP Infrastructure Variables
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+# Platform: {{ .Infrastructure.Platform }}
+# Provider: {{ .Infrastructure.Provider }}
+
+# GCP credentials (from environment override)
+project_id      = "{{ .Gcp.ProjectId }}"
+region          = "{{ .Gcp.Region }}"
+zone            = "{{ .Gcp.Zone }}"
+credentials_json = "{{ .Gcp.CredentialsJson }}"
+
+# VPC network
+network_name              = "{{ .Gcp.Network.Name }}"
+auto_create_subnetworks   = {{ .Gcp.Network.AutoCreateSubnetworks }}
+
+# Subnets
+subnets = [
+{{- range .Gcp.Subnets }}
+  {
+    name                     = "{{ .Name }}"
+    ip_cidr_range            = "{{ .IpCidrRange }}"
+    region                   = "{{ .Region }}"
+    private_ip_google_access = {{ .PrivateIpGoogleAccess }}
+    secondary_ip_ranges = [
+{{- range .SecondaryIpRanges }}
+      {
+        range_name    = "{{ .RangeName }}"
+        ip_cidr_range = "{{ .IpCidrRange }}"
+      },
+{{- end }}
+    ]
+  },
+{{- end }}
+]
+
+# Compute instance defaults
+machine_type   = "{{ .Gcp.InstanceDefaults.MachineType }}"
+image_family   = "{{ .Gcp.InstanceDefaults.ImageFamily }}"
+image_project  = "{{ .Gcp.InstanceDefaults.ImageProject }}"
+boot_disk_size = {{ .Gcp.InstanceDefaults.BootDisk.SizeGb }}
+boot_disk_type = "{{ .Gcp.InstanceDefaults.BootDisk.Type }}"
+network_tags   = {{ .Gcp.InstanceDefaults.NetworkTags | toJson }}
+
+# SSH configuration
+ssh_public_key = "{{ .Ssh.PublicKey }}"
+ssh_user       = "{{ .Ssh.User }}"
+
+# Firewall rules
+firewall_rules = {{ .Gcp.FirewallRules | toJson }}
+
+# Hosts (Compute instances)
+instances = {
+{{- range .Hosts }}
+  "{{ .Name }}" = {
+    name         = "{{ .Name }}"
+    machine_type = "{{ $.Gcp.InstanceDefaults.MachineType }}"
+    zone         = "{{ $.Gcp.Zone }}"
+    private_ip   = "{{ .Ip }}"
+    role         = "{{ .Role }}"
+  }
+{{- end }}
+}
+
+# Labels
+labels = {
+  environment = "{{ .Environment }}"
+  managed_by  = "terraform"
+  config_pkg  = "{{ .ConfigPackage }}"
+  {{- range $k, $v := .Gcp.Labels }}
+  {{ $k }} = "{{ $v }}"
+  {{- end }}
+}

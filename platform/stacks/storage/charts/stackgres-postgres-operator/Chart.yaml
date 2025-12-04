@@ -1,0 +1,34 @@
+apiVersion: v2
+name: pn-stackgres
+description: StackGres Chart for StackGres Operator
+type: application
+version: 1.0.0
+appVersion: "v1.17.4"
+
+keywords:
+- postgres
+- relational-database
+- sql
+- distributed-storage
+- distributed-relational-database
+- postgres-ha
+- multi-tenant
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: storage
+  platform.pnats.cloud/component: stackgres-operator
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'operator'
+  platform.pnats.cloud/resource-type: 'CRDs'
+  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb"]'
+
+labels: []
+
+dependencies:
+- name: stackgres-operator
+  version: 1.17.4
+  repository: https://stackgres.io/downloads/stackgres-k8s/stackgres/helm

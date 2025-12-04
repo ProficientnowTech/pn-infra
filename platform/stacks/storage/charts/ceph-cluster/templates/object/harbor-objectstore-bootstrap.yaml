@@ -1,0 +1,176 @@
+{{- /*
+Automates Harbor RGW user/bucket provisioning and pushes credentials into Vault.
+*/ -}}
+{{- if .Values.harborObjectStore.enabled }}
+{{- $ns := .Values.namespace | default "rook-ceph" }}
+{{- $cfg := .Values.harborObjectStore }}
+{{- $userSecretName := printf "rook-ceph-object-user-%s-%s" $cfg.storeName $cfg.user.name }}
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: {{ $cfg.user.name }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: harbor-objectstore-user
+    app.kubernetes.io/component: cephobjectstoreuser
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+spec:
+  store: {{ $cfg.storeName }}
+  displayName: {{ $cfg.user.displayName | default "Harbor Registry User" | quote }}
+
+---
+apiVersion: objectbucket.io/v1alpha1
+kind: ObjectBucketClaim
+metadata:
+  name: {{ $cfg.bucketName }}
+  namespace: {{ $ns }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  bucketName: {{ $cfg.bucketName }}
+  storageClassName: {{ $cfg.storageClassName }}
+  {{- if or $cfg.bucketMaxObjects $cfg.bucketMaxSize }}
+  additionalConfig:
+    {{- if $cfg.bucketMaxObjects }}
+    maxObjects: "{{ $cfg.bucketMaxObjects }}"
+    {{- end }}
+    {{- if $cfg.bucketMaxSize }}
+    maxSize: "{{ $cfg.bucketMaxSize }}"
+    {{- end }}
+  {{- end }}
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ printf "%s-endpoint" $cfg.bootstrapSecretName }}
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: harbor-s3-endpoint
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+type: Opaque
+stringData:
+  endpoint: {{ $cfg.endpoint | quote }}
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $cfg.serviceAccountName }}
+  namespace: {{ $ns }}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ printf "%s-reader" $cfg.serviceAccountName }}
+  namespace: {{ $ns }}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames:
+  - {{ $userSecretName }}
+  - {{ printf "%s-endpoint" $cfg.bootstrapSecretName }}
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s-reader" $cfg.serviceAccountName }}
+  namespace: {{ $ns }}
+subjects:
+- kind: ServiceAccount
+  name: {{ $cfg.serviceAccountName }}
+  namespace: {{ $ns }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ printf "%s-reader" $cfg.serviceAccountName }}
+
+---
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: {{ $cfg.secretStoreName }}
+  namespace: {{ $ns }}
+spec:
+  provider:
+    kubernetes:
+      remoteNamespace: {{ $ns }}
+      auth:
+        serviceAccount:
+          name: {{ $cfg.serviceAccountName }}
+
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: {{ $cfg.bootstrapSecretName }}
+  namespace: {{ $ns }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: {{ $cfg.secretStoreName }}
+    kind: SecretStore
+  target:
+    name: {{ $cfg.bootstrapSecretName }}
+    creationPolicy: Owner
+    template:
+      engineVersion: v2
+      data:
+        accessKey: "{{ "{{ .AccessKey }}" }}"
+        secretKey: "{{ "{{ .SecretKey }}" }}"
+        endpoint: "{{ "{{ .endpoint }}" }}"
+  data:
+    - secretKey: AccessKey
+      remoteRef:
+        key: {{ $userSecretName }}
+        property: AccessKey
+    - secretKey: SecretKey
+      remoteRef:
+        key: {{ $userSecretName }}
+        property: SecretKey
+    - secretKey: endpoint
+      remoteRef:
+        key: {{ printf "%s-endpoint" $cfg.bootstrapSecretName }}
+        property: endpoint
+
+---
+apiVersion: external-secrets.io/v1beta1
+kind: PushSecret
+metadata:
+  name: {{ $cfg.pushSecretName }}
+  namespace: {{ $ns }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+spec:
+  refreshStrategy: OnChange
+  secretStoreRefs:
+  - name: vault-backend
+    kind: ClusterSecretStore
+  selector:
+    secret:
+      name: {{ $cfg.bootstrapSecretName }}
+      namespace: {{ $ns }}
+  data:
+    - match:
+        secretKey: accessKey
+        remoteRef:
+          remoteKey: {{ $cfg.vaultPath }}
+          property: accessKey
+    - match:
+        secretKey: secretKey
+        remoteRef:
+          remoteKey: {{ $cfg.vaultPath }}
+          property: secretKey
+    - match:
+        secretKey: endpoint
+        remoteRef:
+          remoteKey: {{ $cfg.vaultPath }}
+          property: endpoint
+
+{{- end }}

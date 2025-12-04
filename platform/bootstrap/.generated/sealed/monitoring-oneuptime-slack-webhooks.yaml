@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: oneuptime-slack-webhooks
+  namespace: monitoring
+spec:
+  encryptedData:
+    webhook-on-subscription-update: AgAFK/tpN+rA/0DkjViqjGyJlWAbmlGER/H0T/+P1yLzupJSv1vQr9s3p+By1pc+LWwr0JrXLMnFavCeVRjAZCb0bjBLH7lEaV94HkVaHk+Lb/jakQi/cyzgcS9pgzXe8YGukbcKsw0P8FiANN5E2lMYKsr5qDBSlxANHmSB3ap0vhRHykYmK1pokLPWD0Y4ubkoZJDx637/gPXTRqE23wEQ97iJ/R8j24z/ZDNJIOIYEbfXswp4G+zFYSS0tgdv7dJ76lB5UKCkbwfNiFkL6MgeBmDQVmEt46B0u3SN2pxEp/bSYgrR7NV24BIhahiml1WHCO4KhaYqFh1cgy4ogjBlCUaucSC871O26o7tPagG806YyRgmqUkgzIuilnYN+uR+SaBaaDAQXHB7YiwGDZD7YmhJJAuI7+weRIBZlNe8ZZ0FU9R/gcs4sXPmgZLkTiq670lp3Yiz8Uqy5BcwwUstqAayD6lsPjB6qmyMTKT2SwrzMgT/Ylie/Hm5aG3wsTK4S7wXm2LAt+gI3pdokdgu0gR/FpeAWtKZ+ZxRZfas01k8XdRkr1u3Ymc2xRn6Nhtph5pj+lfI1fdB52eijazkbbzl+t7AWhTbrGC4x5qgsoxouHamljE0WZx3oikzcczz4wTdM+lwV0YtkRftDqyNmm+0BIcbXjBCKBOeOInc6heVK4u2nHDCRGJ1hAYiAM+vWpet5oQqndmeIKj5pqnga2MxDKingZwjQ+IAiCJ2WIUqXkddlVxW1puyOWxUDRjmm/5Kz07k18b/HtfacRjrWg8/ZSYByQ6aCaaoPlMNqjo=
+  template:
+    metadata:
+      name: oneuptime-slack-webhooks
+      namespace: monitoring
+    type: Opaque

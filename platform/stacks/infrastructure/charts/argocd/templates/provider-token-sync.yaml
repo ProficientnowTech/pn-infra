@@ -1,0 +1,139 @@
+{{- if .Values.providerTokenSync.enabled }}
+{{- $sa := .Values.providerTokenSync.serviceAccountName | default "argocd-provider-token-sync" }}
+{{- $image := .Values.providerTokenSync.image | default "quay.io/argoproj/argocd:latest" }}
+{{- $serverAddr := .Values.providerTokenSync.serverAddr | default "argocd-server.argocd.svc" }}
+{{- $insecure := .Values.providerTokenSync.insecure | default true }}
+{{- $targetNamespace := .Values.providerTokenSync.targetNamespace | default "crossplane-system" }}
+{{- $targetSecret := .Values.providerTokenSync.targetSecret | default "argocd-admin-token" }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $sa }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "argocd.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: provider-token-sync
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "argocd.fullname" . }}-provider-token-sync
+  namespace: {{ $.Release.Namespace }}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+  resourceNames:
+  - argocd-initial-admin-secret
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "argocd.fullname" . }}-provider-token-sync
+  namespace: {{ $.Release.Namespace }}
+subjects:
+- kind: ServiceAccount
+  name: {{ $sa }}
+  namespace: {{ $.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "argocd.fullname" . }}-provider-token-sync
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "argocd.fullname" . }}-provider-token-sync
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["create", "update", "patch", "get"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "argocd.fullname" . }}-provider-token-sync
+subjects:
+- kind: ServiceAccount
+  name: {{ $sa }}
+  namespace: {{ $.Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "argocd.fullname" . }}-provider-token-sync
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "argocd.fullname" . }}-provider-token-sync
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "argocd.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: provider-token-sync
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded,BeforeHookCreation
+spec:
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "argocd.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: provider-token-sync
+    spec:
+      serviceAccountName: {{ $sa }}
+      restartPolicy: OnFailure
+      containers:
+      - name: sync
+        image: {{ $image }}
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -euo pipefail
+          SERVER="{{ $serverAddr }}"
+          TARGET_NS="{{ $targetNamespace }}"
+          TARGET_SECRET="{{ $targetSecret }}"
+
+          echo "Waiting for ArgoCD API (${SERVER})..."
+          until curl -sk "https://${SERVER}/healthz" >/dev/null 2>&1; do
+            sleep 5
+          done
+
+          ADMIN_PASSWORD=$(kubectl -n {{ $.Release.Namespace }} get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
+
+          echo "Logging into ArgoCD..."
+          LOGIN_FLAGS="--username admin --password ${ADMIN_PASSWORD}"
+          {{- if $insecure }}
+          LOGIN_FLAGS="${LOGIN_FLAGS} --insecure"
+          {{- end }}
+          argocd login "${SERVER}" ${LOGIN_FLAGS} --grpc-web
+
+          echo "Generating admin token..."
+          TOKEN=""
+          for i in $(seq 1 10); do
+            if TOKEN=$(argocd account generate-token --account admin); then
+              break
+            fi
+            echo "Retrying token generation..."
+            sleep 5
+          done
+          if [ -z "$TOKEN" ]; then
+            echo "Failed to generate ArgoCD admin token."
+            exit 1
+          fi
+
+          kubectl create namespace "${TARGET_NS}" --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1 || true
+          kubectl create secret generic "${TARGET_SECRET}" -n "${TARGET_NS}" \
+            --from-literal=token="${TOKEN}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          echo "Published ArgoCD admin token to ${TARGET_NS}/${TARGET_SECRET}"
+{{- end }}

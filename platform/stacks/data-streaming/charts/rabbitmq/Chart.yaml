@@ -1,0 +1,32 @@
+apiVersion: v2
+name: pn-rabbitmq
+description: RabbitMQ for messaging and data streaming for ProficientNow Cloud Platform
+type: application
+version: 1.0.0
+appVersion: "2.17.2"
+
+keywords:
+- message-broker
+- messaging
+- data-streaming
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: data-streaming
+  platform.pnats.cloud/component: rabbitmq
+  platform.pnats.cloud/docs: ''
+  platform.pnats.cloud/deploys: 'rabbitmq'
+  platform.pnats.cloud/resource-type: Operator
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: rabbitmq
+  platform.pnats.cloud/component-category: data-streaming
+
+dependencies:
+- name: rabbitmq-cluster-operator
+  version: 2.6.3
+  repository: https://charts.alekc.dev/

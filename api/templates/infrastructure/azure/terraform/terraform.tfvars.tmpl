@@ -1,0 +1,86 @@
+# Azure Infrastructure Variables
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+# Platform: {{ .Infrastructure.Platform }}
+# Provider: {{ .Infrastructure.Provider }}
+
+# Azure credentials (from environment override)
+subscription_id = "{{ .Azure.SubscriptionId }}"
+client_id       = "{{ .Azure.ClientId }}"
+client_secret   = "{{ .Azure.ClientSecret }}"
+tenant_id       = "{{ .Azure.TenantId }}"
+
+# Location and resource group
+location            = "{{ .Azure.Location }}"
+resource_group_name = "{{ .Azure.ResourceGroupName }}"
+
+# Virtual network
+vnet_name          = "{{ .Azure.Vnet.Name }}"
+vnet_address_space = {{ .Azure.Vnet.AddressSpace | toJson }}
+
+# Subnets
+subnets = [
+{{- range .Azure.Subnets }}
+  {
+    name             = "{{ .Name }}"
+    address_prefixes = {{ .AddressPrefixes | toJson }}
+  },
+{{- end }}
+]
+
+# VM defaults
+vm_size                         = "{{ .Azure.VmDefaults.Size }}"
+admin_username                  = "{{ .Azure.VmDefaults.AdminUsername }}"
+disable_password_authentication = {{ .Azure.VmDefaults.DisablePasswordAuthentication }}
+os_disk_caching                 = "{{ .Azure.VmDefaults.OsDisk.Caching }}"
+os_disk_storage_account_type    = "{{ .Azure.VmDefaults.OsDisk.StorageAccountType }}"
+os_disk_size_gb                 = {{ .Azure.VmDefaults.OsDisk.DiskSizeGb }}
+
+# Source image reference
+source_image_publisher = "{{ .Azure.VmDefaults.SourceImageReference.Publisher }}"
+source_image_offer     = "{{ .Azure.VmDefaults.SourceImageReference.Offer }}"
+source_image_sku       = "{{ .Azure.VmDefaults.SourceImageReference.Sku }}"
+source_image_version   = "{{ .Azure.VmDefaults.SourceImageReference.Version }}"
+
+# SSH configuration
+ssh_public_key = "{{ .Ssh.PublicKey }}"
+
+# Network security group
+nsg_name = "{{ .Azure.NetworkSecurityGroup.Name }}"
+security_rules = [
+{{- range .Azure.NetworkSecurityGroup.SecurityRules }}
+  {
+    name                       = "{{ .Name }}"
+    priority                   = {{ .Priority }}
+    direction                  = "{{ .Direction }}"
+    access                     = "{{ .Access }}"
+    protocol                   = "{{ .Protocol }}"
+    source_port_range          = "{{ .SourcePortRange }}"
+    destination_port_range     = "{{ .DestinationPortRange }}"
+    source_address_prefix      = "{{ .SourceAddressPrefix }}"
+    destination_address_prefix = "{{ .DestinationAddressPrefix }}"
+  },
+{{- end }}
+]
+
+# Hosts (Virtual machines)
+vms = {
+{{- range .Hosts }}
+  "{{ .Name }}" = {
+    name       = "{{ .Name }}"
+    vm_size    = "{{ $.Azure.VmDefaults.Size }}"
+    private_ip = "{{ .Ip }}"
+    role       = "{{ .Role }}"
+  }
+{{- end }}
+}
+
+# Tags
+tags = {
+  Environment = "{{ .Environment }}"
+  ManagedBy   = "terraform"
+  ConfigPkg   = "{{ .ConfigPackage }}"
+  {{- range $k, $v := .Azure.Tags }}
+  {{ $k }} = "{{ $v }}"
+  {{- end }}
+}

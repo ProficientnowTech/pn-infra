@@ -1,0 +1,56 @@
+{{/*
+Keycloak Groups via Crossplane
+Declarative group management for RBAC
+*/}}
+{{- range .Values.groups }}
+{{- if .enabled }}
+---
+apiVersion: group.keycloak.crossplane.io/v1alpha1
+kind: Group
+metadata:
+  name: {{ $.Values.realm.name }}-group-{{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+    app.kubernetes.io/component: group
+    keycloak.crossplane.io/realm: {{ $.Values.realm.name }}
+    keycloak.crossplane.io/group: {{ .name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  forProvider:
+    realmId: {{ $.Values.realm.name }}
+    name: {{ .name }}
+    {{- if .path }}
+    path: {{ .path }}
+    {{- end }}
+    {{- if .parentId }}
+    parentId: {{ .parentId }}
+    {{- end }}
+    {{- if .attributes }}
+    attributes:
+      {{- range $key, $values := .attributes }}
+      {{ $key }}:
+        {{- toYaml $values | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- if .realmRoles }}
+    realmRoles:
+      {{- toYaml .realmRoles | nindent 6 }}
+    {{- end }}
+    {{- if .clientRoles }}
+    clientRoles:
+      {{- range $clientId, $roles := .clientRoles }}
+      {{ $clientId }}:
+        {{- toYaml $roles | nindent 8 }}
+      {{- end }}
+    {{- end }}
+
+  deletionPolicy: {{ .deletionPolicy | default "Delete" }}
+  providerConfigRef:
+    name: {{ $.Release.Name }}-provider-config
+{{- end }}
+{{- end }}

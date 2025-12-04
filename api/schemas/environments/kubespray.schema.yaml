@@ -1,0 +1,341 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Kubespray Environment Configuration Schema
+description: Validates environment-specific overrides for the container-orchestration module (Kubespray provider)
+type: object
+
+required:
+  - configPackage
+  - environment
+  - provider
+
+properties:
+  configPackage:
+    type: string
+    description: Reference to the config package (always "core")
+    enum: ["core"]
+
+  environment:
+    type: string
+    description: Environment identifier (development, staging, production, etc.)
+    pattern: "^[a-z0-9-]+$"
+
+  provider:
+    type: string
+    description: Container runtime provider for Kubespray
+    enum: ["docker", "podman", "native"]
+
+  # Kubespray-specific configuration
+  kubespray:
+    type: object
+    description: Kubespray orchestrator configuration and overrides
+    properties:
+      docker_image:
+        type: string
+        description: Kubespray Docker image with version tag
+        pattern: "^[a-z0-9./-]+:[a-z0-9._-]+$"
+        default: "quay.io/kubespray/kubespray:v2.28.1"
+      registry:
+        type: string
+        description: Container registry for Kubespray image
+        default: "quay.io"
+      version:
+        type: string
+        description: Kubespray version tag
+        pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+
+  # SSH configuration
+  ssh:
+    type: object
+    description: SSH configuration for cluster node access
+    properties:
+      key_path:
+        type: string
+        description: Absolute path to SSH private key (must be 600 permissions)
+        pattern: "^/"
+      user:
+        type: string
+        description: SSH user for node access
+        pattern: "^[a-z_][a-z0-9_-]*$"
+        default: "ansible"
+      port:
+        type: integer
+        description: SSH port for node connections
+        minimum: 1
+        maximum: 65535
+        default: 22
+    required:
+      - key_path
+
+  # Inventory overrides
+  inventory_overrides:
+    type: object
+    description: Environment-specific inventory overrides
+    properties:
+      # Node group assignments
+      kube_control_plane:
+        type: array
+        description: Override control plane node list
+        items:
+          type: string
+      etcd:
+        type: array
+        description: Override etcd node list
+        items:
+          type: string
+      kube_node:
+        type: array
+        description: Override worker node list
+        items:
+          type: string
+      # Per-host variables
+      host_vars:
+        type: object
+        description: Per-host variable overrides
+        additionalProperties:
+          type: object
+          properties:
+            ansible_host:
+              type: string
+              format: ipv4
+            ip:
+              type: string
+              format: ipv4
+            access_ip:
+              type: string
+              format: ipv4
+            node_labels:
+              type: object
+              additionalProperties:
+                type: string
+            node_taints:
+              type: array
+              items:
+                type: string
+
+  # Cluster configuration overrides
+  cluster_overrides:
+    type: object
+    description: Kubernetes cluster configuration overrides
+    properties:
+      # Cluster identity
+      cluster_name:
+        type: string
+        description: Kubernetes cluster name
+        pattern: "^[a-z0-9-]+$"
+      kube_dns_domain:
+        type: string
+        description: Cluster DNS domain
+        pattern: "^[a-z0-9.-]+$"
+        default: "cluster.local"
+
+      # Network plugin
+      kube_network_plugin:
+        type: string
+        description: CNI network plugin
+        enum: ["calico", "cilium", "flannel", "weave", "canal", "kube-ovn", "kube-router"]
+        default: "calico"
+
+      # Network ranges
+      kube_service_addresses:
+        type: string
+        description: Service CIDR range
+        pattern: "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/[0-9]{1,2}$"
+        default: "10.233.0.0/18"
+      kube_pods_subnet:
+        type: string
+        description: Pod CIDR range
+        pattern: "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/[0-9]{1,2}$"
+        default: "10.233.64.0/18"
+
+      # DNS configuration
+      dns_mode:
+        type: string
+        description: DNS mode for cluster
+        enum: ["coredns", "coredns_dual", "manual"]
+        default: "coredns"
+      enable_nodelocaldns:
+        type: boolean
+        description: Enable NodeLocal DNS cache
+        default: true
+      nodelocaldns_ip:
+        type: string
+        description: NodeLocal DNS cache IP
+        format: ipv4
+
+      # Container runtime
+      container_manager:
+        type: string
+        description: Container runtime
+        enum: ["containerd", "cri-o", "docker"]
+        default: "containerd"
+
+      # Kubernetes version
+      kube_version:
+        type: string
+        description: Kubernetes version to deploy
+        pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+
+      # API server configuration
+      kube_apiserver_ip:
+        type: string
+        description: API server load balancer IP
+        format: ipv4
+      kube_apiserver_port:
+        type: integer
+        description: API server port
+        minimum: 1
+        maximum: 65535
+        default: 6443
+      supplementary_addresses_in_ssl_keys:
+        type: array
+        description: Additional IPs/hostnames for API server certificate
+        items:
+          type: string
+
+      # Proxy configuration
+      kube_proxy_mode:
+        type: string
+        description: Kube-proxy mode
+        enum: ["iptables", "ipvs", "none"]
+        default: "iptables"
+
+      # Etcd configuration
+      etcd_deployment_type:
+        type: string
+        description: Etcd deployment type
+        enum: ["host", "docker", "kubeadm"]
+        default: "host"
+      etcd_memory_limit:
+        type: string
+        description: Etcd memory limit
+        pattern: "^[0-9]+(M|G)$"
+      etcd_quota_backend_bytes:
+        type: string
+        description: Etcd storage quota
+        pattern: "^[0-9]+(M|G)B$"
+
+      # Ingress controller
+      ingress_nginx_enabled:
+        type: boolean
+        description: Enable NGINX Ingress controller
+        default: false
+      ingress_nginx_host_network:
+        type: boolean
+        description: Use host network for ingress
+        default: false
+
+      # MetalLB (bare metal load balancer)
+      metallb_enabled:
+        type: boolean
+        description: Enable MetalLB for bare metal environments
+        default: false
+      metallb_ip_range:
+        type: string
+        description: IP range for MetalLB
+        pattern: "^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}-[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}$"
+
+      # Helm configuration
+      helm_enabled:
+        type: boolean
+        description: Install Helm
+        default: true
+      helm_version:
+        type: string
+        description: Helm version
+        pattern: "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+
+      # Certificate manager
+      cert_manager_enabled:
+        type: boolean
+        description: Install cert-manager
+        default: false
+
+      # Metrics server
+      metrics_server_enabled:
+        type: boolean
+        description: Install metrics-server
+        default: true
+
+      # Dashboard
+      dashboard_enabled:
+        type: boolean
+        description: Install Kubernetes Dashboard
+        default: false
+
+      # Persistent volumes
+      local_path_provisioner_enabled:
+        type: boolean
+        description: Enable local path provisioner
+        default: false
+      local_path_provisioner_claim_root:
+        type: string
+        description: Root directory for local path provisioner
+        pattern: "^/"
+
+      # Download configuration
+      download_container:
+        type: boolean
+        description: Use container for downloading binaries
+        default: true
+      download_force_cache:
+        type: boolean
+        description: Force use of download cache
+        default: false
+      download_run_once:
+        type: boolean
+        description: Download on one node and distribute
+        default: true
+
+      # Upgrade configuration
+      upgrade_cluster_setup:
+        type: boolean
+        description: Enable cluster upgrade
+        default: false
+      drain_nodes:
+        type: boolean
+        description: Drain nodes during upgrade
+        default: true
+      drain_grace_period:
+        type: integer
+        description: Grace period for draining nodes
+        minimum: 0
+        default: 600
+      drain_timeout:
+        type: integer
+        description: Timeout for draining nodes
+        minimum: 0
+        default: 900
+
+      # Logging
+      logging_enabled:
+        type: boolean
+        description: Enable cluster logging
+        default: false
+
+      # Custom registry
+      docker_insecure_registries:
+        type: array
+        description: Insecure Docker registries
+        items:
+          type: string
+      docker_registry_mirrors:
+        type: array
+        description: Docker registry mirrors
+        items:
+          type: string
+          format: uri
+
+  # Kubeconfig output
+  kubeconfig:
+    type: object
+    description: Kubeconfig file configuration
+    properties:
+      path:
+        type: string
+        description: Custom kubeconfig output path
+        pattern: "^/"
+        default: "~/.kube/config"
+      context_name:
+        type: string
+        description: Kubernetes context name
+        pattern: "^[a-z0-9-]+$"

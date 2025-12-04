@@ -1,0 +1,213 @@
+{{/*
+Crossplane Vault Provider Resources
+Copies secrets from Kubernetes to Vault for centralized management
+Wave 2: Copy all secrets (random-generated + sealed) to Vault
+*/}}
+
+---
+# ==============================================================================
+# WAVE 2: Copy Secrets to Vault using Crossplane Vault Provider
+# ==============================================================================
+
+# Core Secrets (oneuptimeSecret + encryptionSecret) to Vault
+apiVersion: vault.upbound.io/v1alpha1
+kind: GenericSecret
+metadata:
+  name: oneuptime-core-to-vault
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: "SkipDryRunOnMissingResource=true"
+  labels:
+    app.kubernetes.io/name: oneuptime
+    app.kubernetes.io/component: vault-sync
+    secret-type: core
+spec:
+  forProvider:
+    path: applications/monitoring/oneuptime/core
+    dataJson: |
+      {
+        "oneuptimeSecret": "${oneuptimeSecret}",
+        "encryptionSecret": "${encryptionSecret}"
+      }
+    # Pull values from random-generated secrets
+    dataSecrets:
+      oneuptimeSecret:
+        name: oneuptime-secret-random
+        namespace: {{ .Release.Namespace }}
+        key: password
+      encryptionSecret:
+        name: oneuptime-encryption-secret-random
+        namespace: {{ .Release.Namespace }}
+        key: password
+  providerConfigRef:
+    name: vault-provider-config
+---
+# SMTP Configuration to Vault (from SealedSecret)
+apiVersion: vault.upbound.io/v1alpha1
+kind: GenericSecret
+metadata:
+  name: oneuptime-smtp-to-vault
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: "SkipDryRunOnMissingResource=true"
+  labels:
+    app.kubernetes.io/name: oneuptime
+    app.kubernetes.io/component: vault-sync
+    secret-type: smtp
+spec:
+  forProvider:
+    path: applications/monitoring/oneuptime/smtp
+    dataJson: |
+      {
+        "host": "${smtpHost}",
+        "port": "${smtpPort}",
+        "user": "${smtpUser}",
+        "password": "${smtpPassword}",
+        "from": "${smtpFrom}",
+        "from-name": "${smtpFromName}"
+      }
+    dataSecrets:
+      smtpHost:
+        name: oneuptime-smtp-source
+        namespace: {{ .Release.Namespace }}
+        key: host
+      smtpPort:
+        name: oneuptime-smtp-source
+        namespace: {{ .Release.Namespace }}
+        key: port
+      smtpUser:
+        name: oneuptime-smtp-source
+        namespace: {{ .Release.Namespace }}
+        key: user
+      smtpPassword:
+        name: oneuptime-smtp-source
+        namespace: {{ .Release.Namespace }}
+        key: password
+      smtpFrom:
+        name: oneuptime-smtp-source
+        namespace: {{ .Release.Namespace }}
+        key: from
+      smtpFromName:
+        name: oneuptime-smtp-source
+        namespace: {{ .Release.Namespace }}
+        key: from-name
+  providerConfigRef:
+    name: vault-provider-config
+
+---
+# Slack Webhooks to Vault (from SealedSecret)
+apiVersion: vault.upbound.io/v1alpha1
+kind: GenericSecret
+metadata:
+  name: oneuptime-slack-to-vault
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: "SkipDryRunOnMissingResource=true"
+  labels:
+    app.kubernetes.io/name: oneuptime
+    app.kubernetes.io/component: vault-sync
+    secret-type: slack
+spec:
+  forProvider:
+    path: applications/monitoring/oneuptime/slack
+    dataJson: |
+      {
+        "webhook-on-create-user": "${webhookCreateUser}",
+        "webhook-on-delete-project": "${webhookDeleteProject}",
+        "webhook-on-create-project": "${webhookCreateProject}",
+        "webhook-on-subscription-update": "${webhookSubscription}"
+      }
+    dataSecrets:
+      webhookCreateUser:
+        name: oneuptime-slack-source
+        namespace: {{ .Release.Namespace }}
+        key: webhook-on-create-user
+      webhookDeleteProject:
+        name: oneuptime-slack-source
+        namespace: {{ .Release.Namespace }}
+        key: webhook-on-delete-project
+      webhookCreateProject:
+        name: oneuptime-slack-source
+        namespace: {{ .Release.Namespace }}
+        key: webhook-on-create-project
+      webhookSubscription:
+        name: oneuptime-slack-source
+        namespace: {{ .Release.Namespace }}
+        key: webhook-on-subscription-update
+  providerConfigRef:
+    name: vault-provider-config
+
+---
+# Slack App OAuth Credentials to Vault (from SealedSecret)
+apiVersion: vault.upbound.io/v1alpha1
+kind: GenericSecret
+metadata:
+  name: oneuptime-slack-app-to-vault
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-options: "SkipDryRunOnMissingResource=true"
+  labels:
+    app.kubernetes.io/name: oneuptime
+    app.kubernetes.io/component: vault-sync
+    secret-type: slack-app
+spec:
+  forProvider:
+    path: applications/monitoring/oneuptime/slack-app
+    dataJson: |
+      {
+        "client-id": "${clientId}",
+        "client-secret": "${clientSecret}",
+        "signing-secret": "${signingSecret}"
+      }
+    dataSecrets:
+      clientId:
+        name: oneuptime-slack-app-source
+        namespace: {{ .Release.Namespace }}
+        key: client-id
+      clientSecret:
+        name: oneuptime-slack-app-source
+        namespace: {{ .Release.Namespace }}
+        key: client-secret
+      signingSecret:
+        name: oneuptime-slack-app-source
+        namespace: {{ .Release.Namespace }}
+        key: signing-secret
+  providerConfigRef:
+    name: vault-provider-config
+
+---
+# Keycloak OIDC Client Secret to Vault
+# This syncs the client secret generated by Keycloak Crossplane provider
+apiVersion: vault.upbound.io/v1alpha1
+kind: GenericSecret
+metadata:
+  name: oneuptime-keycloak-to-vault
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-options: "SkipDryRunOnMissingResource=true"
+    description: "Syncs Keycloak client secret to Vault after client creation"
+  labels:
+    app.kubernetes.io/name: oneuptime
+    app.kubernetes.io/component: vault-sync
+    secret-type: oidc
+spec:
+  forProvider:
+    path: applications/security/keycloak/clients/oneuptime
+    dataJson: |
+      {
+        "client-id": "oneuptime",
+        "client-secret": "${clientSecret}"
+      }
+    dataSecrets:
+      clientSecret:
+        # This secret is created by Keycloak Crossplane provider
+        name: pcp-oneuptime-client-secret
+        namespace: security
+        key: client-secret
+  providerConfigRef:
+    name: vault-provider-config

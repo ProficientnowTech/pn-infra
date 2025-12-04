@@ -1,0 +1,94 @@
+# Kubekey Cluster Configuration
+# Generated from config package: {{ .ConfigPackage }}
+# Environment: {{ .Environment }}
+# Orchestrator: {{ .ContainerOrchestration.Orchestrator }}
+
+apiVersion: kubekey.kubesphere.io/v1alpha2
+kind: Cluster
+metadata:
+  name: {{ .Kubekey.Cluster.Name }}
+spec:
+  # Hosts configuration
+  hosts:
+  {{- range .Hosts }}
+  - name: {{ .Name }}
+    address: {{ .Ip }}
+    internalAddress: {{ .Ip }}
+    user: {{ $.Ssh.User }}
+    privateKeyPath: {{ $.Ssh.KeyPath }}
+    {{- if has "kube_control_plane" .Groups }}
+    roleList:
+    - master
+    {{- if has "etcd" .Groups }}
+    - etcd
+    {{- end }}
+    {{- else if has "kube_node" .Groups }}
+    roleList:
+    - worker
+    {{- end }}
+  {{- end }}
+
+  # Role groups (alternative to per-host roles)
+  roleGroups:
+    etcd:
+    {{- range .Hosts }}
+    {{- if has "etcd" .Groups }}
+    - {{ .Name }}
+    {{- end }}
+    {{- end }}
+    master:
+    {{- range .Hosts }}
+    {{- if has "kube_control_plane" .Groups }}
+    - {{ .Name }}
+    {{- end }}
+    {{- end }}
+    worker:
+    {{- range .Hosts }}
+    {{- if has "kube_node" .Groups }}
+    - {{ .Name }}
+    {{- end }}
+    {{- end }}
+
+  # Control plane endpoint
+  controlPlaneEndpoint:
+    {{- if .Kubekey.Cluster.ControlPlaneEndpoint.Domain }}
+    domain: {{ .Kubekey.Cluster.ControlPlaneEndpoint.Domain }}
+    {{- end }}
+    address: {{ .Kubekey.Cluster.ControlPlaneEndpoint.Address }}
+    port: {{ .Kubekey.Cluster.ControlPlaneEndpoint.Port }}
+
+  # Kubernetes configuration
+  kubernetes:
+    version: {{ .Kubekey.KubernetesVersion }}
+    clusterName: {{ .Kubekey.Cluster.Name }}
+    containerManager: {{ .Kubekey.ContainerRuntime }}
+
+  # Network configuration
+  network:
+    plugin: {{ .Kubekey.Network.Plugin }}
+    kubePodsCIDR: {{ .Kubekey.Network.PodCidr }}
+    kubeServiceCIDR: {{ .Kubekey.Network.ServiceCidr }}
+    {{- if .Kubekey.Network.DnsDomain }}
+    dnsDomain: {{ .Kubekey.Network.DnsDomain }}
+    {{- end }}
+
+  # Registry configuration
+  registry:
+    type: {{ .Kubekey.Registry.Type }}
+    {{- if .Kubekey.Registry.InsecureRegistries }}
+    insecureRegistries: {{ .Kubekey.Registry.InsecureRegistries | toJson }}
+    {{- end }}
+    {{- if .Kubekey.Registry.PrivateRegistries }}
+    privateRegistry: {{ .Kubekey.Registry.PrivateRegistries | toJson }}
+    {{- end }}
+
+  # Addons
+  {{- if .Kubekey.Addons }}
+  addons:
+  {{- range .Kubekey.Addons }}
+  - name: {{ .Name }}
+    {{- if .Enabled }}
+    enabled: {{ .Enabled }}
+    {{- end }}
+  {{- end }}
+  {{- end }}

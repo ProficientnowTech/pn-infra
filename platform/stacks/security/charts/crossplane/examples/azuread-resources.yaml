@@ -1,0 +1,167 @@
+# Azure AD Provider Examples
+# Declarative Azure Active Directory management
+
+---
+# Azure AD Application Registration for Keycloak SAML Federation
+apiVersion: application.azuread.upbound.io/v1beta1
+kind: Application
+metadata:
+  name: keycloak-saml-app
+spec:
+  forProvider:
+    displayName: "ProficientNow Platform SSO"
+
+    # SAML configuration
+    identifierUris:
+      - "https://keycloak.pnats.cloud/realms/proficientnow"
+
+    # Web application settings
+    web:
+      - redirectUris:
+          - "https://keycloak.pnats.cloud/realms/proficientnow/broker/azuread/endpoint"
+        implicitGrant:
+          - accessTokenIssuanceEnabled: false
+            idTokenIssuanceEnabled: true
+
+    # Optional claims configuration
+    optionalClaims:
+      - saml2Token:
+          - name: "groups"
+            essential: true
+
+  providerConfigRef:
+    name: default
+
+---
+# Service Principal for Application
+apiVersion: serviceprincipal.azuread.upbound.io/v1beta1
+kind: ServicePrincipal
+metadata:
+  name: keycloak-saml-sp
+spec:
+  forProvider:
+    applicationIdSelector:
+      matchLabels:
+        app: keycloak-saml
+
+    # Assign to users/groups
+    appRoleAssignmentRequired: false
+
+  providerConfigRef:
+    name: default
+
+---
+# Azure AD Group for Platform Admins
+apiVersion: group.azuread.upbound.io/v1beta1
+kind: Group
+metadata:
+  name: platform-admins-aad
+spec:
+  forProvider:
+    displayName: "Platform Admins"
+    description: "Administrators for the ProficientNow platform"
+    mailEnabled: false
+    securityEnabled: true
+
+    # Sync with Keycloak group
+    # Members can be added via GroupMember resources
+
+  providerConfigRef:
+    name: default
+
+---
+# Azure AD Group Member
+apiVersion: groupmember.azuread.upbound.io/v1beta1
+kind: GroupMember
+metadata:
+  name: admin-user-1
+spec:
+  forProvider:
+    groupObjectIdSelector:
+      matchLabels:
+        group: platform-admins
+
+    # Reference to user object ID
+    memberObjectId: "00000000-0000-0000-0000-000000000000"
+
+  providerConfigRef:
+    name: default
+
+---
+# Azure AD Application for OIDC (ArgoCD)
+apiVersion: application.azuread.upbound.io/v1beta1
+kind: Application
+metadata:
+  name: argocd-oidc-app
+spec:
+  forProvider:
+    displayName: "ArgoCD OIDC"
+    signInAudience: "AzureADMyOrg"
+
+    # OIDC configuration
+    web:
+      - redirectUris:
+          - "https://argocd.pnats.cloud/auth/callback"
+        implicitGrant:
+          - accessTokenIssuanceEnabled: false
+            idTokenIssuanceEnabled: true
+
+    # Required resource access (Microsoft Graph)
+    requiredResourceAccess:
+      - resourceAppId: "00000003-0000-0000-c000-000000000000"  # Microsoft Graph
+        resourceAccess:
+          - id: "e1fe6dd8-ba31-4d61-89e7-88639da4683d"  # User.Read
+            type: "Scope"
+
+  providerConfigRef:
+    name: default
+
+---
+# Application Password (Client Secret)
+apiVersion: applicationpassword.azuread.upbound.io/v1beta1
+kind: ApplicationPassword
+metadata:
+  name: argocd-oidc-secret
+spec:
+  forProvider:
+    applicationObjectIdSelector:
+      matchLabels:
+        app: argocd-oidc
+
+    displayName: "ArgoCD OIDC Client Secret"
+    endDate: "2025-12-31T23:59:59Z"
+
+  # Secret will be output to Kubernetes secret
+  writeConnectionSecretToRef:
+    name: argocd-oidc-credentials
+    namespace: crossplane-system
+
+  providerConfigRef:
+    name: default
+
+---
+# Conditional Access Policy (requires Premium license)
+# apiVersion: conditionalaccesspolicy.azuread.upbound.io/v1alpha1
+# kind: ConditionalAccessPolicy
+# metadata:
+#   name: require-mfa-platform
+# spec:
+#   forProvider:
+#     displayName: "Require MFA for Platform Access"
+#     state: "enabled"
+#
+#     conditions:
+#       applications:
+#         includeApplications:
+#           - "All"
+#       users:
+#         includeGroups:
+#           - "<platform-admins-group-id>"
+#
+#     grantControls:
+#       builtInControls:
+#         - "mfa"
+#       operator: "OR"
+#
+#   providerConfigRef:
+#     name: default

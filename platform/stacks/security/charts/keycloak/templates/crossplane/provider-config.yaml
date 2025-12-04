@@ -1,0 +1,25 @@
+{{/*
+Crossplane Provider Configuration for Keycloak
+Connects Crossplane to Keycloak API for declarative management
+*/}}
+---
+apiVersion: keycloak.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: {{ .Release.Name }}-provider-config
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: keycloak-admin-secret
+      namespace: {{ .Release.Namespace }}
+      key: admin-password
+  url: http://{{ .Release.Name }}-keycloak:80
+  realm: master
+  username: {{ .Values.keycloak.auth.adminUser | default "admin" }}

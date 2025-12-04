@@ -1,0 +1,39 @@
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: argocd-private-repo-push
+  namespace: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRefs:
+    - name: vault-backend
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: argocd-private-repo
+  data:
+    - match:
+        secretKey: name
+        remoteRef:
+          remoteKey: applications/infrastructure/argocd/repo
+          property: name
+    - match:
+        secretKey: password
+        remoteRef:
+          remoteKey: applications/infrastructure/argocd/repo
+          property: password
+    - match:
+        secretKey: type
+        remoteRef:
+          remoteKey: applications/infrastructure/argocd/repo
+          property: type
+    - match:
+        secretKey: url
+        remoteRef:
+          remoteKey: applications/infrastructure/argocd/repo
+          property: url
+    - match:
+        secretKey: username
+        remoteRef:
+          remoteKey: applications/infrastructure/argocd/repo
+          property: username

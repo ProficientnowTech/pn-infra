@@ -1,0 +1,18 @@
+{
+  "inventory": {
+    "name": "pn-development",
+    "source": "../kubespray/inventory/pn-development"
+  },
+  "ssh": {
+    "keyPath": "~/.ssh-manager/keys/pn-development-k8s/id_ed25519_pn-development-ansible-role",
+    "user": "ansible"
+  },
+  "image": {
+    "repository": "quay.io/kubespray/kubespray",
+    "version": "v2.28.1"
+  },
+  "cluster": {
+    "name": "development",
+    "kubeVersion": "v1.29.5"
+  }
+}

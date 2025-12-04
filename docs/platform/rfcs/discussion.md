@@ -354,7 +354,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-repo
-    targetRevision: main
+    targetRevision: v2
     path: charts/tekton
     helm:
       valueFiles:
@@ -402,7 +402,7 @@ spec:
       project: default
       source:
         repoURL: https://github.com/yourorg/gitops-repo
-        targetRevision: main
+        targetRevision: v2
         path: charts/tekton
         helm:
           valueFiles:
@@ -845,7 +845,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-repo
-    targetRevision: main
+    targetRevision: v2
     path: charts/kargo
     helm:
       valueFiles:
@@ -900,7 +900,7 @@ spec:
       
       source:
         repoURL: https://github.com/yourorg/gitops-repo
-        targetRevision: main
+        targetRevision: v2
         path: charts/kargo
         helm:
           valueFiles:
@@ -2340,7 +2340,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-repo
-    targetRevision: main
+    targetRevision: v2
     path: charts/mongodb-cluster
   
   destination:
@@ -5511,7 +5511,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-repo
-    targetRevision: main
+    targetRevision: v2
     path: charts/uptime-kuma
   
   destination:
@@ -5648,7 +5648,7 @@ spec:
   
   source:
     repoURL: https://github.com/yourorg/gitops-repo
-    targetRevision: main
+    targetRevision: v2
     path: charts/gatus
   
   destination:

@@ -127,7 +127,7 @@ kubectl apply -f argocd-notifications-sealed-secret.yaml
 
 # Store in Git
 mv argocd-notifications-sealed-secret.yaml \
-  v0.2.0/platform/charts/argocd-self/sealed-secrets/
+  platform/charts/argocd-self/sealed-secrets/
 ```
 
 ### Option B: Manual Secret (Testing Only)
@@ -183,7 +183,7 @@ context:
 
 ```bash
 # From the platform directory
-cd v0.2.0/platform
+cd platform
 
 # Update ArgoCD
 helm upgrade --install argocd-self charts/argocd-self \

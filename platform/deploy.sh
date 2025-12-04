@@ -11,6 +11,16 @@ ENVIRONMENT="${2:-production}"
 SSH_PRIVATE_KEY_PATH="${3:-$HOME/.ssh/github_keys}"
 ARGO_TIMEOUT="${4:-300s}"
 
+# Source environment file if it exists (for REPO_TOKEN and other vars)
+ENV_FILE="${SCRIPT_DIR}/bootstrap/secrets/.env.local"
+if [[ -f "$ENV_FILE" ]]; then
+	set -a
+	source "$ENV_FILE"
+	set +a
+	# Support both REPO_TOKEN and ARGOCD_REPO_TOKEN
+	export REPO_TOKEN="${REPO_TOKEN:-${ARGOCD_REPO_TOKEN:-}}"
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -38,20 +48,47 @@ log_error() {
 check_resource_ready() {
 	local resource_type="$1"
 	local resource_name="$2"
-	local namespace="$3"
+	local namespace="${3:-}"
 
-	if kubectl get "$resource_type" "$resource_name" -n "$namespace" >/dev/null 2>&1; then
-		if [[ "$resource_type" == "pod" ]]; then
-			kubectl wait --for=condition=ready "pod/$resource_name" -n "$namespace" --timeout=30s >/dev/null 2>&1 && return 0
-		else
-			return 0
-		fi
+	# Build namespace flag only if provided
+	local ns_flag=()
+	if [[ -n "$namespace" ]]; then
+		ns_flag=(-n "$namespace")
 	fi
-	return 1
+
+	# Existence check
+	if ! kubectl get "$resource_type" "$resource_name" "${ns_flag[@]}" >/dev/null 2>&1; then
+		return 1
+	fi
+
+	case "$resource_type" in
+	pod)
+		kubectl wait --for=condition=Ready "pod/$resource_name" "${ns_flag[@]}" --timeout=30s >/dev/null 2>&1 || return 1
+		;;
+	deployment)
+		kubectl wait --for=condition=Available "deployment/$resource_name" "${ns_flag[@]}" --timeout=60s >/dev/null 2>&1 || return 1
+		;;
+	crd | CustomResourceDefinition)
+		# For CRDs, existence is enough; no namespace + no wait
+		:
+		;;
+	*)
+		# For other resource types we just treat existence as "ready"
+		:
+		;;
+	esac
+
+	return 0
 }
 
 # Create required secrets for platform
 render_bootstrap_secrets() {
+	local is_argo_namespace_present=$(kubectl get namespace argocd --ignore-not-found)
+	if [[ ! -n "$is_argo_namespace_present" ]]; then
+		log_info "ArgoCD namespace not found, creating it first..."
+		kubectl create namespace argocd
+		log_success "ArgoCD namespace created."
+	fi
 	local script="${SCRIPT_DIR}/bootstrap/scripts/render-secrets.sh"
 	if [[ ! -x "$script" ]]; then
 		log_error "Bootstrap secret renderer not found or not executable: $script"
@@ -80,6 +117,32 @@ install_sealed_secrets() {
 		log_error "Failed to install sealed-secrets controller."
 		return 1
 	fi
+
+	if [[ ! -n "$(kubectl get crds | grep external-secrets.io)" ]]; then
+		log_info "External Secrets CRD not found, installing External Secrets CRDs..."
+		kubectl apply -f "https://raw.githubusercontent.com/external-secrets/external-secrets/v1.1.0/deploy/crds/bundle.yaml" --server-side
+		log_success "External Secrets CRDs installed."
+	fi
+}
+
+# Wait for ArgoCD CRDs to be installed
+wait_for_argocd_crds() {
+	log_info "Waiting for ArgoCD CRDs to be installed..."
+	local max_wait=300
+	local waited=0
+
+	while [[ $waited -lt $max_wait ]]; do
+		if kubectl get crd applications.argoproj.io >/dev/null 2>&1; then
+			log_success "ArgoCD CRDs are available"
+			return 0
+		fi
+		sleep 5
+		waited=$((waited + 5))
+		log_info "Waiting for ArgoCD CRDs... (${waited}s/${max_wait}s)"
+	done
+
+	log_error "ArgoCD CRDs not available within ${max_wait}s"
+	return 1
 }
 
 # Deploy ArgoCD if not present - OPTIMIZED VERSION
@@ -87,7 +150,7 @@ deploy_argocd() {
 	log_info "Checking ArgoCD deployment..."
 
 	# Fast check - if CRD and server deployment exist and are ready, skip deployment
-	if check_resource_ready "crd" "applications.argoproj.io" "" &&
+	if check_resource_ready "crd" "applications.argoproj.io" &&
 		check_resource_ready "deployment" "argocd-server" "argocd"; then
 		log_success "ArgoCD already deployed and ready"
 		return 0
@@ -95,20 +158,14 @@ deploy_argocd() {
 
 	log_info "Deploying ArgoCD..."
 	if [[ -x "${SCRIPT_DIR}/bootstrap/install-argo.sh" ]]; then
-		# Run install script in background and immediately proceed to wait
+		# Run install script in background but wait for CRDs before proceeding
 		if [[ -n "$SSH_PRIVATE_KEY_PATH" && -f "$SSH_PRIVATE_KEY_PATH" ]]; then
 			log_info "Using SSH key: $SSH_PRIVATE_KEY_PATH"
-			SSH_PRIVATE_KEY_PATH="$SSH_PRIVATE_KEY_PATH" "${SCRIPT_DIR}/bootstrap/install-argo.sh" &
+			SSH_PRIVATE_KEY_PATH="$SSH_PRIVATE_KEY_PATH" "${SCRIPT_DIR}/bootstrap/install-argo.sh"
 		else
 			log_warning "No SSH key provided or key not found - private repo access may not work"
-			"${SCRIPT_DIR}/bootstrap/install-argo.sh" &
+			"${SCRIPT_DIR}/bootstrap/install-argo.sh"
 		fi
-
-		local install_pid=$!
-
-		# Immediately proceed - don't wait for installation to complete
-		log_info "ArgoCD installation started (PID: $install_pid), proceeding with platform setup..."
-
 	else
 		log_error "Bootstrap script not found or not executable"
 		return 1
@@ -225,11 +282,8 @@ deploy_platform_applications() {
 	install_sealed_secrets
 	render_bootstrap_secrets
 
-	# Start ArgoCD deployment (non-blocking)
+	# Start ArgoCD deployment blocking
 	deploy_argocd
-
-	# Wait for ArgoCD to be ready (optimized wait)
-	wait_for_argocd_ready
 
 	# Apply platform root application
 	local bootstrap_app="${SCRIPT_DIR}/bootstrap/platform-root.yaml"

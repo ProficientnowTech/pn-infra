@@ -3,7 +3,7 @@ environment: production
 
 default:
   repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  targetRevision: main
+  targetRevision: v2
   destinationServer: https://kubernetes.default.svc
   project: platform
   syncPolicy:
@@ -11,8 +11,8 @@ default:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
-      - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - RespectIgnoreDifferences=true
   retry:
     limit: 3
     backoff:

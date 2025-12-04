@@ -149,7 +149,7 @@ projects:
 
     sourceRepos:
       - 'https://github.com/pnow-devsupreme/pn-infra.git'
-      - 'https://charts.bitnami.com/bitnami'
+      - 'https://bitnami-labs.github.io/sealed-secrets/'
       - 'https://helm.releases.hashicorp.com'
       - 'https://charts.external-secrets.io'
       - 'https://charts.crossplane.io/stable'

@@ -17,21 +17,15 @@ metadata:
 spec:
   project: default
   sources:
-  - repoUrl: https://github.com/pnow-devsupreme/pn-infra.git
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
     path: platform/project-chart
-    targetRevision: main
-    helm:
-      valuesFiles:
-      - values-production.yaml
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    path: platform/stack-orchestrator
-    targetRevision: main
+    targetRevision: v2
     helm:
       valueFiles:
       - values-production.yaml
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    path: platform/target-chart
-    targetRevision: main
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    path: platform/stack-orchestrator
+    targetRevision: v2
     helm:
       valueFiles:
       - values-production.yaml

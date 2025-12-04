@@ -38,7 +38,7 @@ log_error() {
 check_tools() {
 	log_info "Checking required tools for platform deployment..."
 
-	local tools=("helm" "kubectl" "git")
+	local tools=("helm" "kubectl" "git" "yq" "jq")
 	for tool in "${tools[@]}"; do
 		if ! command -v "$tool" &>/dev/null; then
 			log_error "Missing tool: $tool"
@@ -50,7 +50,7 @@ check_tools() {
 check_platform_structure() {
 	log_info "Checking platform directory structure..."
 
-	local required_dirs=("charts" "target-chart" "project-chart" "bootstrap")
+	local required_dirs=("stacks" "stack-orchestrator" "project-chart" "bootstrap")
 	for dir in "${required_dirs[@]}"; do
 		if [[ ! -d "${SCRIPT_DIR}/${dir}" ]]; then
 			log_error "Platform directory missing: $dir"
@@ -73,29 +73,29 @@ check_helm_templates() {
 	fi
 
 	# Check target-chart with environment values
-	local target_chart="${SCRIPT_DIR}/target-chart"
-	local values_file="${target_chart}/values-${ENVIRONMENT}.yaml"
+	local stack_orchestrator="${SCRIPT_DIR}/stack-orchestrator"
+	local values_file="${stack_orchestrator}/values-${ENVIRONMENT}.yaml"
 
 	if [[ ! -f "$values_file" ]]; then
 		log_error "Environment values file not found: values-${ENVIRONMENT}.yaml"
 		return
 	fi
 
-	if ! helm template "target-chart-${ENVIRONMENT}" "$target_chart" -f "$values_file" --dry-run >/dev/null 2>&1; then
+	if ! helm template "target-chart-${ENVIRONMENT}" "$stack_orchestrator" -f "$values_file" --dry-run >/dev/null 2>&1; then
 		log_error "Target-chart template validation failed for $ENVIRONMENT"
 	else
 		log_success "Target-chart template valid for $ENVIRONMENT"
 	fi
 
 	# Check individual charts
-	local charts=("argocd-self" "metallb" "ingress-nginx" "cert-manager" "prometheus")
-	for chart in "${charts[@]}"; do
-		local chart_dir="${SCRIPT_DIR}/charts/${chart}"
-		if [[ -d "$chart_dir" ]]; then
-			if ! helm template "$chart" "$chart_dir" --dry-run >/dev/null 2>&1; then
-				log_error "Chart template validation failed: $chart"
+	local stacks=("infrastructure" "storage" "security" "monitoring" "data-streaming" "platform-data" "ml-infra" "developer-platform" "development-workloads" "application-infra" "backup-and-disaster-recovery")
+	for stack in "${stacks[@]}"; do
+		local stack_dir="${SCRIPT_DIR}/stacks/${chart}/target-chart"
+		if [[ -d "$stack_dir" ]]; then
+			if ! helm template "$stack" "$stack_dir" --dry-run >/dev/null 2>&1; then
+				log_error "Chart template validation failed: $stack"
 			else
-				log_success "Chart template valid: $chart"
+				log_success "Chart template valid: $stack"
 			fi
 		fi
 	done
@@ -116,22 +116,17 @@ check_argocd_bootstrap() {
 	log_info "Checking ArgoCD bootstrap configuration..."
 
 	local bootstrap_dir="${SCRIPT_DIR}/bootstrap"
-	local argocd_values="${bootstrap_dir}/argocd/argocd-values.yaml"
-
-	if [[ ! -f "$argocd_values" ]]; then
-		log_error "ArgoCD bootstrap values not found"
-		return
-	fi
+	local platform_root="${bootstrap_dir}/platform-root.yaml"
 
 	# Basic YAML syntax check
 	if command -v yq &>/dev/null; then
-		if ! yq eval '.' "$argocd_values" >/dev/null 2>&1; then
+		if ! yq eval '.' "$platform_root" >/dev/null 2>&1; then
 			log_error "Invalid YAML syntax in ArgoCD bootstrap values"
 		fi
 	fi
 
 	# Check for repository configuration
-	if [[ -f "${bootstrap_dir}/bootstrap-app-production.yaml" ]]; then
+	if [[ -f "${platform_root}" ]]; then
 		log_success "Bootstrap application configuration found"
 	else
 		log_warning "Bootstrap application configuration not found"
@@ -154,6 +149,21 @@ check_repository_access() {
 	else
 		log_warning "Not running from git repository"
 	fi
+}
+
+check_namespaces_for_deploying_secrets() {
+	log_info "Checking required namespaces for deploying secrets..."
+
+	local namespaces=("argocd" "external-secrets" "sealed-secrets" "backstage" "cert-manager" "external-dns" "capk-system" "monitoring" "harbor" "kargo" "keycloak" "onuptime" "verdaccio" "postgres-operator")
+	for ns in "${namespaces[@]}"; do
+		if ! kubectl get namespace "$ns" >/dev/null 2>&1; then
+			log_warning "Namespace not found: $ns, creating it..."
+			kubectl create namespace "$ns"
+			log_success "Namespace created: $ns"
+		else
+			log_success "Namespace exists: $ns"
+		fi
+	done
 }
 
 # Check cluster connectivity
@@ -206,6 +216,7 @@ run_validation() {
 	check_helm_templates
 	check_argocd_bootstrap
 	check_repository_access
+	check_namespaces_for_deploying_secrets
 	check_cluster_connectivity
 	check_cluster_capacity
 

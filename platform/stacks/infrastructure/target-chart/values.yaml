@@ -4,7 +4,7 @@ stackName: infrastructure
 # Default repository configuration
 default:
   repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-  targetRevision: main
+  targetRevision: v2
 # Global configuration for all applications
 global:
   # ArgoCD project

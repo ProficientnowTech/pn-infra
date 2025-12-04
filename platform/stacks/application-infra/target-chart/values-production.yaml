@@ -4,12 +4,12 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: '0'
   sources:
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/stacks/application-infra/charts/temporal
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/stacks/application-infra/charts/temporal/secrets
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
-    targetRevision: main
-    path: v0.2.0/platform/stacks/application-infra/charts/temporal/dashboards
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/application-infra/charts/temporal
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/application-infra/charts/temporal/secrets
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/application-infra/charts/temporal/dashboards

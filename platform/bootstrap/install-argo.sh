@@ -4,9 +4,9 @@ set -euo pipefail
 # Configuration
 ENVIRONMENT="${1:-production}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ARGOCD_VERSION="${ARGOCD_VERSION:-8.6.3}"
+ARGOCD_VERSION="${ARGOCD_VERSION:-9.1.6}"
 ARGOCD_NAMESPACE="${ARGOCD_NAMESPACE:-argocd}"
-REPO_URL="${REPO_URL:-https://github.com/pnow-devsupreme/pn-infra.git}"
+REPO_URL="${REPO_URL:-https://github.com/ProficientnowTech/pn-infra.git}"
 REPO_TOKEN="${REPO_TOKEN:-}"
 
 # Colors
@@ -43,6 +43,7 @@ check_prerequisites() {
 install_argocd() {
 	log "🚀 Installing ArgoCD..."
 
+	# Ensure repo exists
 	if ! helm repo list | grep -q "^argo\\s"; then
 		helm repo add argo https://argoproj.github.io/argo-helm || {
 			error "Failed to add Argo Helm repository"
@@ -51,14 +52,49 @@ install_argocd() {
 	fi
 	helm repo update >/dev/null 2>&1
 
+	# 🔥 FIX: If argocd-notifications-secret exists but is NOT Helm-owned, patch it
+	if kubectl get secret argocd-notifications-secret -n "${ARGOCD_NAMESPACE}" >/dev/null 2>&1; then
+		owner_label=$(kubectl get secret argocd-notifications-secret -n "${ARGOCD_NAMESPACE}" -o jsonpath='{.metadata.labels.app\.kubernetes\.io/managed-by}' 2>/dev/null || echo "")
+		release_name=$(kubectl get secret argocd-notifications-secret -n "${ARGOCD_NAMESPACE}" -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-name}' 2>/dev/null || echo "")
+
+		if [[ "$owner_label" != "Helm" || "$release_name" != "argocd" ]]; then
+			warn "⚠️ ArgoCD notifications secret exists but is not Helm-owned. Patching ownership..."
+
+			kubectl label secret argocd-notifications-secret \
+				app.kubernetes.io/managed-by=Helm --overwrite -n "${ARGOCD_NAMESPACE}" || {
+				error "Failed to apply Helm ownership label"
+				return 1
+			}
+
+			kubectl annotate secret argocd-notifications-secret \
+				meta.helm.sh/release-name=argocd --overwrite -n "${ARGOCD_NAMESPACE}" || {
+				error "Failed to apply Helm release-name annotation"
+				return 1
+			}
+
+			kubectl annotate secret argocd-notifications-secret \
+				meta.helm.sh/release-namespace="${ARGOCD_NAMESPACE}" --overwrite -n "${ARGOCD_NAMESPACE}" || {
+				error "Failed to apply Helm release-namespace annotation"
+				return 1
+			}
+
+			log "✓ Patched secret ownership: Helm will now accept this resource"
+		else
+			log "✓ argocd-notifications-secret already Helm-owned"
+		fi
+	fi
+
+	# ---- Actual Helm install ----
 	helm upgrade --install argocd argo/argo-cd \
-		--version ${ARGOCD_VERSION} \
-		--namespace ${ARGOCD_NAMESPACE} \
+		--version "${ARGOCD_VERSION}" \
+		--namespace "${ARGOCD_NAMESPACE}" \
 		--create-namespace \
 		--set configs.cm.application.resourceTrackingMethod=annotation \
-		-f $(dirname $0)/argocd/argocd-values.yaml \
-		--wait --timeout=600s >/dev/null 2>&1 | tee /tmp/argocd-helm-install.log || {
-		error "Helm installation failed. Check /tmp/argocd-helm-install.log"
+		--wait \
+		--timeout=600s \
+		2>&1 | tee /tmp/argocd-helm-install.log >/dev/null || {
+
+		error "❌ Helm installation failed. See /tmp/argocd-helm-install.log"
 		return 1
 	}
 
@@ -162,6 +198,8 @@ get_argocd_password() {
 }
 
 # Wait for user to manually add repository and confirm
+
+# Print success message with access instructions
 print_argo_success() {
 	local password=$(get_argocd_password || echo "not-found")
 
@@ -171,279 +209,36 @@ print_argo_success() {
 	echo
 	echo -e "${GREEN}===== ArgoCD is now installed and ready${NC}====="
 	echo
-	echo -e "${YELLOW} You could proceed with the following steps:${NC}"
+	echo -e "${YELLOW} Access instructions:${NC}"
 	echo
-	echo -e "1. ${BLUE}Start port-forward (in a separate terminal):${NC}"
+	echo -e "1. ${BLUE}Start port-forward:${NC}"
 	echo -e "   ${GREEN}kubectl port-forward --address 0.0.0.0,localhost svc/argocd-server -n ${ARGOCD_NAMESPACE} 8080:443${NC}"
 	echo
-	echo -e "2. ${BLUE}Access ArgoCD Dashboard:${NC}"
-	echo -e "   ${GREEN}https://localhost:8080${NC}"
+	echo -e "2. ${BLUE}Access:${NC} ${GREEN}https://localhost:8080${NC}"
 	echo
-	echo -e "3. ${BLUE}Login with:${NC}"
-	echo -e "   Username: ${GREEN}admin${NC}"
-	echo -e "   Password: ${GREEN}${password}${NC}"
+	echo -e "3. ${BLUE}Login:${NC} Username: ${GREEN}admin${NC} | Password: ${GREEN}${password}${NC}"
 	echo
-}
-
-setup_argocd_notifications() {
-	info "Setting up ArgoCD notifications (Slack + Email)..."
-
-	# Check if notifications secret already exists
-	if kubectl get secret -n argocd argocd-notifications-secret &>/dev/null; then
-		log "ArgoCD notifications secret already exists"
-		return 0
-	fi
-
-	echo
-	info "📧 Setting up ArgoCD Notifications"
-	echo "   This will configure Slack and email notifications for ArgoCD"
-	echo
-
-	# Prompt for Slack token
-	local SLACK_TOKEN=""
-	while true; do
-		echo
-		info "🔔 Slack Bot Configuration"
-		echo "   1. Create Slack app at: https://api.slack.com/apps"
-		echo "   2. Add scopes: chat:write, chat:write.public, channels:read"
-		echo "   3. Install app to workspace"
-		echo "   4. Copy Bot User OAuth Token (xoxb-...)"
-		echo
-		read -r -s -p "Enter Slack Bot OAuth Token (or press Enter to skip): " SLACK_TOKEN
-		echo
-
-		if [[ -z "$SLACK_TOKEN" ]]; then
-			warn "Skipping Slack notifications setup"
-			break
-		fi
-
-		# Validate token format
-		if [[ "$SLACK_TOKEN" =~ ^xoxb- ]]; then
-			log "Slack token format validated"
-			break
-		else
-			error "Invalid Slack token format (should start with xoxb-)"
-			read -p "Try again? (Y/n): " -n 1 -r
-			echo
-			if [[ $REPLY =~ ^[Nn]$ ]]; then
-				warn "Skipping Slack notifications setup"
-				SLACK_TOKEN=""
-				break
-			fi
-		fi
-	done
-
-	# Prompt for email configuration
-	local EMAIL_PASSWORD=""
-	local EMAIL_USERNAME="platform-admin@pnats.cloud"
-	local EMAIL_HOST="mail.pnats.cloud"
-	local EMAIL_PORT="587"
-
-	while true; do
-		echo
-		info "📧 Email (SMTP) Configuration"
-		echo "   Email: $EMAIL_USERNAME"
-		echo "   SMTP Host: $EMAIL_HOST"
-		echo "   SMTP Port: $EMAIL_PORT"
-		echo
-		read -r -s -p "Enter email password for $EMAIL_USERNAME (or press Enter to skip): " EMAIL_PASSWORD
-		echo
-
-		if [[ -z "$EMAIL_PASSWORD" ]]; then
-			warn "Skipping email notifications setup"
-			break
-		fi
-
-		log "Email password captured"
-		break
-	done
-
-	# Check if at least one notification method is configured
-	if [[ -z "$SLACK_TOKEN" && -z "$EMAIL_PASSWORD" ]]; then
-		warn "No notification methods configured - skipping notifications secret creation"
-		return 0
-	fi
-
-	# Create the notifications secret
-	info "Creating ArgoCD notifications secret..."
-
-	local secret_data=""
-	if [[ -n "$SLACK_TOKEN" ]]; then
-		secret_data="$secret_data --from-literal=slack-token=$SLACK_TOKEN"
-	fi
-	if [[ -n "$EMAIL_PASSWORD" ]]; then
-		secret_data="$secret_data --from-literal=email-username=$EMAIL_USERNAME"
-		secret_data="$secret_data --from-literal=email-password=$EMAIL_PASSWORD"
-	fi
-
-	if kubectl create secret generic argocd-notifications-secret \
-		--namespace=argocd \
-		$secret_data; then
-		log "✓ ArgoCD notifications secret created successfully"
-
-		if [[ -n "$SLACK_TOKEN" ]]; then
-			log "  ✓ Slack notifications enabled"
-		fi
-		if [[ -n "$EMAIL_PASSWORD" ]]; then
-			log "  ✓ Email notifications enabled ($EMAIL_USERNAME)"
-		fi
-
-		echo
-		info "📝 Next steps for notifications:"
-		if [[ -n "$SLACK_TOKEN" ]]; then
-			echo "   1. Create Slack channel: #platform-alerts"
-			echo "   2. Invite bot: /invite @ArgoCD Notifications"
-		fi
-		echo "   3. Update values.yaml subscriptions if needed"
-		echo
-	else
-		error "Failed to create ArgoCD notifications secret"
-		return 1
-	fi
-}
-
-setup_argocd_repository() {
-	local repo_secret_file="${SCRIPT_DIR}/repositories/pn-infra.yaml"
-	local temp_secret_file=""
-
-	info "Setting up ArgoCD repository access via Kubernetes Secret..."
-
-	# Check if repository secret already exists
-	if kubectl get secret -n argocd pn-infra &>/dev/null; then
-		log "Repository secret already exists in ArgoCD"
-		return 0
-	fi
-
-	# Check if secret file exists
-	if [[ ! -f "$repo_secret_file" ]]; then
-		error "Repository secret file not found: $repo_secret_file"
-		return 1
-	fi
-
-	# Prompt for GitHub token (masked input)
-	echo
-	info "🔑 GitHub Token required for private repository access"
-	echo "   Repository: https://github.com/pnow-devsupreme/pn-infra.git"
-	echo "   The token needs 'repo' scope permissions"
-	echo
-
-	while true; do
-		read -r -s -p "Enter your GitHub Personal Access Token (input hidden): " REPO_TOKEN
-		echo
-
-		if [[ -z "$REPO_TOKEN" ]]; then
-			error "Token cannot be empty"
-			continue
-		fi
-
-		# Validate token format (basic check)
-		if [[ ! "$REPO_TOKEN" =~ ^ghp_[a-zA-Z0-9]{36}$ ]] && [[ ! "$REPO_TOKEN" =~ ^github_pat_[a-zA-Z0-9]{22}_[a-zA-Z0-9]{59}$ ]]; then
-			warn "Token format doesn't match GitHub PAT patterns (ghp_... or github_pat_...)"
-			read -p "Continue anyway? (y/N): " -n 1 -r
-			echo
-			if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-				continue
-			fi
-		fi
-
-		# Validate token against GitHub API
-		info "Validating GitHub token..."
-		local validation_result
-		validation_result=$(curl -s -H "Authorization: Bearer $REPO_TOKEN" \
-			-H "Accept: application/vnd.github.v3+json" \
-			"https://api.github.com/user" 2>/dev/null | grep -E '"login"|"message"' || echo "invalid")
-
-		if echo "$validation_result" | grep -q '"login"'; then
-			local github_user
-			github_user=$(echo "$validation_result" | grep '"login"' | cut -d'"' -f4)
-			log "Token validated successfully! GitHub user: $github_user"
-			break
-		elif echo "$validation_result" | grep -q '"message"'; then
-			local error_msg
-			error_msg=$(echo "$validation_result" | grep '"message"' | cut -d'"' -f4)
-			error "Token validation failed: $error_msg"
-		else
-			error "Token validation failed: Cannot connect to GitHub API"
-			read -p "Continue without validation? (not recommended) (y/N): " -n 1 -r
-			echo
-			if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-				continue
-			else
-				warn "Proceeding with unvalidated token"
-				break
-			fi
-		fi
-	done
-
-	# Create temporary file with actual token
-	temp_secret_file=$(mktemp)
-	sed "s/TOKEN_PLACEHOLDER/$REPO_TOKEN/g" "$repo_secret_file" >"$temp_secret_file"
-
-	# Wait for ArgoCD namespace to be ready
-	info "Waiting for ArgoCD components to be ready..."
-	kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-server -n argocd --timeout=120s || {
-		warn "ArgoCD server not fully ready, but continuing with repository setup..."
-	}
-	kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-application-controller -n argocd --timeout=120s || {
-		warn "ArgoCD application controller not fully ready, but continuing with repository setup..."
-	}
-	kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=argocd-repo-server -n argocd --timeout=120s || {
-		warn "ArgoCD repo server not fully ready, but continuing with repository setup..."
-	}
-
-	# Apply the repository secret
-	info "Applying repository secret to ArgoCD..."
-	if kubectl apply -f "$temp_secret_file"; then
-		log "Repository secret successfully applied to ArgoCD"
-
-		# Wait for repository connection
-		info "Waiting for repository connection to be established..."
-		local max_attempts=30
-		local attempt=1
-
-		while [[ $attempt -le $max_attempts ]]; do
-			# Check if the secret has the ArgoCD repository label
-			local secret_type=$(kubectl get secret -n argocd pn-infra -o json 2>/dev/null | jq -r '.metadata.labels["argocd.argoproj.io/secret-type"] // empty')
-
-			if [[ "$secret_type" == "repository" ]]; then
-				log "Repository connection established (secret labeled correctly)"
-				# Clean up temporary file
-				rm -f "$temp_secret_file"
-				return 0
-			fi
-
-			if [[ $attempt -eq $max_attempts ]]; then
-				warn "Repository secret applied but connection status unknown"
-				info "ArgoCD should pick up the repository shortly"
-				# Clean up temporary file
-				rm -f "$temp_secret_file"
-				return 0
-			fi
-
-			info "Waiting for repository connection... (attempt $attempt/$max_attempts)"
-			sleep 2
-			((attempt++))
-		done
-
-	else
-		error "Failed to apply repository secret"
-		rm -f "$temp_secret_file"
-		return 1
-	fi
 }
 
 # Main
 main() {
 	log "🚀 Starting ArgoCD installation (${ENVIRONMENT})..."
 
+	info "Note: Repository credentials managed by sealed-secrets (applied before ArgoCD)"
+
 	check_prerequisites
 	install_argocd
 	wait_for_argocd
-	setup_argocd_repository
-	setup_argocd_notifications
-	print_argo_success
 
-	log "✅ ArgoCD installation and repository setup completed!"
+	# Verify sealed secrets are present
+	if kubectl get secret -n argocd argocd-private-repo &>/dev/null 2>&1; then
+		log "✓ Repository credentials found (sealed-secrets)"
+	else
+		warn "⚠️ Repository credentials not found - sealed-secrets may not be unsealed yet"
+	fi
+
+	print_argo_success
+	log "✅ ArgoCD installation completed!"
 }
 
 main "$@"

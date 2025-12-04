@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pn-infra
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+type: Opaque
+stringData:
+  name: pn-infra
+  type: git
+  url: https://github.com/ProficientnowTech/pn-infra.git
+  username: git
+  password: TOKEN_PLACEHOLDER

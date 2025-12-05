@@ -1,6 +1,6 @@
 apiVersion: v2
-name: infrastructure-stack
-description: ArgoCD Application factory for infrastructure stack components
+name: storage-stack
+description: ArgoCD Application factory for storage stack components
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

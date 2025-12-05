@@ -16,7 +16,7 @@ clusterIssuerProduction:
         apiTokenSecretName: cloudflare-api-token
         apiTokenSecretKey: api-token
       dnsZones:
-        - pnats.cloud
+      - pnats.cloud
 
 # Let's Encrypt ClusterIssuer - Staging (for testing)
 clusterIssuerStaging:
@@ -35,7 +35,7 @@ clusterIssuerStaging:
         apiTokenSecretName: cloudflare-api-token
         apiTokenSecretKey: api-token
       dnsZones:
-        - pnats.cloud
+      - pnats.cloud
 
 # Cert-Manager subchart configuration
 cert-manager:
@@ -85,4 +85,4 @@ cert-manager:
     servicemonitor:
       enabled: true
     podmonitor:
-      enabled: true
+      enabled: false

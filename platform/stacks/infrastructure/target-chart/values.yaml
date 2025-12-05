@@ -30,11 +30,11 @@ commonLabels:
   app.kubernetes.io/part-of: 'platform'
   platform.pnats.cloud/stack: infrastructure
   platform.pnats.cloud/layer: foundation
-  platform.pnats.cloud/deploys: '["argocd","ingress-nginx","external-dns","cert-manager","sealed-secrets"]'
-  platform.pnats.cloud/dependencies: '[]'
 commonAnnotations:
   platform.pnats.cloud/managed-by: 'platform-core'
   platform.pnats.cloud/generated-by: 'platform-core-chart'
+  platform.pnats.cloud/deploys: '["argocd","ingress-nginx","external-dns","cert-manager","sealed-secrets"]'
+  platform.pnats.cloud/dependencies: '[]'
 # Applications list - override in values-{environment}.yaml
 applications: []
 # Dependency orchestration

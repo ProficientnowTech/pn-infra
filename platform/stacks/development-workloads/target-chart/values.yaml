@@ -30,11 +30,11 @@ commonLabels:
   app.kubernetes.io/part-of: 'platform'
   platform.pnats.cloud/stack: development-workloads
   platform.pnats.cloud/layer: development-workloads
-  platform.pnats.cloud/deploys: '["argo-rollouts","kargo","tekton"]'
-  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","keycloak","vault","exteral-secrets","harbor","verdaccio","postgres","redis"]'
 commonAnnotations:
   platform.pnats.cloud/managed-by: 'platform-core'
   platform.pnats.cloud/generated-by: 'platform-core-chart'
+  platform.pnats.cloud/deploys: '["argo-rollouts","kargo","tekton"]'
+  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","keycloak","vault","exteral-secrets","harbor","verdaccio","postgres","redis"]'
 # Applications list - override in values-{environment}.yaml
 applications: []
 dependencies: []

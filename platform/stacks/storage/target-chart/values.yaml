@@ -30,11 +30,11 @@ commonLabels:
   app.kubernetes.io/part-of: 'platform'
   platform.pnats.cloud/stack: storage
   platform.pnats.cloud/layer: foundation
-  platform.pnats.cloud/deploys: '["rook-ceph","rook-ceph-cluster","zalando","redis-operator","harbor","verdaccio"]'
-  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","sealed-secrets"]'
 commonAnnotations:
   platform.pnats.cloud/managed-by: 'platform-core'
   platform.pnats.cloud/generated-by: 'platform-core-chart'
+  platform.pnats.cloud/deploys: '["rook-ceph","rook-ceph-cluster","zalando","redis-operator","harbor","verdaccio"]'
+  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","sealed-secrets"]'
 # Applications list - override in values-{environment}.yaml
 applications: []
 dependencies: []

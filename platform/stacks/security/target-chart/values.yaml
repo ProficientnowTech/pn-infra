@@ -30,11 +30,11 @@ commonLabels:
   app.kubernetes.io/part-of: 'platform'
   platform.pnats.cloud/stack: security
   platform.pnats.cloud/layer: security
-  platform.pnats.cloud/deploys: '["crossplane","external-secrets","keycloak","vault"]'
-  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","sealed-secrets","zalando-postgres","ceph-cluster"]'
 commonAnnotations:
   platform.pnats.cloud/managed-by: 'platform-core'
   platform.pnats.cloud/generated-by: 'platform-core-chart'
+  platform.pnats.cloud/deploys: '["crossplane","external-secrets","keycloak","vault"]'
+  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","sealed-secrets","zalando-postgres","ceph-cluster"]'
 # Applications list - override in values-{environment}.yaml
 applications: []
 dependencies: []

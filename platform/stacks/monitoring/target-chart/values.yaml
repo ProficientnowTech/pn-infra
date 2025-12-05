@@ -30,11 +30,11 @@ commonLabels:
   app.kubernetes.io/part-of: 'platform'
   platform.pnats.cloud/stack: monitoring
   platform.pnats.cloud/layer: monitoring
-  platform.pnats.cloud/deploys: '["prometheus","grafana","kubecost","loki","promtail","tempo","gatus"]'
-  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","keycloak","vault","exteral-secrets"]'
 commonAnnotations:
   platform.pnats.cloud/managed-by: 'platform-core'
   platform.pnats.cloud/generated-by: 'platform-core-chart'
+  platform.pnats.cloud/deploys: '["prometheus","grafana","kubecost","loki","promtail","tempo","gatus"]'
+  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","keycloak","vault","exteral-secrets"]'
 # Applications list - override in values-{environment}.yaml
 applications: []
 dependencies: []

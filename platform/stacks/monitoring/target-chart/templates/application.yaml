@@ -6,7 +6,7 @@ metadata:
   name: {{ .name }}
   namespace: {{ $.Values.argocdNamespace | default "argocd" }}
   annotations:
-    {{- /* Merge common annotations with app-specific annotations */ -}}
+    {{/* Merge common annotations with app-specific annotations */}}
     {{- $annotations := dict }}
     {{- if $.Values.commonAnnotations }}
     {{- $annotations = merge $annotations $.Values.commonAnnotations }}
@@ -18,12 +18,12 @@ metadata:
     {{- toYaml $annotations | nindent 4 }}
     {{- end }}
   labels:
-    {{- /* Standard Kubernetes labels */ -}}
+    {{/* Standard Kubernetes labels */}}
     app.kubernetes.io/name: {{ .name }}
     app.kubernetes.io/instance: {{ $.Release.Name }}
     app.kubernetes.io/managed-by: {{ $.Release.Service }}
     app.kubernetes.io/part-of: {{ $.Values.stackName | default "platform" }}
-    {{- /* Merge common labels with app-specific labels */ -}}
+    {{/* Merge common labels with app-specific labels */}}
     {{- if $.Values.commonLabels }}
     {{- toYaml $.Values.commonLabels | nindent 4 }}
     {{- end }}
@@ -108,8 +108,8 @@ spec:
     {{- toYaml .syncPolicy | nindent 4 }}
     {{- else }}
     automated:
-      prune: {{ $.Values.global.automated.prune | default true }}
-      selfHeal: {{ $.Values.global.automated.selfHeal | default true }}
+      prune: {{ $.Values.global.syncPolicy.automated.prune | default true }}
+      selfHeal: {{ $.Values.global.syncPolicy.automated.selfHeal | default true }}
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true

@@ -105,8 +105,8 @@ spec:
     {{- toYaml .syncPolicy | nindent 4 }}
     {{- else }}
     automated:
-      prune: {{ $.Values.global.automated.prune | default true }}
-      selfHeal: {{ $.Values.global.automated.selfHeal | default true }}
+      prune: {{ $.Values.global.syncPolicy.automated.prune | default true }}
+      selfHeal: {{ $.Values.global.syncPolicy.automated.selfHeal | default true }}
     syncOptions:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true

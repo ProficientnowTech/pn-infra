@@ -1,5 +1,5 @@
 apiVersion: v2
-name: monitoring-stack
+name: development-workloads-stack
 description: ArgoCD Application factory for deployment of monitoring & observability stack
 type: application
 version: 1.0.0

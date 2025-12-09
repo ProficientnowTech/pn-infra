@@ -1,13 +1,63 @@
 {
   "id": "core",
-  "version": "v0.1.0",
-  "description": "Base configuration shared across modules (ansible, infra, orchestration)",
+  "version": "v1.0.0",
+  "description": "Core configuration package with master config pattern for multi-platform infrastructure",
+  "structure": {
+    "config": {
+      "file": "config.yaml",
+      "description": "Master configuration declaring platform and orchestrator choices"
+    },
+    "platform_agnostic": {
+      "hosts": "hosts.yaml",
+      "networks": "networks.yaml"
+    },
+    "platforms": {
+      "directory": "platforms/",
+      "files": [
+        "proxmox.yaml",
+        "aws.yaml",
+        "gcp.yaml",
+        "azure.yaml",
+        "baremetal.yaml"
+      ]
+    },
+    "orchestrators": {
+      "directory": "orchestrators/",
+      "files": [
+        "kubespray.yaml",
+        "kubekey.yaml",
+        "kind.yaml"
+      ]
+    },
+    "platform_services": {
+      "directory": "platform/",
+      "files": [
+        "stacks.yaml"
+      ]
+    },
+    "business_apps": {
+      "directory": "business/",
+      "files": [
+        "apps.yaml"
+      ]
+    }
+  },
+  "supported_platforms": [
+    "proxmox",
+    "aws",
+    "gcp",
+    "azure",
+    "baremetal"
+  ],
+  "supported_orchestrators": [
+    "kubespray",
+    "kubekey",
+    "kind"
+  ],
   "environments": [
     {
       "name": "development",
-      "files": {
-        "ansible": "environments/development.ansible.yml"
-      }
+      "description": "Development environment configuration"
     }
   ]
 }

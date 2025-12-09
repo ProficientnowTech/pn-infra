@@ -1,4 +1,18 @@
+# Business Environment: Development
+# Business application overrides
+
 configPackage: core
-applications:
-  - name: fuma-docs
-    chartPath: docs/fuma-docs/chart
+environment: development
+
+# Global defaults for all applications
+global:
+  domain: dev.local
+  ingressClassName: nginx
+  storageClass: standard
+
+# ArgoCD app-of-apps configuration
+argocd:
+  syncWave: 0
+  autoSync: true
+  prune: true
+  selfHeal: true

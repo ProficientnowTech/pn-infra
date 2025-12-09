@@ -1,0 +1,14 @@
+namespace: metallb-system
+
+ipAddressPool:
+  name: public-pool
+  addresses:
+  - 103.110.174.18-103.110.174.23
+  autoAssign: true
+
+l2Advertisement:
+  name: public-l2-advertisement
+  ipAddressPools:
+  - public-pool
+  interfaces:
+  - public_traffic

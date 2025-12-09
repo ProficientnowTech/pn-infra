@@ -1,0 +1,21 @@
+apiVersion: v2
+name: pn-metallb
+description: MetalLB load balancer implementation for bare metal Kubernetes
+type: application
+version: 0.1.0
+appVersion: "v0.14.9"
+
+keywords:
+  - metallb
+  - loadbalancer
+  - networking
+  - bare-metal
+
+maintainers:
+  - name: Platform Team
+    email: snoorullah@proficientnowtech.com
+
+dependencies:
+  - name: metallb
+    version: 0.14.9
+    repository: https://metallb.github.io/metallb

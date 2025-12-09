@@ -42,12 +42,12 @@ applications:
   syncOptions:
   - ServerSideApply=true
 
-- name: gatus
-  annotations:
-    argocd.argoproj.io/sync-wave: '50'
-  destinationNamespaceOverwrite: monitoring
-  syncOptions:
-  - ServerSideApply=true
+# - name: gatus
+#   annotations:
+#     argocd.argoproj.io/sync-wave: '50'
+#   destinationNamespaceOverwrite: monitoring
+#   syncOptions:
+#   - ServerSideApply=true
 
 - name: kubecost
   annotations:

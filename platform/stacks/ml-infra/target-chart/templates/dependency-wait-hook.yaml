@@ -8,12 +8,20 @@ kind: ServiceAccount
 metadata:
   name: {{ $name }}
   namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-30"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: {{ $name }}
   namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-25"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 rules:
   - apiGroups: ["argoproj.io"]
     resources: ["applications"]
@@ -24,6 +32,10 @@ kind: RoleBinding
 metadata:
   name: {{ $name }}
   namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-20"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 subjects:
   - kind: ServiceAccount
     name: {{ $name }}
@@ -38,6 +50,10 @@ kind: ConfigMap
 metadata:
   name: {{ $name }}-script
   namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-10"
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
 data:
   wait.sh: |
     #!/bin/sh

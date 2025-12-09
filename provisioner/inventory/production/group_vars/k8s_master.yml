@@ -1,0 +1,219 @@
+# inventory/production/group_vars/k8s_master.yml - K8s Master Configuration
+---
+# =============================================================================
+# ROLE METADATA (Top-level, not nested)
+# =============================================================================
+role_id: 110
+role_name: k8s-master
+# =============================================================================
+# 1. BASE DOMAIN - Foundational System Configuration
+# =============================================================================
+base_setup:
+    timezone: Asia/Kolkata
+    locale: en_US
+    config_time_sync: true
+    config_logging: true
+# =============================================================================
+# 2. SOFTWARE DOMAIN - Package Management
+# =============================================================================
+base_packages:
+    - name: curl
+    - name: apt-transport-https
+    - name: ca-certificates
+    - name: gnupg
+    - name: lsb-release
+    - name: containerd
+    - name: runc
+    - name: nfs-common
+    - name: open-iscsi
+    - name: jq
+    - name: socat
+    - name: conntrack
+    - name: ipset
+# =============================================================================
+# 4. DISK MANAGEMENT DOMAIN - Partitioning and Mounting
+# =============================================================================
+disk_management:
+    partitions: # Disk partitions to create
+        - device: /dev/sdb # Block device - USED
+          number: 1 # Partition number - USED
+          filesystem: ext4 # Filesystem type - USED
+          mount_point: /data1 # Mount location - USED
+          mount_options: 'defaults,noatime' # Mount options - NEEDED for role definitions
+          part_start: 0 # Start position - NEEDED for role definitions
+          part_end: 25 # End position - NEEDED for role definitions
+          partition_label: gpt # Partition table type - NEEDED for role definitions
+          mkfs_options: '-F' # Filesystem creation options - NEEDED for role definitions
+        - device: /dev/sdb # Block device - USED
+          number: 2 # Partition number - USED
+          filesystem: ext4 # Filesystem type - USED
+          mount_point: /data2 # Mount location - USED
+          mount_options: 'defaults,noatime' # Mount options - NEEDED for role definitions
+          part_start: 25 # Start position - NEEDED for role definitions
+          part_end: 50 # End position - NEEDED for role definitions
+          partition_label: gpt # Partition table type - NEEDED for role definitions
+          mkfs_options: '-F' # Filesystem creation options - NEEDED for role definitions
+        - device: /dev/sdb # Block device - USED
+          number: 3 # Partition number - USED
+          filesystem: ext4 # Filesystem type - USED
+          mount_point: /data3 # Mount location - USED
+          mount_options: 'defaults,noatime' # Mount options - NEEDED for role definitions
+          part_start: 5 # Start position - NEEDED for role definitions
+          part_end: 75 # End position - NEEDED for role definitions
+          partition_label: gpt # Partition table type - NEEDED for role definitions
+          mkfs_options: '-F' # Filesystem creation options - NEEDED for role definitions
+        - device: /dev/sdb # Block device - USED
+          number: 4 # Partition number - USED
+          filesystem: ext4 # Filesystem type - USED
+          mount_point: /data4 # Mount location - USED
+          mount_options: 'defaults,noatime' # Mount options - NEEDED for role definitions
+          part_start: 75 # Start position - NEEDED for role definitions
+          part_end: 100 # End position - NEEDED for role definitions
+          partition_label: gpt # Partition table type - NEEDED for role definitions
+          mkfs_options: '-F' # Filesystem creation options - NEEDED for role definitions
+# =============================================================================
+# 5. IDENTITY DOMAIN - Users and SSH
+# =============================================================================
+users:
+    - username: ansible
+      groups:
+          - sudo
+      sudo: true
+      shell: /bin/bash
+      lock_passwd: false
+      hashed_passwd: $6$rounds=500000$tB1YWmvqA.IA0nK3$fu2IIGDj7mac97tzRNL265/fVgE1yzy1WncYqYnSK/6jQePHnwB1kOXEy.vRkUmfRzk5JnTGDvICBYZuNHpBD1
+      ssh_authorized_keys:
+          - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPRWgKRmCzgC1JM2PPJkb8rhkyHyyeOoWEer0k+LQ+A2 proxmox-hyd (pn-production-k8s) created by ssh-manager
+          - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGwSl/vWduIypz8sSEl/ZRX8eyu+bKvPOb9shuubkn+e production_main_devsupreme (pn-production-k8s) created by ssh-manager
+          - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII6J/pPKE1NovJu6jttQm653173XPUh5s5BqsWateo9I faizan_prod_testing_k8s (pn-production-k8s) created by ssh-manager
+      ssh_client_config:
+          strict_host_key_checking: true
+          user_known_hosts_file: ~/.ssh/known_hosts
+          pass_authentication: true
+          pubkey_authentication: true
+          identities_only: false
+          log_level: INFO
+          server_alive_interval: 60
+          server_alive_count_max: 5
+          connect_timeout: 3000
+    - username: ubuntu
+      groups:
+          - sudo
+          - ansible
+          - adm
+      sudo: true
+      shell: /bin/bash
+      lock_passwd: false
+      hashed_passwd: $6$rounds=500000$tB1YWmvqA.IA0nK3$fu2IIGDj7mac97tzRNL265/fVgE1yzy1WncYqYnSK/6jQePHnwB1kOXEy.vRkUmfRzk5JnTGDvICBYZuNHpBD1
+      ssh_authorized_keys:
+          - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPRWgKRmCzgC1JM2PPJkb8rhkyHyyeOoWEer0k+LQ+A2 proxmox-hyd (pn-production-k8s) created by ssh-manager
+          - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGwSl/vWduIypz8sSEl/ZRX8eyu+bKvPOb9shuubkn+e production_main_devsupreme (pn-production-k8s) created by ssh-manager
+          - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII6J/pPKE1NovJu6jttQm653173XPUh5s5BqsWateo9I faizan_prod_testing_k8s (pn-production-k8s) created by ssh-manager
+      ssh_client_config:
+          strict_host_key_checking: true
+          user_known_hosts_file: ~/.ssh/known_hosts
+          pass_authentication: true
+          pubkey_authentication: true
+          identities_only: false
+          log_level: INFO
+          server_alive_interval: 60
+          server_alive_count_max: 5
+          connect_timeout: 3000
+# =============================================================================
+# 6. DIRECTORIES DOMAIN - Directory Creation and Permissions
+# =============================================================================
+directories: # Directory configurations
+    - path: /opt/kubernetes # Directory path
+      owner: ubuntu # Owner
+      group: ubuntu # Group
+      mode: '0755' # Permissions
+      cascade_ownership: true # Apply ownership to entire path
+      cascade_permissions: true # Apply permissions to entire path
+# =============================================================================
+# 7. NETWORKING DOMAIN - VLANs and Network Configuration
+# =============================================================================
+network_vlans:
+    - name: management
+      id: 106
+      gateway: 192.168.106.1
+    - name: int_traffic
+      id: 102
+      gateway: 192.168.102.1
+    - name: public_traffic
+      id: 101
+      gateway: 192.168.101.1
+    - name: storage_public
+      id: 103
+      gateway: 192.168.103.1
+    - name: storage_private
+      id: 104
+      gateway: 192.168.104.1
+    - name: nested_clusters
+      id: 107
+      gateway: 192.168.107.1
+    - name: nested_k8s_apps
+      id: 108
+      gateway: 192.168.108.1
+    - name: hs_external
+      id: 109
+      gateway: 192.168.109.1
+# =============================================================================
+# 8. SECURITY DOMAIN - Comprehensive Security Configuration
+# =============================================================================
+security:
+    # Basic Security Settings
+    setup_banner: true
+    lock_root_account: false
+    configure_password_policies: false
+    configure_account_lockout_policy: false
+    enable_ssh_hardening: false
+    enable_kernel_hardening: false
+    # Fail2ban Configuration
+    fail2ban:
+        max_retries: 10
+        bantime_secs: 60
+        findtime_secs: 600
+        maxretry_attempts: 100
+        destemail: snoorullah@proficientnowtech.com
+    # SSH Configuration
+    ssh:
+        max_startups: 10
+        login_grace_time_secs: 120
+        permit_user_environment: true
+        compression: false
+        tcp_keep_alive: true
+        allow_tcp_forwarding: true
+        allow_stream_local_forwarding: true
+        gateway_ports: false
+        permit_tunnel: true
+        disable_weak_algorithms: true
+    # Kernel Security Settings
+    kernel:
+        secure_ipv4: true
+        secure_ipv6: true
+        disable_ipv6: false
+        secure_memory: true
+        restrict_insecure_processes: true
+    # Filesystem Security
+    filesystem:
+        set_secure_permissions: true
+        remove_world_readable_perms_from_sensitive_dirs: true
+        set_sticky_bit_on_tmp_dirs: true
+    # Audit Configuration
+    audit:
+        enable_logging: true
+        monitor_auth: true
+        monitor_login_logout_events: true
+        monitor_network_config: true
+        monitor_ssh_config: true
+        monitor_sys_calls: true
+        monitor_file_access: true
+        lock_config: false
+# =============================================================================
+# SYSTEM MAINTENANCE AND OPTIMIZATION
+# =============================================================================
+maintenance:
+    enable_autoupdates: true
+optimization:
+    enable_network_optimization: true
+    enable_fs_optimization: true

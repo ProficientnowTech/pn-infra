@@ -1,5 +1,7 @@
 # Domain-Based Ansible Provisioning System
 
+> **API-driven workflow:** Environment inputs are sourced from `config/packages/<id>` and rendered via `./api/bin/api generate env --id <env>`. The generated `provisioner.yml` plus metadata under `api/outputs/<env>/` are the single source of truth, and builds must be triggered through `./api/bin/api provision build --role <role> --env <env>` so that artifact metadata (checksum, remote placeholders) stay synchronized with the rest of the stack.
+
 ## Complete Implementation Plan
 
 ### PROJECT OVERVIEW

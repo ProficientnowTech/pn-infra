@@ -1,4 +1,11 @@
+# Provisioner Environment: Development
+# Not used for Kind deployment (Kind uses pre-built container images)
+
 configPackage: core
-roles:
-  - k8s-master
-  - k8s-worker
+environment: development
+
+# SSH configuration (not applicable for Kind)
+ssh:
+  private_key_path: ~/.ssh/id_rsa
+  user: ubuntu
+  port: 22

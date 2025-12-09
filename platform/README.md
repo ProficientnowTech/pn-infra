@@ -302,3 +302,341 @@ For questions about the template-driven deployment system:
 2. Review the ArgoCD application logs
 3. Validate template generation with helm
 4. Consult the OpenSpec documentation
+
+---
+
+## Requirements
+
+### Input Files
+
+#### From Config Package (`config/packages/core/`)
+- **platform/stacks.yaml** - Platform stack definitions (base, monitoring, ml)
+- **Master config selects**: Which platform services to deploy
+
+#### From API Outputs (`api/outputs/<env>/`)
+- **metadata.json** - Master metadata file
+- **platform.yaml** - Generated platform configuration (Helm values format)
+  - Stack enablement flags (base, monitoring, ml)
+  - ArgoCD settings
+  - Git repository configuration
+  - Application sync wave ordering
+
+#### Module Environment File (`platform/environments/<env>.yaml`)
+- **configPackage**: Reference to "core"
+- **environment**: Environment name
+- **ArgoCD settings**:
+  - `argocd.admin_password` - ArgoCD admin password
+  - `argocd.url` - (optional) Custom ArgoCD URL
+- **Sealed Secrets**:
+  - `sealed_secrets.public_key_path` - Path to sealed-secrets public key
+- **Stack overrides**:
+  - `stacks.base.enabled` - Enable/disable base stack
+  - `stacks.monitoring.enabled` - Enable/disable monitoring
+  - `stacks.ml.enabled` - Enable/disable ML infrastructure
+- **Secret specs** (key-value pairs):
+  - Environment variables referenced by secret specs
+  - Example: `GRAFANA_ADMIN_PASSWORD`, `VAULT_ROOT_TOKEN`
+- **Schema**: Validated against `api/schemas/environments/platform.schema.yaml`
+
+### Environment Variables
+- `SEALED_SECRETS_CONTROLLER` - Controller name (default: sealed-secrets)
+- `SEALED_SECRETS_NAMESPACE` - Namespace (default: sealed-secrets)
+- `SSH_PRIVATE_KEY_PATH` - For private Git repos (optional)
+- Secret values (referenced in secret specs):
+  - `GRAFANA_ADMIN_PASSWORD`
+  - `VAULT_ROOT_TOKEN`
+  - `DB_PASSWORD`
+  - etc. (per secret spec requirements)
+
+### Required Tools
+- `kubectl` - Kubernetes CLI (must be configured with cluster access)
+- `helm` - Helm v3+
+- `kubeseal` - For sealed-secrets generation
+- `jq` - JSON parser
+- `yq` - YAML parser
+
+### Pre-requisites
+- **Running Kubernetes Cluster**: Deployed via container-orchestration module
+- **Kubeconfig access**: `kubectl cluster-info` must work
+- **ArgoCD**: Will be deployed automatically if not present
+- **Sealed Secrets Controller**: Installed via bootstrap script
+
+### Folder Structure Expected
+```
+api/outputs/<env>/
+├── metadata.json
+└── platform.yaml                     # Generated Helm values
+
+platform/environments/
+└── <env>.yaml                        # Secrets + overrides
+
+platform/bootstrap/secrets/specs/     # Secret specifications
+├── grafana-admin.yaml
+├── vault-root.yaml
+└── ... (per-app secrets)
+
+platform/bootstrap/.generated/        # Generated secrets (gitignored)
+├── sealed/                           # SealedSecret manifests
+├── push/                             # PushSecret manifests (Vault sync)
+└── state/                            # Cached secret values
+```
+
+### Secret Spec Format
+
+**CRITICAL**: Secrets are defined via specs, not hardcoded files.
+
+```yaml
+# platform/bootstrap/secrets/specs/grafana-admin.yaml
+metadata:
+  name: grafana-admin
+spec:
+  namespace: monitoring
+  type: Opaque
+  optional: false
+  data:
+    username:
+      env: GRAFANA_ADMIN_USER           # From environment variable
+      cache: true                        # Cache in state file
+    password:
+      generate:
+        length: 32
+        alphabet: alnum                  # alnum, hex, url, base64
+      cache: true
+      hash:
+        method: bcrypt                   # bcrypt, sha512, apr1
+    api_key:
+      literal: "hardcoded-value"         # Hardcoded (use sparingly)
+      cache: false
+  vault:                                 # Optional Vault sync
+    path: secret/data/grafana
+    secretStoreRef:
+      name: vault-backend
+      kind: ClusterSecretStore
+```
+
+---
+
+## Outputs
+
+### Primary Outputs
+
+**Platform Services** deployed via ArgoCD:
+- **Base Stack** (if enabled):
+  - Rook-Ceph operator + cluster (distributed storage)
+  - Vault (secrets management)
+- **Monitoring Stack** (if enabled):
+  - Prometheus (metrics collection + alerting)
+  - Grafana (visualization dashboards)
+- **ML Infrastructure** (if enabled):
+  - KubeRay CRDs + Operator (Ray ML framework)
+  - GPU Operator (NVIDIA GPU management)
+
+### ArgoCD Applications
+
+```
+kubectl get applications -n argocd
+```
+
+Example applications created:
+- `argocd-self` - ArgoCD self-management
+- `rook-ceph` - Storage operator
+- `rook-ceph-cluster` - Storage cluster
+- `vault` - Secrets management
+- `prometheus` - Monitoring
+- `grafana` - Dashboards
+- `kuberay-crds` - ML CRDs
+- `kuberay-operator` - ML operator
+- `gpu-operator` - GPU management
+
+### Generated Secrets
+
+```
+platform/bootstrap/.generated/
+├── sealed/
+│   ├── monitoring-grafana-admin.yaml         # SealedSecret
+│   └── vault-vault-root.yaml                 # SealedSecret
+├── push/
+│   ├── monitoring-grafana-admin-push.yaml    # PushSecret (Vault sync)
+│   └── vault-vault-root-push.yaml            # PushSecret
+└── state/
+    ├── monitoring-grafana-admin.json         # Cached values
+    └── vault-vault-root.json                 # Cached values
+```
+
+### Platform Service Endpoints
+
+Depending on stack configuration:
+- ArgoCD UI: `https://argocd.<domain>`
+- Grafana: `https://grafana.<domain>`
+- Prometheus: `https://prometheus.<domain>`
+- Vault: `https://vault.<domain>`
+
+---
+
+## Integration Points
+
+### Depends On
+- **Container Orchestration Module**: Requires running Kubernetes cluster
+- **API Module**: Generates platform.yaml configuration
+- **Config Module**: Provides stack definitions
+
+### Consumed By
+- **Business Module**: Deploys applications on platform services
+- Applications depend on:
+  - Storage (Rook-Ceph)
+  - Secrets (Vault)
+  - Monitoring (Prometheus/Grafana)
+
+---
+
+## Secrets Handling (CRITICAL)
+
+### Secret Rendering Process
+
+```bash
+# Render secrets from specs
+./platform/bootstrap/scripts/render-secrets.sh
+
+# Render and apply to cluster
+./platform/bootstrap/scripts/render-secrets.sh --apply
+```
+
+**Process**:
+1. Loads environment variables (from `.env.local` or shell)
+2. Auto-generates GitHub App tokens (if credentials provided)
+3. Reads secret specs from `bootstrap/secrets/specs/`
+4. Resolves values:
+   - From environment variables (`env` field)
+   - From literals (`literal` field)
+   - Generated (`generate` field)
+5. Applies hashing if specified (`hash` field)
+6. Caches values in `.generated/state/` for idempotency
+7. Generates SealedSecret using `kubeseal`
+8. Creates PushSecret for Vault sync (if `vault` configured)
+9. Optionally applies to cluster (`--apply` flag)
+
+### Secret Spec Fields
+
+- **env**: Source from environment variable
+- **literal**: Hardcoded value (use sparingly)
+- **generate**: Auto-generate (length, alphabet)
+- **cache**: Store in state file for idempotency
+- **hash**: Apply hashing (bcrypt, sha512, apr1)
+- **vault**: Sync to Vault via PushSecret (optional)
+
+### Adding New Secrets
+
+1. Create spec file:
+   ```bash
+   cat > bootstrap/secrets/specs/my-app-db.yaml <<EOF
+   metadata:
+     name: my-app-db
+   spec:
+     namespace: my-app
+     type: Opaque
+     data:
+       username:
+         literal: "dbuser"
+         cache: true
+       password:
+         generate:
+           length: 32
+           alphabet: alnum
+         cache: true
+   EOF
+   ```
+
+2. Render secret:
+   ```bash
+   ./bootstrap/scripts/render-secrets.sh --apply
+   ```
+
+3. Secret available in cluster:
+   ```bash
+   kubectl get secret my-app-db -n my-app
+   ```
+
+---
+
+## Bootstrap Sequence
+
+1. **Install Sealed Secrets Controller**:
+   ```bash
+   ./bootstrap/scripts/install-sealed-secrets.sh
+   ```
+
+2. **Render Bootstrap Secrets**:
+   ```bash
+   ./bootstrap/scripts/render-secrets.sh --apply
+   ```
+
+3. **Deploy ArgoCD** (non-blocking):
+   ```bash
+   kubectl apply -k bootstrap/argocd/
+   ```
+
+4. **Wait for ArgoCD Ready**:
+   ```bash
+   kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=5m
+   ```
+
+5. **Apply Platform Root Application**:
+   ```bash
+   kubectl apply -f bootstrap/platform-root.yaml
+   ```
+
+6. **Monitor Application Health**:
+   ```bash
+   kubectl get applications -n argocd -w
+   ```
+
+### Sync Wave Ordering
+
+Applications deploy in order:
+- **Wave -1**: ArgoCD self-management
+- **Wave 1**: Rook-Ceph operator
+- **Wave 2**: Rook-Ceph cluster
+- **Wave 3**: Vault
+- **Wave 4**: Prometheus
+- **Wave 5**: Grafana
+- **Wave 6**: KubeRay CRDs
+- **Wave 7**: KubeRay operator
+- **Wave 8**: GPU operator
+
+---
+
+## Troubleshooting
+
+### Secrets Issues
+
+**Problem**: Secret not generated
+**Solution**: Check environment variable is set:
+```bash
+echo $GRAFANA_ADMIN_PASSWORD
+./bootstrap/scripts/render-secrets.sh --apply
+```
+
+**Problem**: SealedSecret can't be decrypted
+**Solution**: Verify sealed-secrets controller running:
+```bash
+kubectl get pods -n sealed-secrets
+```
+
+### ArgoCD Issues
+
+**Problem**: Application stuck in Progressing
+**Solution**: Check application status:
+```bash
+kubectl describe application <app-name> -n argocd
+```
+
+**Problem**: Sync Wave not respected
+**Solution**: Verify `argocd.argoproj.io/sync-wave` annotation in templates
+
+### Stack Issues
+
+**Problem**: Monitoring stack not deploying
+**Solution**: Check platform.yaml has monitoring enabled:
+```bash
+jq '.stacks.monitoring.enabled' api/outputs/development/platform.yaml
+```

@@ -1,0 +1,119 @@
+{{- if and (.Values.dependencyCheck.enabled) (.Values.dependencies) (gt (len .Values.dependencies) 0) }}
+{{- $name := printf "%s-stack-wait" (include "stack.fullname" .) -}}
+{{- $namespace := (.Values.argocdNamespace | default "argocd") -}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["applications"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}
+    namespace: {{ $namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $name }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-script
+  namespace: {{ $namespace }}
+data:
+  wait.sh: |
+    #!/bin/sh
+    set -euo pipefail
+
+    if [ -z "${DEPENDENCIES:-}" ] || [ "${DEPENDENCIES}" = "[]" ]; then
+      echo "No stack dependencies declared, continuing."
+      exit 0
+    fi
+
+    timeout="${TIMEOUT_SECONDS:-1200}"
+    interval="${POLL_INTERVAL:-10}"
+    start=$(date +%s)
+
+    echo "Waiting for dependent stacks: ${DEPENDENCIES}"
+
+    for dep in $(echo "${DEPENDENCIES}" | tr ',' ' '); do
+      echo "Checking dependency ${dep}..."
+      while true; do
+        syncStatus=$(kubectl get application "${dep}" -n "${ARGOCD_NAMESPACE}" -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+        healthStatus=$(kubectl get application "${dep}" -n "${ARGOCD_NAMESPACE}" -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+
+        if [ "${syncStatus}" = "Synced" ] && [ "${healthStatus}" = "Healthy" ]; then
+          echo "Dependency ${dep} is Synced/Healthy."
+          break
+        fi
+
+        now=$(date +%s)
+        elapsed=$(( now - start ))
+        if [ "${elapsed}" -ge "${timeout}" ]; then
+          echo "Timed out waiting for dependency ${dep} (sync=${syncStatus}, health=${healthStatus})."
+          exit 1
+        fi
+
+        echo "Dependency ${dep} not ready yet (sync=${syncStatus}, health=${healthStatus}). Sleeping ${interval}s..."
+        sleep "${interval}"
+      done
+    done
+
+    echo "All dependencies satisfied."
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        job: {{ $name }}
+    spec:
+      serviceAccountName: {{ $name }}
+      restartPolicy: Never
+      containers:
+        - name: wait
+          image: {{ .Values.dependencyCheck.image }}
+          command: ["/bin/sh","/scripts/wait.sh"]
+          env:
+            - name: DEPENDENCIES
+              value: {{ join "," .Values.dependencies | quote }}
+            - name: ARGOCD_NAMESPACE
+              value: {{ $namespace }}
+            - name: POLL_INTERVAL
+              value: {{ .Values.dependencyCheck.pollIntervalSeconds | default 10 | int | quote }}
+            - name: TIMEOUT_SECONDS
+              value: {{ .Values.dependencyCheck.timeoutSeconds | default 1200 | int | quote }}
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: {{ $name }}-script
+            defaultMode: 0755
+{{- end }}

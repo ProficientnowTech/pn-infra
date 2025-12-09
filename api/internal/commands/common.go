@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -73,4 +74,74 @@ func readJSON(path string, target any) error {
 
 	dec := json.NewDecoder(file)
 	return dec.Decode(target)
+}
+
+func removeIfExists(path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return os.RemoveAll(path)
+	}
+	return nil
+}
+
+func copyDir(src, dst string) error {
+	if err := ensureDir(dst); err != nil {
+		return err
+	}
+
+	return filepath.WalkDir(src, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		rel, err := filepath.Rel(src, path)
+		if err != nil {
+			return err
+		}
+
+		target := filepath.Join(dst, rel)
+		if rel == "." {
+			return nil
+		}
+
+		if entry.IsDir() {
+			return ensureDir(target)
+		}
+		return copyFile(path, target)
+	})
+}
+
+func copyPath(src, dst string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return fmt.Errorf("stat %s: %w", src, err)
+	}
+
+	if info.IsDir() {
+		if err := removeIfExists(dst); err != nil {
+			return err
+		}
+		return copyDir(src, dst)
+	}
+	return copyFile(src, dst)
+}
+
+type metadataPackageRef struct {
+	ID      string `json:"id"`
+	Version string `json:"version"`
+}
+
+type envMetadata struct {
+	Environment   string             `json:"environment"`
+	ConfigPackage metadataPackageRef `json:"configPackage"`
+	GeneratedAt   string             `json:"generatedAt"`
+	Files         map[string]string  `json:"files"`
+}
+
+func loadEnvMetadata(repoRoot, envID string) (*envMetadata, error) {
+	metaPath := filepath.Join(repoRoot, "api", "outputs", envID, "metadata.json")
+	var meta envMetadata
+	if err := readJSON(metaPath, &meta); err != nil {
+		return nil, fmt.Errorf("read metadata %s: %w", metaPath, err)
+	}
+	return &meta, nil
 }

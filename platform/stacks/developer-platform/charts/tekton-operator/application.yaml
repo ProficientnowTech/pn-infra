@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tekton-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  project: default
+  source:
+    repoURL: https://storage.googleapis.com/tekton-releases
+    targetRevision: latest
+    path: operator/latest
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tekton-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

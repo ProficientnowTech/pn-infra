@@ -1,0 +1,7 @@
+apiVersion: ceph.rook.io/v1
+kind: CephObjectZoneGroup
+metadata:
+  name: ap-south-2
+  namespace: rook-ceph
+spec:
+  realm: pn-platform-realm

@@ -1,0 +1,30 @@
+---
+uptime-kuma:
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      external-dns.alpha.kubernetes.io/ttl: "60"
+    hosts:
+      - host: status.pnats.cloud
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: uptime-kuma-tls
+        hosts:
+          - status.pnats.cloud
+
+  volume:
+    enabled: true
+    storageClassName: ceph-block
+    size: 5Gi
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

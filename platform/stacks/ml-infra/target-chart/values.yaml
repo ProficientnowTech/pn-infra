@@ -1,0 +1,46 @@
+argocdNamespace: argocd
+# Stack identification
+stackName: ml-infra
+# Default repository configuration
+default:
+  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  targetRevision: v2
+# Global configuration for all applications
+global:
+  # ArgoCD project
+  project: ml-infra
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - 'CreateNamespace=true'
+    - 'RespectIgnoreDifferences=true'
+  # Retry configuration
+  retry:
+    limit: 3
+    backoff:
+      duration: '5s'
+      factor: 2
+      maxDuration: '3m'
+# Common labels applied to all ArgoCD Application resources
+# These are merged with app-specific labels (app-specific takes precedence)
+commonLabels:
+  app.kubernetes.io/managed-by: 'platform-core'
+  app.kubernetes.io/part-of: 'platform'
+  platform.pnats.cloud/stack: ml-infra
+  platform.pnats.cloud/layer: machine-learning
+commonAnnotations:
+  platform.pnats.cloud/managed-by: 'platform-core'
+  platform.pnats.cloud/generated-by: 'platform-core-chart'
+  platform.pnats.cloud/deploys: '["kuberay-operator","gpu-operator","kuberay-crds"]'
+  platform.pnats.cloud/dependencies: '[]'
+# Applications list - override in values-{environment}.yaml
+applications: []
+# Dependency orchestration
+dependencies: []
+dependencyCheck:
+  enabled: false
+  pollIntervalSeconds: 10
+  timeoutSeconds: 1200
+  image: docker.io/bitnami/kubectl:1.30.3

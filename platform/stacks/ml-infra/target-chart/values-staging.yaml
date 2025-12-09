@@ -1,0 +1,51 @@
+# Staging Environment - Subset Platform Stack
+# Global Configuration - Staging Environment
+applications:
+# Infrastructure Foundation (deployed before platform apps)
+- name: metallb
+  namespace: metallb-system
+  annotations:
+    argocd.argoproj.io/sync-wave: '-10'
+  destinationNamespaceOverwrite: 'metallb-system'
+
+- name: ingress-nginx
+  namespace: ingress-nginx
+  annotations:
+    argocd.argoproj.io/sync-wave: '-5'
+  destinationNamespaceOverwrite: 'ingress-nginx'
+
+- name: cert-manager
+  namespace: cert-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: 'cert-manager'
+
+- name: external-dns
+  namespace: external-dns
+  annotations:
+    argocd.argoproj.io/sync-wave: '5'
+  destinationNamespaceOverwrite: 'external-dns'
+
+- name: sealed-secrets
+  namespace: sealed-secrets
+  annotations:
+    argocd.argoproj.io/sync-wave: '10'
+  destinationNamespaceOverwrite: 'sealed-secrets'
+
+- name: argocd
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: '15'
+  destinationNamespaceOverwrite: 'argocd'
+  syncOptions:
+  - Replace=false
+  - ApplyOutOfSyncOnly=true
+  ignoreDifferences:
+  - group: argoproj.io
+    kind: Application
+    jqPathExpressions:
+    - .status
+    - .operation
+
+commonLabels:
+  platform.pnats.cloud/environment: 'staging'

@@ -131,7 +131,7 @@ check_secrets() {
 	info "Checking secrets dir..."
 
 	local bootstrap_dir="${SCRIPT_DIR}/bootstrap"
-	local secrets_dir="${bootstrap_dir}/bootstrap/secrets"
+	local secrets_dir="${bootstrap_dir}/secrets"
 
 	if [[ ! -f "${bootstrap_dir}/scripts/render-secrets.sh" ]] || [[ ! -x "${bootstrap_dir}/scripts/render-secrets.sh" ]]; then
 		error "Secrets Bootstrap Script Not Found or Not Executable"

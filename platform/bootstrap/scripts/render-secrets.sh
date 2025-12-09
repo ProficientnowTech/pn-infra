@@ -15,6 +15,8 @@ DEFAULT_SECRET_STORE_NAME="${VAULT_SECRET_STORE_NAME:-vault-backend}"
 DEFAULT_SECRET_STORE_KIND="${VAULT_SECRET_STORE_KIND:-ClusterSecretStore}"
 GITHUB_APP_TOKEN_VARS="${GITHUB_APP_TOKEN_VARS:-BACKSTAGE_GITHUB_TOKEN}"
 GITHUB_TOKEN_HELPER="${SCRIPT_DIR}/github-app-token.sh"
+TEMP_GITHUB_KEY_FILE=""
+SEALED_SECRETS_CERT_FILE=""
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -30,9 +32,38 @@ fatal() {
 	exit 1
 }
 
-cleanup() { :; }
+cleanup() {
+	if [[ -n "$TEMP_GITHUB_KEY_FILE" && -f "$TEMP_GITHUB_KEY_FILE" ]]; then
+		rm -f "$TEMP_GITHUB_KEY_FILE"
+	fi
+	if [[ -n "$SEALED_SECRETS_CERT_FILE" && -f "$SEALED_SECRETS_CERT_FILE" ]]; then
+		rm -f "$SEALED_SECRETS_CERT_FILE"
+	fi
+}
 trap cleanup EXIT
 trap 'fatal "Interrupted"' INT
+
+expand_path() {
+	local path="$1"
+	[[ -n "$path" ]] || return 1
+	case "$path" in
+	~)
+		path="$HOME"
+		;;
+	~/*)
+		path="${HOME}/${path#~/}"
+		;;
+	/*)
+		;;
+	./*)
+		path="${REPO_ROOT}/${path#./}"
+		;;
+	*)
+		path="${REPO_ROOT}/${path}"
+		;;
+	esac
+	printf '%s' "$path"
+}
 
 ensure_dirs() {
 	mkdir -p "$SEALED_DIR" "$PUSH_DIR" "$STATE_DIR"
@@ -58,19 +89,13 @@ load_env_file() {
 ensure_github_app_token() {
 	local app_id="${GITHUB_APP_ID:-}"
 	local install_id="${GITHUB_APP_INSTALLATION_ID:-}"
-	local private_key="${GITHUB_APP_PRIVATE_KEY:-}"
-	if [[ -n "$private_key" && "$private_key" != /* ]]; then
-		if [[ "$private_key" == ./* ]]; then
-			private_key="${REPO_ROOT}/${private_key#./}"
-		else
-			private_key="${REPO_ROOT}/${private_key}"
-		fi
-	fi
-	if [[ -z "$app_id" || -z "$install_id" || -z "$private_key" ]]; then
+	local private_key_path
+	private_key_path="$(resolve_github_private_key_path)" || private_key_path=""
+	if [[ -z "$app_id" || -z "$install_id" || -z "$private_key_path" ]]; then
 		return
 	fi
-	if [[ ! -f "$private_key" ]]; then
-		warn "GitHub App private key not found at $private_key; skipping auto-token generation."
+	if [[ ! -f "$private_key_path" ]]; then
+		warn "GitHub App private key not found at $private_key_path; skipping auto-token generation."
 		return
 	fi
 	local missing_targets=()
@@ -82,14 +107,14 @@ ensure_github_app_token() {
 			missing_targets+=("$target")
 		fi
 	done
-	[[ ${#missing_targets[@]} -gt 0 ]] || return
+	[[ ${#missing_targets[@]} -gt 0 ]] || return 0
 	[[ -x "$GITHUB_TOKEN_HELPER" ]] || fatal "GitHub token helper not found at $GITHUB_TOKEN_HELPER"
 	local tmp
 	tmp="$(mktemp)"
 	if ! "$GITHUB_TOKEN_HELPER" \
 		--app-id "$app_id" \
 		--installation-id "$install_id" \
-		--private-key "$private_key" \
+		--private-key "$private_key_path" \
 		--output "$tmp"; then
 		rm -f "$tmp"
 		warn "Failed to mint GitHub App installation token; skipping auto-fill."
@@ -102,6 +127,56 @@ ensure_github_app_token() {
 		export "$target"="$token"
 	done
 	log "Injected GitHub token into: ${missing_targets[*]}"
+}
+
+resolve_github_private_key_path() {
+	if [[ -n "${GITHUB_APP_PRIVATE_KEY_FILE:-}" ]]; then
+		expand_path "${GITHUB_APP_PRIVATE_KEY_FILE}"
+		return
+	fi
+
+	local candidate="${GITHUB_APP_PRIVATE_KEY:-}"
+	[[ -n "$candidate" ]] || return 1
+
+	if [[ "$candidate" =~ -----BEGIN ]]; then
+		TEMP_GITHUB_KEY_FILE="$(mktemp)"
+		printf '%b\n' "$candidate" >"$TEMP_GITHUB_KEY_FILE"
+		chmod 600 "$TEMP_GITHUB_KEY_FILE" || true
+		printf '%s' "$TEMP_GITHUB_KEY_FILE"
+		return 0
+	fi
+
+	expand_path "$candidate"
+}
+
+ensure_sealed_secrets_cert() {
+	local controller="${SEALED_SECRETS_CONTROLLER:-sealed-secrets}"
+	local namespace="${SEALED_SECRETS_NAMESPACE:-sealed-secrets}"
+
+	if [[ -n "${SEALED_SECRETS_CERT_FILE:-}" && -f "$SEALED_SECRETS_CERT_FILE" ]]; then
+		return 0
+	fi
+
+	local tmp_cert
+	tmp_cert="$(mktemp)"
+	local max_attempts=12
+	local attempt=1
+
+	while [[ $attempt -le $max_attempts ]]; do
+		if kubeseal --controller-name "$controller" \
+			--controller-namespace "$namespace" \
+			--fetch-cert >"$tmp_cert" 2>/dev/null; then
+			SEALED_SECRETS_CERT_FILE="$tmp_cert"
+			log "Fetched sealed-secrets controller certificate"
+			return 0
+		fi
+		warn "Waiting for sealed-secrets controller certificate (attempt $attempt/$max_attempts)..."
+		sleep 5
+		attempt=$((attempt + 1))
+	done
+
+	rm -f "$tmp_cert"
+	fatal "Unable to fetch sealed-secrets controller certificate"
 }
 
 random_string() {
@@ -299,10 +374,18 @@ process_spec() {
 	local secret_json
 	secret_json="$(build_secret_json "$name" "$namespace" "$type" "$string_data" "$labels" "$annotations")"
 	local sealed_path="${SEALED_DIR}/${namespace}-${name}.yaml"
-	printf '%s' "$secret_json" | kubeseal \
-		--controller-name "${SEALED_SECRETS_CONTROLLER:-sealed-secrets}" \
-		--controller-namespace "${SEALED_SECRETS_NAMESPACE:-sealed-secrets}" \
-		--format yaml >"$sealed_path"
+	local kubeseal_args=(--format yaml)
+	if [[ -n "${SEALED_SECRETS_CERT_FILE:-}" && -f "$SEALED_SECRETS_CERT_FILE" ]]; then
+		kubeseal_args+=(--cert "$SEALED_SECRETS_CERT_FILE")
+	else
+		kubeseal_args+=(
+			--controller-name "${SEALED_SECRETS_CONTROLLER:-sealed-secrets}"
+			--controller-namespace "${SEALED_SECRETS_NAMESPACE:-sealed-secrets}"
+		)
+	fi
+	if ! printf '%s' "$secret_json" | kubeseal "${kubeseal_args[@]}" >"$sealed_path"; then
+		fatal "Failed to seal secret for $namespace/$name"
+	fi
 
 	local push_json_file=""
 	if jq -e '.spec.vault' >/dev/null <<<"$spec_json"; then
@@ -362,6 +445,7 @@ EOF
 	ensure_binaries
 	load_env_file
 	ensure_github_app_token
+	ensure_sealed_secrets_cert
 	local spec_files
 	mapfile -t spec_files < <(find "$SPEC_DIR" -type f \( -name "*.yaml" -o -name "*.yml" \) | sort)
 	[[ ${#spec_files[@]} -gt 0 ]] || {

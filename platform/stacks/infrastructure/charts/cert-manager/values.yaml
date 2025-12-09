@@ -81,8 +81,8 @@ cert-manager:
         memory: 64Mi
 
   prometheus:
-    enabled: true
+    enabled: false
     servicemonitor:
-      enabled: true
+      enabled: false
     podmonitor:
       enabled: false

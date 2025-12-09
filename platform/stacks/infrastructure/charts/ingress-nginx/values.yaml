@@ -63,9 +63,9 @@ ingress-nginx:
     metrics:
       enabled: true
       serviceMonitor:
-        enabled: true
+        enabled: false
       prometheusRule:
-        enabled: true
+        enabled: false
         rules:
           - alert: NGINXConfigFailed
             expr: count(nginx_ingress_controller_config_last_reload_successful == 0) > 0

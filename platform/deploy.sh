@@ -21,6 +21,33 @@ if [[ -f "$ENV_FILE" ]]; then
 	export REPO_TOKEN="${REPO_TOKEN:-${ARGOCD_REPO_TOKEN:-}}"
 fi
 
+EXTERNAL_SECRETS_CRD_BUNDLE_URL="https://raw.githubusercontent.com/external-secrets/external-secrets/v1.1.0/deploy/crds/bundle.yaml"
+EXTERNAL_SECRETS_CRDS=(
+	clusterexternalsecrets.external-secrets.io
+	clusterpushsecrets.external-secrets.io
+	clustersecretstores.external-secrets.io
+	externalsecrets.external-secrets.io
+	pushsecrets.external-secrets.io
+	secretstores.external-secrets.io
+	acraccesstokens.generators.external-secrets.io
+	cloudsmithaccesstokens.generators.external-secrets.io
+	clustergenerators.generators.external-secrets.io
+	ecrauthorizationtokens.generators.external-secrets.io
+	fakes.generators.external-secrets.io
+	gcraccesstokens.generators.external-secrets.io
+	generatorstates.generators.external-secrets.io
+	githubaccesstokens.generators.external-secrets.io
+	grafanas.generators.external-secrets.io
+	mfas.generators.external-secrets.io
+	passwords.generators.external-secrets.io
+	quayaccesstokens.generators.external-secrets.io
+	sshkeys.generators.external-secrets.io
+	stssessiontokens.generators.external-secrets.io
+	uuids.generators.external-secrets.io
+	vaultdynamicsecrets.generators.external-secrets.io
+	webhooks.generators.external-secrets.io
+)
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -81,6 +108,44 @@ check_resource_ready() {
 	return 0
 }
 
+wait_for_crds() {
+	local crds=("$@")
+	for crd in "${crds[@]}"; do
+		log_info "Waiting for CRD ${crd} to become established..."
+		if ! kubectl wait --for=condition=Established "crd/${crd}" --timeout=90s >/dev/null 2>&1; then
+			log_error "Timed out waiting for CRD ${crd}"
+			return 1
+		fi
+	done
+	return 0
+}
+
+ensure_external_secrets_crds() {
+	local missing=()
+	for crd in "${EXTERNAL_SECRETS_CRDS[@]}"; do
+		if ! kubectl get crd "$crd" >/dev/null 2>&1; then
+			missing+=("$crd")
+		fi
+	done
+	if [[ ${#missing[@]} -eq 0 ]]; then
+		return 0
+	fi
+
+	log_info "External Secrets CRDs missing (${missing[*]}). Installing bundle..."
+	if ! kubectl apply -f "$EXTERNAL_SECRETS_CRD_BUNDLE_URL" --server-side >/dev/null; then
+		log_error "Failed to apply External Secrets CRD bundle"
+		return 1
+	fi
+
+	if wait_for_crds "${EXTERNAL_SECRETS_CRDS[@]}"; then
+		log_success "External Secrets CRDs installed."
+		return 0
+	else
+		log_error "External Secrets CRDs not ready after installation"
+		return 1
+	fi
+}
+
 # Create required secrets for platform
 render_bootstrap_secrets() {
 	local is_argo_namespace_present=$(kubectl get namespace argocd --ignore-not-found)
@@ -89,6 +154,7 @@ render_bootstrap_secrets() {
 		kubectl create namespace argocd
 		log_success "ArgoCD namespace created."
 	fi
+	ensure_external_secrets_crds || return 1
 	local script="${SCRIPT_DIR}/bootstrap/scripts/render-secrets.sh"
 	if [[ ! -x "$script" ]]; then
 		log_error "Bootstrap secret renderer not found or not executable: $script"
@@ -118,11 +184,7 @@ install_sealed_secrets() {
 		return 1
 	fi
 
-	if [[ ! -n "$(kubectl get crds | grep external-secrets.io)" ]]; then
-		log_info "External Secrets CRD not found, installing External Secrets CRDs..."
-		kubectl apply -f "https://raw.githubusercontent.com/external-secrets/external-secrets/v1.1.0/deploy/crds/bundle.yaml" --server-side
-		log_success "External Secrets CRDs installed."
-	fi
+	ensure_external_secrets_crds || return 1
 }
 
 # Wait for ArgoCD CRDs to be installed

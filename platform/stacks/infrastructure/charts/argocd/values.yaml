@@ -92,7 +92,7 @@ argo-cd:
     metrics:
       enabled: true
       servicemonitor:
-        enabled: true
+        enabled: false
       service:
         annotations:
           prometheus.io/scrape: 'true'
@@ -113,7 +113,7 @@ argo-cd:
           prometheus.io/port: '5558'
           prometheus.io/path: '/metrics'
       serviceMonitor:
-        enabled: true
+        enabled: false
 
   redis:
     enabled: true
@@ -194,7 +194,7 @@ argo-cd:
           prometheus.io/port: '8083'
           prometheus.io/path: '/metrics'
       serviceMonitor:
-        enabled: true
+        enabled: false
 
   repoServer:
     name: repo-server

@@ -1,8 +1,21 @@
-# This is just a placeholder Chart.yaml for the values directory
-# The actual chart is deployed from https://charts.rook.io/release
-# This directory only contains values.yaml used by the target-chart factory
 apiVersion: v2
-name: rook-ceph-cluster-values
-description: Values for Rook-Ceph cluster (not a standalone chart)
-type: library
-version: 0.1.0
+name: rook-ceph-cluster
+description: Wrapper chart for Rook Ceph cluster plus platform-specific resources
+type: application
+version: 0.2.0
+appVersion: "v18.2.4"
+
+keywords:
+  - storage
+  - ceph
+  - rook
+  - distributed-storage
+
+annotations:
+  category: Storage
+  platform.pn-infra.io/component: rook-ceph-cluster
+
+dependencies:
+  - name: rook-ceph-cluster
+    version: v1.18.4
+    repository: https://charts.rook.io/release

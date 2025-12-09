@@ -1,0 +1,71 @@
+{{- if .Values.multisite.enabled }}
+{{- $ns := include "ceph-cluster.namespace" . }}
+{{- with .Values.multisite.realm }}
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectRealm
+metadata:
+  name: {{ .name }}
+  namespace: {{ $ns }}
+  {{- with .labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .spec }}
+  {{- toYaml .spec | nindent 2 }}
+  {{- else }}
+  {}
+  {{- end }}
+{{- end }}
+
+{{- with .Values.multisite.zoneGroup }}
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectZoneGroup
+metadata:
+  name: {{ .name }}
+  namespace: {{ $ns }}
+  {{- with .labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .spec }}
+  {{- toYaml .spec | nindent 2 }}
+  {{- else }}
+  {}
+  {{- end }}
+{{- end }}
+
+{{- with .Values.multisite.zone }}
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectZone
+metadata:
+  name: {{ .name }}
+  namespace: {{ $ns }}
+  {{- with .labels }}
+  labels:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .spec }}
+  {{- toYaml .spec | nindent 2 }}
+  {{- else }}
+  {}
+  {{- end }}
+{{- end }}
+{{- end }}

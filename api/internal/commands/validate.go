@@ -9,6 +9,8 @@ import (
 	"strings"
 )
 
+var yamlValidator = runYamlValidator
+
 // RunValidate dispatches to specific validation routines.
 func RunValidate(rt *Runtime, args []string) error {
 	fs := flag.NewFlagSet("validate", flag.ContinueOnError)
@@ -69,7 +71,7 @@ func (rt *Runtime) validateDefinitionDir(dir, schema, metadataSchema, schemaName
 	}
 
 	for _, file := range files {
-		if err := runYamlValidator(schema, metadataSchema, schemaName, file); err != nil {
+		if err := yamlValidator(schema, metadataSchema, schemaName, file); err != nil {
 			return err
 		}
 	}

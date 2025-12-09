@@ -8,12 +8,14 @@ Provides the Go-based CLI (`cmd/api`) that validates schemas/definitions, genera
 # Validate role/size/disk/vlan definitions
 ./bin/api validate --target definitions
 
-# Generate environment artifacts from a config package
-./bin/api generate env --id development --config core
+# Generate environment artifacts from a config package (writes api/outputs/<env>/ metadata.json + files/*)
+./bin/api generate env --id development --config core --skip-validate
 
-# Record a provisioner build plan (and metadata for Terraform)
+# Build a provisioner artifact + metadata (includes checksum + remote placeholders)
 ./bin/api provision build --role k8s-master --env development
 
 # Run the legacy bootstrap workflow (until native Go cmd lands)
 ./bootstrap/run.sh --env development
 ```
+
+The generated `metadata.json` exposes a `files` map (e.g., `terraform`, `kubesprayInventory`, `provisioner`) that downstream scripts consume via `jq`.

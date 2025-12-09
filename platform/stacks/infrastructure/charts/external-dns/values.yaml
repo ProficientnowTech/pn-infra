@@ -47,4 +47,4 @@ external-dns:
 
   # Metrics
   serviceMonitor:
-    enabled: true
+    enabled: false

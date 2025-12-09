@@ -47,7 +47,7 @@ stacks:
       - platform-monitoring
   - name: platform-data
     description: "PostgreSQL clusters, Redis KV, other data services"
-    project: platform-data
+    project: databases
     syncWave: "20"
     chart:
       path: platform/stacks/platform-data/target-chart
@@ -83,7 +83,7 @@ stacks:
       - platform-development-workloads
   - name: platform-backup-dr
     description: "Backup and DR tooling (Velero, etc.)"
-    project: backup-dr
+    project: backup-disaster-recovery
     syncWave: "60"
     chart:
       path: platform/stacks/backup-and-disaster-recovery/target-chart

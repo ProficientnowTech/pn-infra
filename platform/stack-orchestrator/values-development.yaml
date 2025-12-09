@@ -36,7 +36,7 @@ stacks:
     dependencies:
       - platform-monitoring
   - name: platform-data
-    project: platform-data
+    project: databases
     chart:
       path: platform/stacks/platform-data/target-chart
       valuesFile: platform/stacks/platform-data/target-chart/values-development.yaml
@@ -64,7 +64,7 @@ stacks:
     dependencies:
       - platform-development-workloads
   - name: platform-backup-dr
-    project: backup-dr
+    project: backup-disaster-recovery
     chart:
       path: platform/stacks/backup-and-disaster-recovery/target-chart
       valuesFile: platform/stacks/backup-and-disaster-recovery/target-chart/values-development.yaml

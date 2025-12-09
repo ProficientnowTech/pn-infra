@@ -530,12 +530,16 @@ delete_namespaces() {
 			kubectl patch namespace $ns -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
 
 			# Delete namespace
-			kubectl delete namespace $ns --force --grace-period=0 2>/dev/null || true
+			kubectl delete namespace $ns --force --grace-period=0 --wait=false 2>/dev/null || true
 
 			# If still stuck, use raw API to delete
-			kubectl get namespace $ns -o json 2>/dev/null |
-				jq '.spec.finalizers = []' |
-				kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+			local tmp_ns_json
+			tmp_ns_json="$(mktemp)"
+			if kubectl get namespace "$ns" -o json >"$tmp_ns_json" 2>/dev/null; then
+				jq '.spec.finalizers = []' "$tmp_ns_json" |
+					kubectl replace --raw "/api/v1/namespaces/$ns/finalize" -f - 2>/dev/null || true
+			fi
+			rm -f "$tmp_ns_json"
 		fi
 	done
 

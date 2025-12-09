@@ -30,5 +30,4 @@ dependencies: []
 dependencyCheck:
   enabled: true
   pollIntervalSeconds: 10
-  timeoutSeconds: 1200
   image: docker.io/bitnami/kubectl:1.30.3

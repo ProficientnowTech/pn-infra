@@ -1,4 +1,5 @@
-{{- if and (.Values.dependencyCheck.enabled) (.Values.dependencies) (gt (len .Values.dependencies) 0) }}
+{{- $hasDeps := and (.Values.dependencyCheck.enabled) (.Values.dependencies) (gt (len .Values.dependencies) 0) -}}
+{{- if $hasDeps }}
 {{- $name := printf "%s-stack-wait" (include "stack.fullname" .) -}}
 {{- $namespace := (.Values.argocdNamespace | default "argocd") -}}
 ---
@@ -7,12 +8,20 @@ kind: ServiceAccount
 metadata:
   name: {{ $name }}
   namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-30"
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: {{ $name }}
   namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-25"
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
 rules:
   - apiGroups: ["argoproj.io"]
     resources: ["applications"]
@@ -23,6 +32,10 @@ kind: RoleBinding
 metadata:
   name: {{ $name }}
   namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-20"
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
 subjects:
   - kind: ServiceAccount
     name: {{ $name }}
@@ -37,6 +50,10 @@ kind: ConfigMap
 metadata:
   name: {{ $name }}-script
   namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-weight: "-10"
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
 data:
   wait.sh: |
     #!/bin/sh
@@ -47,9 +64,7 @@ data:
       exit 0
     fi
 
-    timeout="${TIMEOUT_SECONDS:-1200}"
     interval="${POLL_INTERVAL:-10}"
-    start=$(date +%s)
 
     echo "Waiting for dependent stacks: ${DEPENDENCIES}"
 
@@ -62,13 +77,6 @@ data:
         if [ "${syncStatus}" = "Synced" ] && [ "${healthStatus}" = "Healthy" ]; then
           echo "Dependency ${dep} is Synced/Healthy."
           break
-        fi
-
-        now=$(date +%s)
-        elapsed=$(( now - start ))
-        if [ "${elapsed}" -ge "${timeout}" ]; then
-          echo "Timed out waiting for dependency ${dep} (sync=${syncStatus}, health=${healthStatus})."
-          exit 1
         fi
 
         echo "Dependency ${dep} not ready yet (sync=${syncStatus}, health=${healthStatus}). Sleeping ${interval}s..."
@@ -86,6 +94,7 @@ metadata:
   annotations:
     argocd.argoproj.io/hook: PreSync
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    argocd.argoproj.io/hook-weight: "0"
 spec:
   backoffLimit: 0
   template:
@@ -106,8 +115,6 @@ spec:
               value: {{ $namespace }}
             - name: POLL_INTERVAL
               value: {{ .Values.dependencyCheck.pollIntervalSeconds | default 10 | int | quote }}
-            - name: TIMEOUT_SECONDS
-              value: {{ .Values.dependencyCheck.timeoutSeconds | default 1200 | int | quote }}
           volumeMounts:
             - name: script
               mountPath: /scripts

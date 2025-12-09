@@ -42,4 +42,4 @@ dependencies: []
 dependencyCheck:
   enabled: false
   pollIntervalSeconds: 10
-  image: docker.io/library/busybox:1.36.1
+  image: bitnamilegacy/kubectl:1.30.3

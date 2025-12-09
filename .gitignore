@@ -20,7 +20,7 @@ archive
 
 # Helm chart dependencies (downloaded by helm dependency build)
 *.tgz
-charts/
+charts/*/charts
 
 # Ansible
 *.retry

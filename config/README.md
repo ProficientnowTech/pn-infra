@@ -10,6 +10,9 @@ cat packages/core/package.json
 
 # Generate environment artifacts that reference the package
 ./api/bin/api generate env --id development --config core
+
+# Validate manifests & version bumps
+./config/validate.sh
 ```
 
 When updating a package, bump the manifest `version` field and tag the repo. Modules reference packages via `configPackage: <id>` inside their `environments/<env>.yaml`.

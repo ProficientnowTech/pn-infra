@@ -6,9 +6,18 @@
 
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+
+# Environment selection (default development, override via --env)
+ENVIRONMENT="${ENVIRONMENT:-development}"
+API_OUTPUT_DIR=""
+METADATA_FILE=""
+INVENTORY_STAGE="${SCRIPT_DIR}/inventory/current"
+
 # Configuration
 KUBESPRAY_VERSION="v2.28.1"
-INVENTORY_PATH="$(pwd)/inventory/pn-production"
+INVENTORY_PATH="$INVENTORY_STAGE"
 SSH_KEY_PATH="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
 IMAGE_NAME="quay.io/kubespray/kubespray:${KUBESPRAY_VERSION}"
 
@@ -49,6 +58,7 @@ OPTIONS:
     -f, --force-pull   Force pull Docker image even if present
     -l, --limit HOSTS  Limit execution to specific hosts (comma-separated)
     -e, --extra ARGS   Pass additional arguments to ansible-playbook
+    --env NAME         Environment identifier (default: development)
     -h, --help         Show this help message
 
 EXAMPLES:
@@ -85,6 +95,48 @@ log_error() {
 }
 
 # Validation functions
+prepare_environment() {
+    if ! command -v jq >/dev/null 2>&1; then
+        log_error "jq is required to read API metadata. Install jq first."
+        exit 1
+    }
+
+    API_OUTPUT_DIR="${REPO_ROOT}/api/outputs/${ENVIRONMENT}"
+    METADATA_FILE="${API_OUTPUT_DIR}/metadata.json"
+    if [[ ! -f "$METADATA_FILE" ]]; then
+        log_error "API outputs not found for environment ${ENVIRONMENT}"
+        log_error "Run './api/bin/api generate env --id ${ENVIRONMENT} --config core --skip-validate' first."
+        exit 1
+    }
+
+    local inventory_dir
+    inventory_dir=$(jq -r '.files.kubesprayInventory' "$METADATA_FILE")
+    if [[ -z "$inventory_dir" || "$inventory_dir" == "null" ]]; then
+        log_error "metadata.json does not include kubesprayInventory entry"
+        exit 1
+    }
+    rm -rf "$INVENTORY_STAGE"
+    mkdir -p "$INVENTORY_STAGE"
+    cp -R "${inventory_dir}/." "$INVENTORY_STAGE/"
+    INVENTORY_PATH="$INVENTORY_STAGE"
+
+    local config_path
+    config_path=$(jq -r '.files.kubesprayConfig' "$METADATA_FILE")
+    if [[ -z "$config_path" || "$config_path" == "null" || ! -f "$config_path" ]]; then
+        log_error "kubesprayConfig file missing from metadata; regenerate environment artifacts."
+        exit 1
+    }
+
+    KUBESPRAY_VERSION=$(jq -r '.image.version' "$config_path")
+    local repo
+    repo=$(jq -r '.image.repository' "$config_path")
+    IMAGE_NAME="${repo}:${KUBESPRAY_VERSION}"
+    local key_path
+    key_path=$(jq -r '.ssh.keyPath' "$config_path")
+    if [[ -n "$key_path" && "$key_path" != "null" ]]; then
+        SSH_KEY_PATH="$key_path"
+    fi
+}
 validate_prerequisites() {
     log_info "Validating prerequisites..."
     
@@ -172,7 +224,7 @@ run_kubespray() {
     local cmd="cd /kubespray && chmod 600 /root/.ssh/id_rsa"
     
     # Add verbose flag
-    local ansible_args="-i inventory/pn-production/inventory.ini"
+    local ansible_args="-i inventory/runtime/inventory.ini"
     [[ "$VERBOSE" == "true" ]] && ansible_args="$ansible_args -v"
     [[ "$DRY_RUN" == "true" ]] && ansible_args="$ansible_args --check"
     [[ -n "$LIMIT_HOSTS" ]] && ansible_args="$ansible_args --limit $LIMIT_HOSTS"
@@ -183,7 +235,7 @@ run_kubespray() {
     
     # Run the container
     docker run --rm -it \
-        --mount type=bind,source="${INVENTORY_PATH}",dst="/kubespray/inventory/pn-production/" \
+        --mount type=bind,source="${INVENTORY_PATH}",dst="/kubespray/inventory/runtime/" \
         --mount type=bind,source="${SSH_KEY_PATH}",dst="/root/.ssh/id_rsa" \
         "${IMAGE_NAME}" \
         bash -c "$cmd"
@@ -260,12 +312,12 @@ gather_facts() {
 
 open_shell() {
     log_info "Opening interactive Kubespray container shell..."
-    log_info "Inventory mounted at: /kubespray/inventory/pn-production/"
+    log_info "Inventory mounted at: /kubespray/inventory/runtime/"
     log_info "SSH Key mounted at: /root/.ssh/id_rsa"
-    log_info "Run 'ansible-playbook -i inventory/pn-production/inventory.ini cluster.yml -b' to deploy"
+    log_info "Run 'ansible-playbook -i inventory/runtime/inventory.ini cluster.yml -b' to deploy"
     
     docker run --rm -it \
-        --mount type=bind,source="${INVENTORY_PATH}",dst="/kubespray/inventory/pn-production/" \
+        --mount type=bind,source="${INVENTORY_PATH}",dst="/kubespray/inventory/runtime/" \
         --mount type=bind,source="${SSH_KEY_PATH}",dst="/root/.ssh/id_rsa" \
         "${IMAGE_NAME}" \
         bash -c "cd /kubespray && chmod 600 /root/.ssh/id_rsa && bash"
@@ -298,6 +350,10 @@ while [[ $# -gt 0 ]]; do
             EXTRA_ARGS="$2"
             shift 2
             ;;
+        --env)
+            ENVIRONMENT="$2"
+            shift 2
+            ;;
         -h|--help)
             usage
             exit 0
@@ -313,6 +369,9 @@ done
 # Default operation
 [[ -z "$OPERATION" ]] && OPERATION="deploy"
 
+# Ensure API outputs and provider config are available
+prepare_environment
+
 # Print header
 echo -e "${CYAN}╔══════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║          Enhanced Kubespray Manager              ║${NC}"
@@ -321,6 +380,7 @@ echo -e "${CYAN}╚════════════════════�
 echo
 log_info "Operation: ${OPERATION}"
 log_info "Kubespray Version: ${KUBESPRAY_VERSION}"
+log_info "Environment: ${ENVIRONMENT}"
 [[ "$VERBOSE" == "true" ]] && log_info "Verbose mode enabled"
 [[ "$DRY_RUN" == "true" ]] && log_info "Dry run mode enabled"
 [[ -n "$LIMIT_HOSTS" ]] && log_info "Limited to hosts: ${LIMIT_HOSTS}"

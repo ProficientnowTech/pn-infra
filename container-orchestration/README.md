@@ -5,9 +5,345 @@ Hosts pluggable providers that turn provisioned infrastructure into Kubernetes c
 ## Usage
 
 ```bash
-./api/bin/api generate env --id development --config core   # produces inventory + group vars
+./api/bin/api generate env --id development --config core --skip-validate   # produces inventory + group vars
 cd container-orchestration/providers/kubespray
 ./deploy.sh --env development
 ```
 
-Providers must read configuration from `container-orchestration/environments/<env>.yaml` (which references a config package) and should never mutate API outputs directly.
+Providers read configuration pointers from `container-orchestration/environments/<env>.yaml`, hydrate inventories from `api/outputs/<env>/`, and should never mutate the generated artifacts directly.
+
+---
+
+## Requirements
+
+### Input Files
+
+#### From Config Package (`config/packages/core/`)
+- **Master Config**: `config.yaml` - Declares orchestrator selection (kubespray, kubekey, kind)
+- **Orchestrator-Specific** (loaded based on master config):
+  - `orchestrators/kubespray.yaml` - Kubespray cluster settings (network plugin, service CIDR, etc.)
+  - `orchestrators/kubekey.yaml` - Kubekey-specific settings
+  - `orchestrators/kind.yaml` - Kind-specific settings
+- **Platform-Agnostic**:
+  - `hosts.yaml` - Used to generate inventory host lists
+
+#### From API Outputs (`api/outputs/<env>/`)
+- **metadata.json** - Master metadata with paths to all orchestrator artifacts
+- **Orchestrator Inventory** (format varies by orchestrator):
+  - **Kubespray**: `kubespray/inventory.ini` (INI format) + `kubespray/group_vars/` (YAML)
+  - **Kubekey**: `kubekey/config.yaml`
+  - **Kind**: `kind/config.yaml`
+- **kubesprayConfig.json** (for Kubespray provider):
+  - Docker image version: `image.registry`, `image.version`
+  - SSH settings: `ssh.keyPath`, `ssh.user`, `ssh.port`
+
+#### Module Environment File (`container-orchestration/environments/<env>.yaml`)
+- **configPackage**: Reference to config package (always "core")
+- **environment**: Environment name
+- **provider**: Provider type (docker, podman, native)
+- **Orchestrator-specific overrides**:
+  - Kubespray: `kubespray.docker_image`, `kubespray.ssh.key_path`
+  - Inventory overrides: `inventory_overrides`
+  - Cluster overrides: `cluster_overrides`
+- **Schema**: Validated against `api/schemas/environments/kubespray.schema.yaml`
+
+### Environment Variables
+- `KUBECONFIG` - Path to store generated kubeconfig (default: `~/.kube/config`)
+- `SSH_KEY_PATH` - Alternative SSH key specification
+
+### Required Tools
+- **Docker** (for Kubespray/most providers) - `docker info` must work
+- **jq** - JSON parser for metadata.json
+- **yq** - YAML parser for environment files
+- **ssh** - For cluster node access
+- **kubectl** - For cluster validation (installed by provider if needed)
+
+### Folder Structure Expected
+```
+api/outputs/<env>/
+├── metadata.json
+├── kubespray/
+│   ├── inventory.ini                 # Generated INI format
+│   └── group_vars/
+│       ├── all.yaml                  # Generated cluster-wide vars
+│       └── k8s_cluster.yaml          # Generated k8s settings
+└── kubesprayConfig.json              # Provider settings
+
+container-orchestration/environments/
+└── <env>.yaml                        # Provider config + secrets
+```
+
+---
+
+## Outputs
+
+### Primary Output
+**Kubernetes Cluster** with:
+- Control plane nodes (masters)
+- Worker nodes
+- CNI plugin installed (Calico/Cilium/etc.)
+- Etcd cluster (HA if multiple masters)
+- Core DNS
+- Kube-proxy
+- Container runtime (containerd/cri-o)
+
+### Kubeconfig File
+```
+$HOME/.kube/config                    # Default location
+```
+Or custom location specified by `KUBECONFIG` environment variable.
+
+### Cluster Access Information
+Retrieved from master node:
+- API server endpoint: `https://<master-ip>:6443`
+- Certificate authority data
+- Client certificate and key
+- Cluster name
+
+### Cluster State
+- Running Kubernetes cluster (version specified in orchestrator config)
+- All nodes in Ready state
+- All system pods running
+- Network connectivity between nodes and pods
+
+---
+
+## Integration Points
+
+### Depends On
+- **Infrastructure Module**: Requires running VMs/instances with network connectivity
+- **API Module**: Generates inventory and configuration files
+- **Config Module**: Provides orchestrator-specific settings
+
+### Consumed By
+- **Platform Module**: Deploys platform services on this Kubernetes cluster
+- **Business Module**: Deploys applications on this cluster
+
+---
+
+## Provider Interface
+
+Each provider under `providers/<name>/` MUST implement:
+
+### Required Scripts
+- **deploy.sh** - Deploy/upgrade cluster
+- **reset.sh** - Destroy cluster completely
+- **validate.sh** - Pre-deployment validation
+
+### Required Flags
+- `--env <environment>` - Environment name (required)
+- Standard operations: deploy, reset, upgrade, scale
+
+### Expected Behavior
+1. Read `container-orchestration/environments/<env>.yaml`
+2. Load `api/outputs/<env>/metadata.json`
+3. Extract inventory path from metadata
+4. Stage inventory to provider-specific location
+5. Execute orchestrator-specific deployment
+6. Retrieve kubeconfig from cluster
+7. Validate cluster health
+
+---
+
+## Kubespray Provider (MVP)
+
+### Docker Mounting Requirements
+
+**CRITICAL**: Kubespray runs in a Docker container and requires specific volume mounts:
+
+```bash
+docker run --rm -it \
+  --mount type=bind,source="${INVENTORY_PATH}",dst="/kubespray/inventory/runtime/" \
+  --mount type=bind,source="${SSH_KEY_PATH}",dst="/root/.ssh/id_rsa" \
+  quay.io/kubespray/kubespray:${VERSION} \
+  bash -c "cd /kubespray && ansible-playbook -i inventory/runtime/inventory.ini cluster.yml -b"
+```
+
+#### Mount Point 1: Inventory
+- **Host Path**: `${REPO_ROOT}/api/outputs/${ENVIRONMENT}/kubespray/`
+- **Container Path**: `/kubespray/inventory/runtime/`
+- **Contents**:
+  - `inventory.ini` - INI format host list
+  - `group_vars/all.yaml` - Cluster-wide settings
+  - `group_vars/k8s_cluster.yaml` - Kubernetes settings
+- **Permissions**: Read-only sufficient
+
+#### Mount Point 2: SSH Key
+- **Host Path**: Path from `kubesprayConfig.json` → `ssh.keyPath`
+- **Container Path**: `/root/.ssh/id_rsa`
+- **Permissions**: **MUST be 600**
+- **Note**: Script automatically sets permissions before mount
+
+### Kubespray Inventory Structure
+
+Generated by API from YAML configs:
+
+```ini
+# inventory.ini (generated from hosts.yaml)
+[all]
+k8s-master-01 ansible_host=192.168.106.10 ip=192.168.106.10
+k8s-worker-01 ansible_host=192.168.106.11 ip=192.168.106.11
+
+[kube_control_plane]
+k8s-master-01
+
+[etcd]
+k8s-master-01
+
+[kube_node]
+k8s-master-01
+k8s-worker-01
+
+[k8s_cluster:children]
+kube_control_plane
+kube_node
+```
+
+### Kubespray Group Vars
+
+```yaml
+# group_vars/all.yaml (from orchestrators/kubespray.yaml)
+cluster_name: development
+kube_network_plugin: calico
+kube_service_addresses: 10.233.0.0/18
+kube_pods_subnet: 10.233.64.0/18
+kube_dns_domain: dev.cluster.local
+```
+
+### Kubespray Operations
+
+```bash
+# Deploy cluster
+./deploy.sh --env development
+
+# Validate before deploy
+./validate.sh --env development
+
+# Reset cluster (WARNING: destructive)
+./reset.sh --env development
+
+# Upgrade Kubernetes version
+# (Update orchestrators/kubespray.yaml, then regenerate and run)
+./deploy.sh --env development --operation upgrade
+
+# Scale cluster (add/remove nodes)
+./deploy.sh --env development --operation scale --limit k8s-worker-02
+
+# Interactive troubleshooting
+./deploy.sh --env development --operation shell
+```
+
+### Validation Checks
+
+The `validate.sh` script verifies:
+1. **Inventory exists**: `inventory.ini` file present
+2. **Essential group_vars**: Required YAML files exist
+3. **Network plugin**: Valid plugin specified
+4. **SSH connectivity**: Can reach first 3 hosts via SSH
+5. **Docker**: Docker daemon running
+6. **Permissions**: SSH key has correct permissions
+
+---
+
+## Provider Environment Configuration
+
+### Kubespray Example
+
+```yaml
+# container-orchestration/environments/development.yaml
+configPackage: core
+environment: development
+provider: docker
+
+# Override Kubespray Docker image
+kubespray:
+  docker_image: "quay.io/kubespray/kubespray:v2.28.1"
+
+# SSH settings
+ssh:
+  key_path: "/home/user/.ssh/id_ed25519"
+  user: "ansible"
+  port: 22
+
+# Override cluster settings (merged with orchestrators/kubespray.yaml)
+cluster_overrides:
+  kube_network_plugin: "calico"
+  dns_mode: "coredns"
+```
+
+---
+
+## Adding New Providers
+
+To add a new orchestrator (e.g., Kubekey):
+
+1. Create provider directory:
+   ```bash
+   mkdir -p providers/kubekey
+   ```
+
+2. Implement required scripts:
+   - `providers/kubekey/deploy.sh`
+   - `providers/kubekey/reset.sh`
+   - `providers/kubekey/validate.sh`
+
+3. Add orchestrator config:
+   ```bash
+   # config/packages/core/orchestrators/kubekey.yaml
+   ```
+
+4. Create API template:
+   ```bash
+   # api/templates/container-orchestration/kubekey/config.yaml.tmpl
+   ```
+
+5. Update master config:
+   ```yaml
+   # config/packages/core/config.yaml
+   container_orchestration:
+     orchestrator: kubekey
+   ```
+
+6. Regenerate and deploy:
+   ```bash
+   ./api/bin/api generate env --id development --config core
+   cd container-orchestration/providers/kubekey
+   ./deploy.sh --env development
+   ```
+
+---
+
+## Troubleshooting
+
+### Docker Mount Issues
+**Problem**: Inventory not found in container
+**Solution**: Verify `api/outputs/<env>/kubespray/inventory.ini` exists before running deploy.sh
+
+**Problem**: SSH key permission denied
+**Solution**: Ensure SSH key is 600. Script handles this automatically but check manually if needed:
+```bash
+chmod 600 /path/to/ssh/key
+```
+
+### Inventory Format Issues
+**Problem**: Ansible can't parse inventory
+**Solution**: Regenerate inventory via API CLI:
+```bash
+./api/bin/api generate env --id <env> --config core
+```
+
+### Network Issues
+**Problem**: Pods can't communicate
+**Solution**: Check CNI plugin setting in `orchestrators/kubespray.yaml`:
+```yaml
+kube_network_plugin: calico  # or cilium, flannel, etc.
+```
+
+### Cluster Access Issues
+**Problem**: kubectl can't connect
+**Solution**: Copy kubeconfig from master:
+```bash
+# Done automatically by run.sh, but manual steps:
+ssh ansible@<master-ip> "sudo cp /etc/kubernetes/admin.conf ~/kubeconfig-temp"
+scp ansible@<master-ip>:~/kubeconfig-temp ~/.kube/config
+```

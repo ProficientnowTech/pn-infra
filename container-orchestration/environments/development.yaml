@@ -1,4 +1,9 @@
+# Container Orchestration Environment: Development
+# Using Kind for local Kubernetes development
+
 configPackage: core
-provider: kubespray
-cluster:
-  name: development
+environment: development
+provider: docker
+
+# Kind-specific configuration overrides
+# (merged with config/packages/core/orchestrators/kind.yaml)

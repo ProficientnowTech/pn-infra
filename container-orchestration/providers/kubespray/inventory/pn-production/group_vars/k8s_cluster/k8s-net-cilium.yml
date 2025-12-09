@@ -1,0 +1,31 @@
+---
+# Cilium version
+cilium_version: '1.18.4'
+
+# Basic networking - IPv4 only (your cluster has no IPv6 PodCIDRs)
+cilium_enable_ipv4: true
+cilium_enable_ipv6: false
+
+# Identity management - CRD mode is standard for Kubernetes
+cilium_identity_allocation_mode: crd
+
+# Keep kube-proxy (don't replace it)
+cilium_kube_proxy_replacement: false
+
+# No encryption initially (can enable later)
+cilium_encryption_enabled: false
+
+# Operator replicas
+cilium_operator_replicas: 3
+
+# CNI settings - allow coexistence with Multus
+cilium_cni_exclusive: false
+
+# Disable Hubble initially (enable after cluster is stable)
+cilium_enable_hubble: false
+cilium_enable_hubble_ui: false
+cilium_enable_hubble_metrics: false
+cilium_hubble_install: false
+
+# Disable debug mode
+cilium_debug: false

@@ -6,7 +6,12 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INVENTORY_PATH="${SCRIPT_DIR}/inventory/pn-production"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
+ENVIRONMENT="${ENVIRONMENT:-development}"
+API_OUTPUT_DIR=""
+METADATA_FILE=""
+INVENTORY_PATH="${SCRIPT_DIR}/inventory/current"
+SSH_KEY_PATH="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
 
 # Colors
 RED='\033[0;31m'
@@ -32,6 +37,41 @@ log_warning() {
 log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
     ((ERRORS++))
+}
+
+prepare_environment() {
+    if ! command -v jq >/dev/null 2>&1; then
+        log_error "jq is required to validate API outputs. Install jq first."
+        exit 1
+    }
+
+    API_OUTPUT_DIR="${REPO_ROOT}/api/outputs/${ENVIRONMENT}"
+    METADATA_FILE="${API_OUTPUT_DIR}/metadata.json"
+    if [[ ! -f "$METADATA_FILE" ]]; then
+        log_error "API outputs missing for environment ${ENVIRONMENT}"
+        log_error "Run './api/bin/api generate env --id ${ENVIRONMENT} --config core --skip-validate' first."
+        exit 1
+    }
+
+    local inventory_dir
+    inventory_dir=$(jq -r '.files.kubesprayInventory' "$METADATA_FILE")
+    if [[ -z "$inventory_dir" || "$inventory_dir" == "null" ]]; then
+        log_error "metadata.json missing kubesprayInventory entry"
+        exit 1
+    }
+    rm -rf "$INVENTORY_PATH"
+    mkdir -p "$INVENTORY_PATH"
+    cp -R "${inventory_dir}/." "$INVENTORY_PATH/"
+
+    local config_path
+    config_path=$(jq -r '.files.kubesprayConfig' "$METADATA_FILE")
+    if [[ -n "$config_path" && "$config_path" != "null" && -f "$config_path" ]]; then
+        local key_path
+        key_path=$(jq -r '.ssh.keyPath' "$config_path")
+        if [[ -n "$key_path" && "$key_path" != "null" ]]; then
+            SSH_KEY_PATH="$key_path"
+        fi
+    fi
 }
 
 # Check required tools for cluster deployment
@@ -66,7 +106,7 @@ check_docker() {
 check_ssh() {
     log_info "Checking SSH configuration for cluster nodes..."
     
-    local ssh_key="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
+    local ssh_key="$SSH_KEY_PATH"
     if [[ ! -f "$ssh_key" ]]; then
         log_error "SSH key not found: $ssh_key"
         return
@@ -124,7 +164,7 @@ check_connectivity() {
     log_info "Testing SSH connectivity to cluster nodes..."
     
     local inventory_file="${INVENTORY_PATH}/inventory.ini"
-    local ssh_key="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
+    local ssh_key="$SSH_KEY_PATH"
     local test_hosts=()
     
     # Extract first few hosts for testing
@@ -158,6 +198,7 @@ check_connectivity() {
 # Main validation
 run_validation() {
     log_info "Starting Kubespray cluster deployment validation..."
+    prepare_environment
     
     check_tools
     check_docker
@@ -177,5 +218,20 @@ run_validation() {
 
 # Run if called directly
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --env)
+                ENVIRONMENT="$2"
+                shift 2
+                ;;
+            -h|--help)
+                echo "Usage: $0 [--env ENVIRONMENT]"
+                exit 0
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
     run_validation
 fi

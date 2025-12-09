@@ -4,6 +4,30 @@ global:
   repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
   targetRevision: 'main'
 
+namespace: rook-ceph
+
+multisite:
+  enabled: true
+  realm:
+    name: pn-platform-realm
+    spec: {}
+  zoneGroup:
+    name: ap-south-2
+    spec:
+      realm: pn-platform-realm
+  zone:
+    name: ap-south-2a
+    spec:
+      zoneGroup: ap-south-2
+      metadataPool:
+        failureDomain: host
+        replicated:
+          size: 3
+      dataPool:
+        failureDomain: host
+        replicated:
+          size: 3
+
 # Labels configuration
 labels:
   component: storage
@@ -11,324 +35,442 @@ labels:
 
 # Ceph Cluster Configuration
 # Based on official rook-ceph-cluster v1.18.4 chart
+rook-ceph-cluster:
+  # Operator namespace
+  operatorNamespace: ceph-operator
 
-# Operator namespace
-operatorNamespace: rook-ceph
+  # Cluster Configuration
+  cephClusterSpec:
+    # Ceph version
+    cephVersion:
+      image: quay.io/ceph/ceph:v18.2.4
+      allowUnsupported: false
 
-# Cluster Configuration
-cephClusterSpec:
-  # Ceph version
-  cephVersion:
-    image: quay.io/ceph/ceph:v18.2.4
-    allowUnsupported: false
+    # Data directory on host
+    dataDirHostPath: /var/lib/rook
 
-  # Data directory on host
-  dataDirHostPath: /var/lib/rook
+    # Skip upgrade checks
+    skipUpgradeChecks: false
 
-  # Skip upgrade checks
-  skipUpgradeChecks: false
+    # Continue if PGs are not clean during upgrade
+    continueUpgradeAfterChecksEvenIfNotHealthy: false
 
-  # Continue if PGs are not clean during upgrade
-  continueUpgradeAfterChecksEvenIfNotHealthy: false
+    # Wait timeout if PGs are not clean (in minutes)
+    waitTimeoutForHealthyOSDInMinutes: 10
 
-  # Wait timeout if PGs are not clean (in minutes)
-  waitTimeoutForHealthyOSDInMinutes: 10
-
-  # Monitor configuration
-  mon:
-    count: 3 # Deploy 3 monitors for quorum
-    allowMultiplePerNode: false # Don't run multiple mons on same node
-    # Use hostPath instead of PVCs for monitor data
-    # volumeClaimTemplate: null  # Disabled - using dataDirHostPath instead
-
-    # Manager configuration
-  mgr:
-    count: 2 # Run 2 managers for HA
-    allowMultiplePerNode: false
-    modules:
-    - name: pg_autoscaler
-      enabled: true
-    - name: rook
-      enabled: true
-
-  # Dashboard configuration
-  dashboard:
-    enabled: true
-    ssl: true
-    port: 8443
-
-  # Monitoring configuration
-  monitoring:
-    enabled: true
-    # Network configuration
-  network:
-    connections:
-      encryption:
-        enabled: false # Disable for performance in trusted network
-      compression:
-        enabled: false # Disable for performance
-      requireMsgr2: false
-
-  # Crash collector
-  crashCollector:
-    disable: false
-
-  # Log collector
-  logCollector:
-    enabled: true
-    periodicity: daily
-    maxLogSize: 500M
-
-  # Cleanup policy on cluster deletion
-  cleanupPolicy:
-    confirmation: "" # Must be set to "yes-really-destroy-data" to allow cleanup
-    sanitizeDisks:
-      method: quick
-      dataSource: zero
-      iteration: 1
-    allowUninstallWithVolumes: false
-
-  # Annotations and labels
-  annotations: {}
-  labels: {}
-
-  # Placement configuration for Ceph daemons
-  placement:
-    all:
-      nodeSelector:
-        role: storage
-        ceph-osd: enabled
-      tolerations:
-      - key: node-role.kubernetes.io/control-plane
-        operator: Exists
-        effect: NoSchedule
-
-  # Storage Configuration
-  storage:
-    useAllNodes: false # Explicitly define which nodes to use
-    useAllDevices: false # Explicitly define which devices to use
-
-    nodes:
-    - name: "k8s-master-01"
-      devices:
-      - name: "/dev/sdb"
-    - name: "k8s-master-02"
-      devices:
-      - name: "/dev/sdb"
-    - name: "k8s-master-03"
-      devices:
-      - name: "/dev/sdb"
-    - name: "k8s-worker-02"
-      devices:
-      - name: "/dev/sdb"
-    - name: "k8s-worker-10"
-      devices:
-      - name: "/dev/sda"
-      - name: "/dev/sdb"
-    - name: "k8s-master-04"
-      devices:
-      - name: "/dev/sda"
-      - name: "/dev/sdb"
-      - name: "/dev/sdc"
-      - name: "/dev/sdd"
-      - name: "/dev/sde"
-
-  # Remove OSDs that are not in the list above
-  removeOSDsIfOutAndSafeToRemove: false
-
-  # Priority class for pods
-  priorityClassNames:
-    mon: system-node-critical
-    osd: system-node-critical
-    mgr: system-cluster-critical
-
-  # Disruption budgets
-  disruptionManagement:
-    managePodBudgets: true
-    osdMaintenanceTimeout: 30
-    pgHealthCheckTimeout: 0
-    manageMachineDisruptionBudgets: false
-    machineDisruptionBudgetNamespace: openshift-machine-api
-
-  # Resource limits/requests for Ceph daemons
-  resources:
+    # Monitor configuration
     mon:
-      limits:
-        cpu: "2000m"
-        memory: "2Gi"
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-    osd:
-      limits:
-        cpu: "2000m"
-        memory: "4Gi"
-      requests:
-        cpu: "1000m"
-        memory: "2Gi"
+      count: 3 # Deploy 3 monitors for quorum
+      allowMultiplePerNode: false # Don't run multiple mons on same node
+      # Use hostPath instead of PVCs for monitor data
+      # volumeClaimTemplate: null  # Disabled - using dataDirHostPath instead
+
+      # Manager configuration
     mgr:
-      limits:
-        cpu: "1000m"
-        memory: "1Gi"
-      requests:
-        cpu: "500m"
-        memory: "512Mi"
-    prepareosd:
-      requests:
-        cpu: "500m"
-        memory: "50Mi"
-    crashcollector:
-      limits:
-        cpu: "500m"
-        memory: "60Mi"
-      requests:
-        cpu: "100m"
-        memory: "60Mi"
-    logcollector:
-      limits:
-        cpu: "500m"
-        memory: "1Gi"
-      requests:
-        cpu: "100m"
-        memory: "100Mi"
-    cleanup:
-      limits:
-        cpu: "500m"
-        memory: "1Gi"
-      requests:
-        cpu: "100m"
-        memory: "100Mi"
+      count: 2 # Run 2 managers for HA
+      allowMultiplePerNode: false
+      modules:
+      - name: pg_autoscaler
+        enabled: true
+      - name: rook
+        enabled: true
 
-# Ingress for Ceph Dashboard
-ingress:
-  dashboard:
-    enabled: true # Enable after cluster is healthy
-    host:
-      name: ceph.pnats.cloud
-    ingressClassName: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-production
-      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
-    tls:
-    - secretName: ceph-dashboard-tls
-      hosts:
-      - ceph.pnats.cloud
+    # Dashboard configuration
+    dashboard:
+      enabled: true
+      ssl: true
+      port: 8443
 
-# CephBlockPool for RBD
-cephBlockPools:
-- name: replicapool
-  spec:
-    failureDomain: host # Replicate across hosts
-    replicated:
-      size: 3 # 3 replicas (matches number of OSDs)
-      requireSafeReplicaSize: true
-  storageClass:
-    enabled: true
-    name: ceph-block
-    isDefault: false
-    reclaimPolicy: Delete
-    allowVolumeExpansion: true
-    volumeBindingMode: Immediate
-    mountOptions: []
-    parameters:
-      imageFormat: "2"
-      imageFeatures: layering
-      csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
-      csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
-      csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
-      csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
-      csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
-      csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
-      csi.storage.k8s.io/fstype: ext4
+    # Monitoring configuration
+    monitoring:
+      enabled: true
+      # Network configuration
+    network:
+      connections:
+        encryption:
+          enabled: false # Disable for performance in trusted network
+        compression:
+          enabled: false # Disable for performance
+        requireMsgr2: false
 
-# CephFilesystem for CephFS
-cephFileSystems:
-- name: cephfs
-  spec:
-    metadataPool:
-      replicated:
-        size: 3
-    dataPools:
-    - name: data0
-      failureDomain: host
-      replicated:
-        size: 3
-    metadataServer:
-      activeCount: 1
-      activeStandby: true
-      resources:
+    # Crash collector
+    crashCollector:
+      disable: false
+
+    # Log collector
+    logCollector:
+      enabled: true
+      periodicity: daily
+      maxLogSize: 500M
+
+    # Cleanup policy on cluster deletion
+    cleanupPolicy:
+      confirmation: "" # Must be set to "yes-really-destroy-data" to allow cleanup
+      sanitizeDisks:
+        method: quick
+        dataSource: zero
+        iteration: 1
+      allowUninstallWithVolumes: false
+
+    # Annotations and labels
+    annotations: {}
+    labels: {}
+
+    # Placement configuration for Ceph daemons
+    placement:
+      all:
+        nodeSelector:
+          role: storage
+          ceph-osd: enabled
+        tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+
+    # Storage Configuration
+    storage:
+      useAllNodes: false # Explicitly define which nodes to use
+      useAllDevices: false # Explicitly define which devices to use
+
+      nodes:
+      - name: "k8s-master-01"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-master-02"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-master-03"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-02"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-10"
+        devices:
+        - name: "/dev/sda"
+      - name: "k8s-master-04"
+        devices:
+        - name: "/dev/sda"
+        - name: "/dev/sdb"
+        - name: "/dev/sdc"
+        - name: "/dev/sdd"
+        - name: "/dev/sde"
+
+    # Remove OSDs that are not in the list above
+    removeOSDsIfOutAndSafeToRemove: false
+
+    # Priority class for pods
+    priorityClassNames:
+      mon: system-node-critical
+      osd: system-node-critical
+      mgr: system-cluster-critical
+
+    # Disruption budgets
+    disruptionManagement:
+      managePodBudgets: true
+      osdMaintenanceTimeout: 30
+      pgHealthCheckTimeout: 0
+      manageMachineDisruptionBudgets: false
+      machineDisruptionBudgetNamespace: openshift-machine-api
+
+    # Resource limits/requests for Ceph daemons
+    resources:
+      mon:
         limits:
-          cpu: "1000m"
-          memory: "4Gi"
-        requests:
-          cpu: "500m"
-          memory: "1Gi"
-      priorityClassName: system-cluster-critical
-  storageClass:
-    enabled: true
-    name: ceph-filesystem
-    isDefault: false
-    reclaimPolicy: Delete
-    allowVolumeExpansion: true
-    volumeBindingMode: Immediate
-    mountOptions: []
-    parameters:
-      csi.storage.k8s.io/provisioner-secret-name: rook-csi-cephfs-provisioner
-      csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
-      csi.storage.k8s.io/controller-expand-secret-name: rook-csi-cephfs-provisioner
-      csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
-      csi.storage.k8s.io/node-stage-secret-name: rook-csi-cephfs-node
-      csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
-      csi.storage.k8s.io/fstype: ext4
-
-cephObjectStores:
-- name: pn-platform-objectstore
-  metadata:
-    name: pn-platform-objectstore
-    namespace: rook-ceph
-  spec:
-    metadataPool:
-      failureDomain: host
-      replicated:
-        size: 3
-    dataPool:
-      failureDomain: host
-      replicated:
-        size: 3
-    preservePoolsOnDelete: true
-    gateway:
-      port: 80
-      instances: 2
-      priorityClassName: system-cluster-critical
-      resources:
-        limits:
-          cpu: "1000m"
+          cpu: "2000m"
           memory: "2Gi"
         requests:
           cpu: "500m"
           memory: "1Gi"
-    zone:
-      name: ap-south-2a
-  storageClass:
-    enabled: true
-    name: ceph-bucket
-    reclaimPolicy: Delete
-    volumeBindingMode: "Immediate"
-    parameters:
-      region: ap-south-2
+      osd:
+        limits:
+          cpu: "2000m"
+          memory: "4Gi"
+        requests:
+          cpu: "1000m"
+          memory: "2Gi"
+      mgr:
+        limits:
+          cpu: "1000m"
+          memory: "1Gi"
+        requests:
+          cpu: "500m"
+          memory: "512Mi"
+      prepareosd:
+        requests:
+          cpu: "500m"
+          memory: "50Mi"
+      crashcollector:
+        limits:
+          cpu: "500m"
+          memory: "60Mi"
+        requests:
+          cpu: "100m"
+          memory: "60Mi"
+      logcollector:
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+        requests:
+          cpu: "100m"
+          memory: "100Mi"
+      cleanup:
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+        requests:
+          cpu: "100m"
+          memory: "100Mi"
+
+  # Ingress for Ceph Dashboard
   ingress:
-    enabled: true
-    ingressClassName: nginx
-    annotations:
-      cert-manager.io/cluster-issuer: letsencrypt-production
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
-      nginx.ingress.kubernetes.io/proxy-buffering: "off"
-    host:
-      name: s3.pnats.cloud
-      path: /
-      pathType: Prefix
-    tls:
-    - hosts:
-      - s3.pnats.cloud
-      secretName: ceph-rgw-s3-tls
+    dashboard:
+      enabled: true # Enable after cluster is healthy
+      host:
+        name: ceph.pnats.cloud
+      ingressClassName: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+        nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+        nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+      tls:
+      - secretName: ceph-dashboard-tls
+        hosts:
+        - ceph.pnats.cloud
+
+  # CephBlockPool for RBD
+  cephBlockPools:
+  - name: plt-critical-replicated
+    spec:
+      failureDomain: host
+      replicated:
+        size: 3
+        requireSafeReplicaSize: true
+    storageClass:
+      enabled: true
+      name: plt-blk-hdd-repl
+      isDefault: false
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      parameters:
+        clusterID: rook-ceph
+        pool: plt-critical-replicated
+        imageFormat: "2"
+        imageFeatures: layering
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/fstype: ext4
+
+  - name: app-critical-replicated
+    spec:
+      failureDomain: host
+      replicated:
+        size: 3
+        requireSafeReplicaSize: true
+    storageClass:
+      enabled: true
+      name: app-blk-hdd-repl
+      isDefault: true
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      parameters:
+        clusterID: rook-ceph
+        pool: app-critical-replicated
+        imageFormat: "2"
+        imageFeatures: layering
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/fstype: ext4
+
+  - name: bulk-ec
+    spec:
+      failureDomain: osd
+      erasureCoded:
+        dataChunks: 4
+        codingChunks: 2
+    storageClass:
+      enabled: true
+      name: infra-blk-hdd-ec
+      isDefault: false
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      parameters:
+        clusterID: rook-ceph
+        pool: bulk-ec
+        imageFormat: "2"
+        imageFeatures: layering
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/fstype: ext4
+  # CephFilesystem for CephFS
+  cephFileSystems:
+  - name: cephfs
+    spec:
+      metadataPool:
+        replicated:
+          size: 3
+      dataPools:
+      - name: data0
+        failureDomain: host
+        replicated:
+          size: 3
+      metadataServer:
+        activeCount: 1
+        activeStandby: true
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "4Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+        priorityClassName: system-cluster-critical
+    storageClass:
+      enabled: true
+      name: ceph-filesystem
+      isDefault: false
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      volumeBindingMode: Immediate
+      mountOptions: []
+      parameters:
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-cephfs-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-cephfs-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-cephfs-node
+        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/fstype: ext4
+
+  cephObjectStores:
+  - name: app-objectstore
+    metadata:
+      name: app-objectstore
+      namespace: rook-ceph
+    spec:
+      metadataPool:
+        failureDomain: host
+        replicated:
+          size: 3
+      dataPool:
+        failureDomain: host
+        replicated:
+          size: 3
+      preservePoolsOnDelete: true
+      gateway:
+        port: 80
+        instances: 2
+        priorityClassName: system-cluster-critical
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+      zone:
+        name: ap-south-2a
+    storageClass:
+      enabled: true
+      name: app-obj-s3
+      reclaimPolicy: Delete
+      volumeBindingMode: "Immediate"
+      parameters:
+        region: ap-south-2
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        nginx.ingress.kubernetes.io/proxy-buffering: "off"
+      host:
+        name: app-obj-store.pnats.cloud
+        path: /
+        pathType: Prefix
+      tls:
+      - hosts:
+        - app-obj-store.pnats.cloud
+        secretName: ceph-rgw-app-objstore-tls
+
+  - name: bulk-objectstore
+    metadata:
+      name: bulk-objectstore
+      namespace: rook-ceph
+    spec:
+      metadataPool:
+        failureDomain: host
+        replicated:
+          size: 3
+      dataPool:
+        failureDomain: osd
+        erasureCoded:
+          dataChunks: 4
+          codingChunks: 2
+      preservePoolsOnDelete: true
+      gateway:
+        port: 80
+        instances: 1
+        priorityClassName: system-cluster-critical
+        resources:
+          limits:
+            cpu: "1000m"
+            memory: "2Gi"
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+      zone:
+        name: ap-south-2a
+    storageClass:
+      enabled: true
+      name: infra-obj-s3
+      reclaimPolicy: Delete
+      volumeBindingMode: "Immediate"
+      parameters:
+        region: ap-south-2
+    ingress:
+      enabled: false
+
+objectStoreUsers:
+  - name: db-backup-user
+    store: app-objectstore
+    displayName: "Platform Database Backups"
+    quotas:
+      maxSize: "100Gi"
+      maxObjects: 10000
+    labels:
+      buckets.pnats.cloud/purpose: backups
+  - name: app-admin
+    store: app-objectstore
+    displayName: "Application Object Store Admin"
+    quotas:
+      maxSize: "256Gi"
+      maxObjects: 1000000
+    capabilities:
+      user: "*"
+      bucket: "*"
+    labels:
+      buckets.pnats.cloud/purpose: admin
+  - name: telemetry-writer
+    store: bulk-objectstore
+    displayName: "Telemetry Writer"
+    quotas:
+      maxSize: "1Ti"
+      maxObjects: 1000000
+    labels:
+      buckets.pnats.cloud/purpose: telemetry

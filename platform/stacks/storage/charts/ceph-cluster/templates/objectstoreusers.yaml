@@ -1,0 +1,33 @@
+{{- $ns := include "ceph-cluster.namespace" . }}
+{{- range $idx, $user := .Values.objectStoreUsers }}
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: {{ $user.name }}
+  namespace: {{ $user.namespace | default $ns }}
+  labels:
+    app.kubernetes.io/managed-by: rook
+    platform.pnats.cloud/component: object-storage
+    ceph.rook.io/object-store: {{ $user.store }}
+    {{- with $user.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $user.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  store: {{ $user.store }}
+  {{- if $user.displayName }}
+  displayName: {{ $user.displayName | quote }}
+  {{- end }}
+  {{- if $user.quotas }}
+  quotas:
+    {{- toYaml $user.quotas | nindent 4 }}
+  {{- end }}
+  {{- if $user.capabilities }}
+  capabilities:
+    {{- toYaml $user.capabilities | nindent 4 }}
+  {{- end }}
+{{- end }}

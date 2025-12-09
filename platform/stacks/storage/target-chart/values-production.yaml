@@ -16,7 +16,7 @@ applications:
   - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: v2
     path: platform/stacks/storage/charts/ceph-cluster
-  destinationNamespaceOverwrite: 'rook-ceph'
+  destinationNamespaceOverwrite: 'ceph-cluster'
   ignoreDifferences:
   - group: ceph.rook.io
     kind: CephCluster

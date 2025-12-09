@@ -14,6 +14,11 @@ PROXMOX_TF_ROOT="$INFRA_DIR/platforms/proxmox/terraform"
 PROXMOX_TEMPLATES_DIR="$PROXMOX_TF_ROOT/templates"
 PROXMOX_POOLS_DIR="$PROXMOX_TF_ROOT/pools"
 PROXMOX_NODES_DIR="$PROXMOX_TF_ROOT/nodes"
+API_BIN="$PROJECT_ROOT/api/bin/api"
+CONFIG_PACKAGE="core"
+METADATA_FILE=""
+TF_VARS_FILE=""
+API_METADATA_LOADED=false
 
 # Default values
 ENVIRONMENT=""
@@ -52,6 +57,91 @@ log_debug() {
 	fi
 }
 
+load_environment_config() {
+	local env_file="$INFRA_DIR/environments/${ENVIRONMENT}.yaml"
+	if [[ ! -f "$env_file" ]]; then
+		log_error "Environment file not found: $env_file"
+		exit 1
+	}
+
+	local pkg
+	pkg=$(yq '.configPackage' "$env_file" | tr -d '"')
+	if [[ -z "$pkg" || "$pkg" == "null" ]]; then
+		pkg="core"
+	fi
+	CONFIG_PACKAGE="$pkg"
+	log_info "Using config package: $CONFIG_PACKAGE"
+}
+
+load_metadata_paths() {
+	METADATA_FILE="$PROJECT_ROOT/api/outputs/${ENVIRONMENT}/metadata.json"
+	if [[ ! -f "$METADATA_FILE" ]]; then
+		log_error "API metadata not found at $METADATA_FILE"
+		exit 1
+	}
+
+	TF_VARS_FILE=$(jq -r '.files.terraform' "$METADATA_FILE")
+	if [[ -z "$TF_VARS_FILE" || "$TF_VARS_FILE" == "null" || ! -f "$TF_VARS_FILE" ]]; then
+		log_error "Terraform variables not present in metadata; rerun bootstrap phase."
+		exit 1
+	}
+	API_METADATA_LOADED=true
+}
+
+generate_api_outputs() {
+	if [[ "$DRY_RUN" == "true" ]]; then
+		log_info "[DRY-RUN] Would run: $API_BIN generate env --id $ENVIRONMENT --config $CONFIG_PACKAGE --skip-validate"
+		return
+	}
+
+	log_info "Running API CLI to materialize environment artifacts..."
+	"$API_BIN" generate env --id "$ENVIRONMENT" --config "$CONFIG_PACKAGE" --skip-validate | tee -a "$LOG_FILE"
+	load_metadata_paths
+}
+
+ensure_api_outputs_ready() {
+	if [[ "$API_METADATA_LOADED" == "true" ]]; then
+		return
+	}
+
+	local existing_meta="$PROJECT_ROOT/api/outputs/${ENVIRONMENT}/metadata.json"
+	if [[ -f "$existing_meta" ]]; then
+		load_metadata_paths
+		return
+	}
+
+	if [[ "$DRY_RUN" == "true" ]]; then
+		log_warn "[DRY-RUN] No existing metadata found; infrastructure phases will be skipped."
+		return
+	}
+
+	generate_api_outputs
+}
+
+stage_tfvars_for_module() {
+	local dest_dir="$1"
+	ensure_api_outputs_ready
+
+	if [[ -z "$TF_VARS_FILE" || "$TF_VARS_FILE" == "null" ]]; then
+		if [[ "$DRY_RUN" == "true" ]]; then
+			log_warn "[DRY-RUN] Terraform vars unavailable for ${dest_dir}; skipping staging."
+			return 1
+		}
+		log_error "Terraform vars not available; rerun bootstrap phase."
+		exit 1
+	}
+
+	if [[ "$DRY_RUN" == "true" ]]; then
+		log_info "[DRY-RUN] Would copy $TF_VARS_FILE to ${dest_dir}/terraform.tfvars"
+		return 0
+	}
+
+	local dest_file="${dest_dir}/terraform.tfvars"
+	cp "$TF_VARS_FILE" "$dest_file"
+	log_debug "Staged Terraform variables at $dest_file"
+	return 0
+}
+
 # Usage information
 usage() {
 	cat << 'EOF'
@@ -72,7 +162,7 @@ OPTIONS:
     -h, --help                 Show this help message
 
 PHASES:
-    bootstrap                  Generate configuration files from environment configs
+    bootstrap                  Generate API artifacts (schemas, inventories, tfvars)
     images                     Build role-specific VM images with Packer and upload to MinIO
     templates                  Create resource templates for VM deployment
     nodes                      Deploy VMs using images and templates
@@ -104,10 +194,10 @@ check_prerequisites() {
 
 	# Check for required directories
 	local required_paths=(
-		"modules/bootstrap"
 		"platforms/proxmox/terraform/templates"
 		"platforms/proxmox/terraform/pools"
 		"platforms/proxmox/terraform/nodes"
+		"environments"
 	)
 
 	local missing_dirs=()
@@ -126,7 +216,7 @@ check_prerequisites() {
 	fi
 
 	# Check for required tools
-	local required_tools=("yq" "openssl" "terraform")
+	local required_tools=("yq" "jq" "openssl" "terraform")
 	local missing_tools=()
 
 	for tool in "${required_tools[@]}"; do
@@ -142,43 +232,23 @@ check_prerequisites() {
 		log_debug "Tools checks Passed"
 	fi
 
+	if [[ ! -x "$API_BIN" ]]; then
+		log_error "API binary not found at $API_BIN (build it with 'go build ./api/cmd/api')"
+		exit 1
+	}
+
 	log_success "Prerequisites check passed"
 }
 
 # Phase 1: Bootstrap configuration generation
 run_bootstrap_phase() {
-	log_info "=== Phase 1: Bootstrap Configuration Generation ==="
-
-	local bootstrap_script="$INFRA_DIR/modules/bootstrap/run.sh"
-
-	if [[ ! -f "$bootstrap_script" ]]; then
-		log_error "Bootstrap script not found: $bootstrap_script"
-		exit 1
-	fi
-
-	# Make script executable
-	chmod +x "$bootstrap_script"
-
-	log_info "Running bootstrap configuration generation..."
-
-	# Set environment variables for the script
-	export ENVIRONMENT
-	# export OUTPUT_DIR="$INFRA_DIR/generated"
-
-	if [[ "$DRY_RUN" == "true" ]]; then
-		log_info "Would generate configuration files for environment: $ENVIRONMENT"
-		return 0
-	fi
-
-	cd "$INFRA_DIR/modules/bootstrap"
-	if ./run.sh --env "$ENVIRONMENT"; then
-		log_success "Bootstrap phase completed successfully"
-		# Export variables for other phases
-		source <(./run.sh --env "$ENVIRONMENT" | grep "^export ")
+	log_info "=== Phase 1: API Artifact Generation ==="
+	ensure_api_outputs_ready
+	if [[ "$DRY_RUN" == "false" ]]; then
+		log_success "Environment artifacts available under api/outputs/${ENVIRONMENT}"
 	else
-		log_error "Bootstrap phase failed"
-		exit 1
-	fi
+		log_info "[DRY-RUN] Skipped API CLI execution"
+	}
 }
 
 # Phase 2: VM Images (Packer builds)
@@ -192,6 +262,9 @@ run_images_phase() {
 		return 0
 	fi
 
+	if ! stage_tfvars_for_module "$PROXMOX_TEMPLATES_DIR"; then
+		return 0
+	}
 	chmod +x "$images_script"
 	log_info "Building VM images with Packer..."
 
@@ -220,6 +293,9 @@ run_templates_phase() {
 		return 0
 	fi
 
+	if ! stage_tfvars_for_module "$PROXMOX_POOLS_DIR"; then
+		return 0
+	}
 	chmod +x "$templates_script"
 	log_info "Creating resource templates..."
 
@@ -248,6 +324,9 @@ run_nodes_phase() {
 		return 0
 	fi
 
+	if ! stage_tfvars_for_module "$PROXMOX_NODES_DIR"; then
+		return 0
+	}
 	chmod +x "$nodes_script"
 	log_info "Deploying VMs..."
 
@@ -400,9 +479,12 @@ main() {
 		exit 2
 	fi
 
+	load_environment_config
+
 	# Print configuration
 	log_info "Configuration:"
 	log_info "  Environment: $ENVIRONMENT"
+	log_info "  Config package: $CONFIG_PACKAGE"
 	if [[ -n "$PHASE" ]]; then
 		log_info "  Phase: $PHASE"
 	else

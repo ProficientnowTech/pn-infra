@@ -1,7 +1,12 @@
+# Infrastructure Environment: Development
+# For Kind deployment, infrastructure is minimal (no VMs to provision)
+
 configPackage: core
-cluster:
-  name: development
-platforms:
-  - platform: proxmox
-    provider: terraform
-    enabled: true
+environment: development
+
+# SSH configuration (not used by Kind but required by schema)
+ssh:
+  private_key_path: ~/.ssh/id_rsa
+  public_key: ""
+  user: ubuntu
+  port: 22

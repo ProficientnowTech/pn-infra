@@ -112,6 +112,20 @@ graph TB
 | S3 API (App) | https://s3.pnats.cloud | Application object storage |
 | S3 API (Bulk) | Internal only | Infrastructure object storage |
 
+### Preflight Verification
+
+Before applying the storage stack, run the verification helper to ensure the node
+and device map in `platform/stacks/storage/charts/ceph-cluster/values.yaml` matches
+what Kubernetes sees:
+
+```bash
+platform/stacks/storage/scripts/verify-osd-devices.sh
+```
+
+The script checks node readiness, prints applied labels, and uses `kubectl debug`
+to confirm every declared block device exists on the host. Fix any reported
+issues before installing or upgrading the Ceph cluster.
+
 ---
 
 ## Key Design Decisions

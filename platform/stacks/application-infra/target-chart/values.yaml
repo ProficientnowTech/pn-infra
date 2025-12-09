@@ -18,9 +18,10 @@ global:
   project: application-infra
 
   # Sync policy
-  automated:
-    prune: true
-    selfHeal: true
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
 
   # Retry configuration
   retry:

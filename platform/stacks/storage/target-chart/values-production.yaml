@@ -9,11 +9,11 @@ applications:
   - ServerSideApply=true
   - Replace=true
 
-- name: ceph-cluster-(pn-hyd-a)
+- name: ceph-cluster-pn-hyd-a
   annotations:
     argocd.argoproj.io/sync-wave: '-100'
   sources:
-  - repoUrl: https://github.com/pnow-devsupreme/pn-infra.git
+  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
     targetRevision: v2
     path: platform/stacks/storage/charts/ceph-cluster
   destinationNamespaceOverwrite: 'rook-ceph'

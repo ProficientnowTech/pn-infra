@@ -1,3 +1,5 @@
+> **Update (v2 modular refactor):** Provisioner inputs are generated via `./api/bin/api generate env --id <env>` which writes `provisioner.yml` + metadata under `api/outputs/<env>/`. The CLI then calls `./api/bin/api provision build --role <role> --env <env>` to orchestrate the build, emit metadata (artifact path, checksum, remote placeholders), and write images under `provisioner/outputs/<env>/`. The material below captures the internal agent breakdown that still powers the Ansible implementation.
+
 ### AGENT ARCHITECTURE OVERVIEW
 
 This implementation uses **4 specialized Claude Code agents**, each with expertise in specific domains. This ensures deep technical knowledge, reduces context switching, and maintains consistency within each area of specialization.

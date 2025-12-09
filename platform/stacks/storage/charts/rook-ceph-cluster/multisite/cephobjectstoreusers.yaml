@@ -1,0 +1,27 @@
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: stackgres-user
+  namespace: rook-ceph
+spec:
+  store: pn-platform-objectstore
+  displayName: "StackGres Backup User"
+  quotas:
+    maxSize: "100Gi"
+    maxObjects: 10000
+---
+apiVersion: ceph.rook.io/v1
+kind: CephObjectStoreUser
+metadata:
+  name: snoorullah
+  namespace: rook-ceph
+spec:
+  store: pn-platform-objectstore
+  displayName: "Admin User"
+  quotas:
+    maxSize: "256Gi"
+    maxObjects: 1000000
+  capabilities:
+    user: "*"
+    bucket: "*"

@@ -1,0 +1,6 @@
+apiVersion: ceph.rook.io/v1
+kind: CephObjectRealm
+metadata:
+  name: pn-platform-realm
+  namespace: rook-ceph
+spec: {}

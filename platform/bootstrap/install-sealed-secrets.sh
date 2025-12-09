@@ -15,10 +15,10 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-log()   { echo -e "${BLUE}[INFO]    [$(date +'%H:%M:%S')] [SealedSecrets]${NC} $1"; }
-warn()  { echo -e "${YELLOW}[WARN]    [$(date +'%H:%M:%S')] [SealedSecrets]${NC} $1"; }
-error() { echo -e "${RED}[ERROR]   [$(date +'%H:%M:%S')] [SealedSecrets]${NC} $1"; }
-ok()    { echo -e "${GREEN}[SUCCESS] [$(date +'%H:%M:%S')] [SealedSecrets]${NC} $1"; }
+log() { echo -e "${GREEN}[SUCCESS] [$(date +'%H:%M:%S')] [SealedSecrets Bootstrap] $1${NC}"; }
+info() { echo -e "${BLUE}[INFO]    [$(date +'%H:%M:%S')] [SealedSecrets Bootstrap] $1${NC}"; }
+warn() { echo -e "${YELLOW}[WARN]    [$(date +'%H:%M:%S')] [SealedSecrets Bootstrap] $1${NC}"; }
+error() { echo -e "${RED}[ERROR]   [$(date +'%H:%M:%S')] [SealedSecrets Bootstrap] $1${NC}"; }
 
 ensure_tools() {
 	if ! command -v helm >/dev/null 2>&1; then
@@ -32,8 +32,8 @@ ensure_tools() {
 }
 
 sealed_secrets_ready() {
-	kubectl get deployment "${RELEASE_NAME}" -n "${NAMESPACE}" >/dev/null 2>&1 \
-		&& kubectl wait --for=condition=available deployment/"${RELEASE_NAME}" -n "${NAMESPACE}" --timeout=5s >/dev/null 2>&1
+	kubectl get deployment "${RELEASE_NAME}" -n "${NAMESPACE}" >/dev/null 2>&1 &&
+		kubectl wait --for=condition=available deployment/"${RELEASE_NAME}" -n "${NAMESPACE}" --timeout=5s >/dev/null 2>&1
 }
 
 install_chart() {
@@ -51,23 +51,23 @@ install_chart() {
 		--set fullnameOverride="${RELEASE_NAME}" \
 		--wait >/dev/null
 
-	ok "Helm release ${RELEASE_NAME} installed."
+	info "Helm release ${RELEASE_NAME} installed."
 }
 
 wait_for_controller() {
 	log "Waiting for sealed-secrets controller to become ready..."
-if kubectl rollout status deployment/"${RELEASE_NAME}" -n "${NAMESPACE}" --timeout=180s >/dev/null; then
-	ok "Sealed-secrets controller is ready."
-else
-	error "Timed out waiting for sealed-secrets controller."
-	exit 1
-fi
+	if kubectl rollout status deployment/"${RELEASE_NAME}" -n "${NAMESPACE}" --timeout=180s >/dev/null; then
+		info "Sealed-secrets controller is ready."
+	else
+		error "Timed out waiting for sealed-secrets controller."
+		exit 1
+	fi
 }
 
 ensure_tools
 
 if sealed_secrets_ready; then
-	ok "Sealed-secrets controller already installed."
+	info "Sealed-secrets controller already installed."
 	exit 0
 fi
 

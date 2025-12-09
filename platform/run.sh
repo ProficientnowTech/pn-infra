@@ -8,6 +8,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VALIDATE_SCRIPT="${SCRIPT_DIR}/validate.sh"
 DEPLOY_SCRIPT="${SCRIPT_DIR}/deploy.sh"
+CONTAINER_ROOT="$(cd "${SCRIPT_DIR}/../container-orchestration" && pwd)"
 
 # Colors
 RED='\033[0;31m'
@@ -38,6 +39,39 @@ log_error() {
 	echo -e "${RED}[ERROR]   [$(date +'%H:%M:%S')] [Orchestrator]${NC} $1"
 }
 
+invoke_orchestration_provider() {
+	local operation="$1"
+	shift || true
+
+	local env_file="${CONTAINER_ROOT}/environments/${ENVIRONMENT}.yaml"
+	if [[ ! -f "$env_file" ]]; then
+		log_warning "Container orchestration env file missing: $env_file"
+		return 0
+	fi
+
+	local provider
+	provider=$(awk '/^provider:/ {print $2}' "$env_file")
+	if [[ -z "$provider" || "$provider" == "null" ]]; then
+		log_warning "No provider defined for environment ${ENVIRONMENT}"
+		return 0
+	fi
+
+	local runner="${CONTAINER_ROOT}/providers/${provider}/run.sh"
+	if [[ ! -x "$runner" ]]; then
+		log_warning "Provider runner not found: $runner"
+		return 0
+	fi
+
+	log_info "Invoking container-orchestration provider (${provider}) -> ${operation}"
+
+	if ! "$runner" "$operation" --env "$ENVIRONMENT" "$@"; then
+		log_warning "Provider ${provider} ${operation} reported an error"
+		return 1
+	fi
+
+	return 0
+}
+
 render_bootstrap_secrets() {
 	local script="${SCRIPT_DIR}/bootstrap/scripts/render-secrets.sh"
 	if [[ ! -x "$script" ]]; then
@@ -50,7 +84,7 @@ render_bootstrap_secrets() {
 
 usage() {
 	cat <<EOF
-Usage: $0 [OPERATION] [OPTIONS]
+Usage: ${0##*/} [OPERATION] [OPTIONS]
 
 OPERATIONS:
     validate        Run platform validation only
@@ -62,15 +96,15 @@ OPERATIONS:
 OPTIONS:
     --skip-validation       Skip validation (EMERGENCY USE ONLY)
     --env ENVIRONMENT       Environment (production|staging|development)
-    -h, --help             Show this help
+    -h, --help              Show this help
 
 EXAMPLES:
-    $0 validate                    # Run platform validation
-    $0 deploy                      # Validate then deploy platform
-    $0 reset                       # Reset platform (remove all apps and ArgoCD)
-    $0 setup-secrets               # Render bootstrap sealed secrets only
-    $0 deploy --env staging        # Deploy staging environment
-    $0 status                      # Check platform status
+    ${0##*/} validate                    # Run platform validation
+    ${0##*/} deploy                      # Validate then deploy platform
+    ${0##*/} reset                       # Reset platform (remove all apps and ArgoCD)
+    ${0##*/} setup-secrets               # Render bootstrap sealed secrets only
+    ${0##*/} deploy --env staging        # Deploy staging environment
+    ${0##*/} status                      # Check platform status
 EOF
 }
 
@@ -84,12 +118,13 @@ run_validation() {
 	"$VALIDATE_SCRIPT" "$ENVIRONMENT"
 }
 
-
 run_deployment() {
 	if [[ ! -x "$DEPLOY_SCRIPT" ]]; then
 		log_error "Platform deployment script not found: $DEPLOY_SCRIPT"
 		return 1
 	fi
+
+	invoke_orchestration_provider "validate" || true
 
 	log_info "Starting platform deployment for environment: $ENVIRONMENT"
 	# Pass SSH key path if available
@@ -185,6 +220,7 @@ setup-secrets)
 	render_bootstrap_secrets
 	;;
 status)
+	invoke_orchestration_provider "status" || true
 	if command -v kubectl &>/dev/null && kubectl cluster-info &>/dev/null; then
 		log_info "Checking ArgoCD applications status..."
 		kubectl get applications -n argocd 2>/dev/null || log_warning "ArgoCD not accessible"

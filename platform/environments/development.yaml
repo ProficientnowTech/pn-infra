@@ -1,2 +1,40 @@
+# Platform Environment: Development
+# Platform services secrets and configuration
+
 configPackage: core
-cluster: development
+environment: development
+
+# ArgoCD configuration
+argocd:
+  admin_password: "admin123"  # Will be bcrypt hashed
+  server_url: "http://localhost:8080"
+  insecure: true
+
+# Stack enablement (override defaults from platform/stacks.yaml)
+stacks:
+  ingress:
+    enabled: true
+    controller: nginx
+  storage:
+    enabled: true
+    default_class: standard
+  monitoring:
+    enabled: true
+    grafana:
+      admin_password: "admin123"
+  logging:
+    enabled: true
+  secrets_management:
+    enabled: true
+    provider: sealed-secrets
+  gitops:
+    enabled: true
+  service_mesh:
+    enabled: false
+  backup:
+    enabled: false
+
+# Secret environment variables (for secret specs)
+secret_env_vars:
+  GRAFANA_ADMIN_USER: "admin"
+  GRAFANA_ADMIN_PASSWORD: "admin123"

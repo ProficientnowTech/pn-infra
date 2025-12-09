@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_NAME="$(basename "$0")"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${ROOT_DIR}/../.." && pwd)"
 SPEC_DIR="${ROOT_DIR}/platform/bootstrap/secrets/specs"
 GENERATED_DIR="${ROOT_DIR}/platform/bootstrap/.generated"
@@ -13,7 +14,7 @@ ENV_FILE="${ROOT_DIR}/platform/bootstrap/secrets/.env.local"
 DEFAULT_SECRET_STORE_NAME="${VAULT_SECRET_STORE_NAME:-vault-backend}"
 DEFAULT_SECRET_STORE_KIND="${VAULT_SECRET_STORE_KIND:-ClusterSecretStore}"
 GITHUB_APP_TOKEN_VARS="${GITHUB_APP_TOKEN_VARS:-BACKSTAGE_GITHUB_TOKEN}"
-GITHUB_TOKEN_HELPER="${ROOT_DIR}/platform/scripts/github-app-token.sh"
+GITHUB_TOKEN_HELPER="${SCRIPT_DIR}/github-app-token.sh"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'

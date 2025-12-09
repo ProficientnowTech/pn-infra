@@ -105,9 +105,9 @@ spec:
             - name: ARGOCD_NAMESPACE
               value: {{ $namespace }}
             - name: POLL_INTERVAL
-              value: {{ printf "%d" (.Values.dependencyCheck.pollIntervalSeconds | default 10) }}
+              value: {{ .Values.dependencyCheck.pollIntervalSeconds | default 10 | int | quote }}
             - name: TIMEOUT_SECONDS
-              value: {{ printf "%d" (.Values.dependencyCheck.timeoutSeconds | default 1200) }}
+              value: {{ .Values.dependencyCheck.timeoutSeconds | default 1200 | int | quote }}
           volumeMounts:
             - name: script
               mountPath: /scripts

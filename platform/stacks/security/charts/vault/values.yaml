@@ -192,13 +192,13 @@ vault:
                 # external-secrets operator policy and role
                 if ! vault policy read external-secrets-policy >/dev/null 2>&1; then
                   vault policy write external-secrets-policy - <<EOF
-path "secret/data/*" {
-  capabilities = ["read", "list"]
-}
-path "secret/metadata/*" {
-  capabilities = ["read", "list"]
-}
-EOF
+                path "secret/data/*" {
+                  capabilities = ["read", "list"]
+                }
+                path "secret/metadata/*" {
+                  capabilities = ["read", "list"]
+                }
+                EOF
                   echo "External Secrets Operator policy created"
                 fi
 
@@ -232,15 +232,6 @@ EOF
           - ALL
         privileged: false
         runAsNonRoot: true
-
-rootTokenSync:
-  enabled: true
-  sourceNamespace: vault
-  sourceSecret: vault-init
-  targetNamespace: crossplane-system
-  targetSecret: vault-admin-token
-  serviceAccountName: vault-root-token-sync
-  image: docker.io/bitnami/kubectl:1.30.3
 
     # Readiness probe
     readinessProbe:
@@ -339,6 +330,15 @@ rootTokenSync:
   ui:
     enabled: true
     serviceType: ClusterIP
+
+rootTokenSync:
+  enabled: true
+  sourceNamespace: vault
+  sourceSecret: vault-init
+  targetNamespace: crossplane-system
+  targetSecret: vault-admin-token
+  serviceAccountName: vault-root-token-sync
+  image: docker.io/bitnami/kubectl:1.30.3
 
 # Monitoring Configuration
 monitoring:

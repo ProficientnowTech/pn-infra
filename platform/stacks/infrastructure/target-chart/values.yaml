@@ -40,7 +40,7 @@ applications: []
 # Dependency orchestration
 dependencies: []
 dependencyCheck:
-  enabled: true
+  enabled: false
   pollIntervalSeconds: 10
   timeoutSeconds: 1200
   image: docker.io/bitnami/kubectl:1.30.3

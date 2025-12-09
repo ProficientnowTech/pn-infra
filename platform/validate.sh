@@ -115,7 +115,7 @@ check_argocd_bootstrap() {
 	# Basic YAML syntax check
 	if command -v yq &>/dev/null; then
 		if ! yq eval '.' "$platform_root" >/dev/null 2>&1; then
-			log_error "Invalid YAML syntax in ArgoCD bootstrap values"
+			error "Invalid YAML syntax in ArgoCD bootstrap values"
 		fi
 	fi
 
@@ -144,19 +144,27 @@ check_secrets() {
 	if [[ ! -f "${secrets_dir}/.env.local" ]]; then
 		error "Secrets env file does not exist"
 	fi
+
+	if [[ ! -d "$secrets_dir" ]] || [[ ! -d "${secrets_dir}/specs" ]]; then
+		error "Secrets Bootstrap Directory doesn't exist"
+	fi
+
+	if [[ ! -f "${secrets_dir}/.env.local" ]]; then
+		error "Secrets env file does not exist"
+	fi
 }
 
 check_namespaces_for_deploying_secrets() {
-	log_info "Checking required namespaces for deploying secrets..."
+	info "Checking required namespaces for deploying secrets..."
 
 	local namespaces=("argocd" "external-secrets" "sealed-secrets" "backstage" "cert-manager" "external-dns" "capk-system" "monitoring" "harbor" "kargo" "keycloak" "onuptime" "verdaccio" "postgres-operator")
 	for ns in "${namespaces[@]}"; do
 		if ! kubectl get namespace "$ns" >/dev/null 2>&1; then
-			log_warning "Namespace not found: $ns, creating it..."
+			warn "Namespace not found: $ns, creating it..."
 			kubectl create namespace "$ns"
-			log_success "Namespace created: $ns"
+			log "Namespace created: $ns"
 		else
-			log_success "Namespace exists: $ns"
+			log "Namespace exists: $ns"
 		fi
 	done
 }

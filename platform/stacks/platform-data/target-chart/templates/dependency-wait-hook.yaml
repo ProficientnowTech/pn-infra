@@ -57,7 +57,7 @@ metadata:
 data:
   wait.sh: |
     #!/bin/sh
-    set -euo pipefail
+    set -eu
 
     if [ -z "${DEPENDENCIES:-}" ] || [ "${DEPENDENCIES}" = "[]" ]; then
       echo "No stack dependencies declared, continuing."

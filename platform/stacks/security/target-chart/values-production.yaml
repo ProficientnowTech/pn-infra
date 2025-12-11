@@ -7,44 +7,6 @@ applications:
   destinationNamespaceOverwrite: crossplane-system
   syncOptions:
   - CreateNamespace=true
-  values:
-    providerSecretRefs:
-      items:
-      - enabled: true
-        name: provider-kafka-credentials
-        namespace: crossplane-system
-        vaultPath: applications/security/crossplane/providers/kafka
-        property: credentials
-      - enabled: true
-        name: provider-temporal-credentials
-        namespace: crossplane-system
-        vaultPath: applications/security/crossplane/providers/temporal
-        property: credentials
-      - enabled: true
-        name: provider-grafana-credentials
-        namespace: crossplane-system
-        vaultPath: applications/security/crossplane/providers/grafana
-        property: credentials
-      - enabled: true
-        name: provider-harbor-credentials
-        namespace: crossplane-system
-        vaultPath: applications/security/crossplane/providers/harbor
-        property: credentials
-      - enabled: false
-        name: provider-ovh-credentials
-        namespace: crossplane-system
-        vaultPath: applications/security/crossplane/providers/ovh
-        property: credentials
-      - enabled: false
-        name: provider-postgresql-credentials
-        namespace: crossplane-system
-        vaultPath: applications/security/crossplane/providers/postgresql
-        property: credentials
-      - enabled: false
-        name: provider-proxmox-bpg-credentials
-        namespace: crossplane-system
-        vaultPath: applications/security/crossplane/providers/proxmox-bpg
-        property: credentials
 
 - name: external-secrets
   annotations:

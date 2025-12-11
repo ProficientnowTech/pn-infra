@@ -53,11 +53,6 @@ crossplane:
     packages:
     - xpkg.upbound.io/crossplane-contrib/function-environment-configs:v0.3.0
 
-  # Args
-  args:
-    - --enable-composition-revisions
-    - --enable-environment-configs
-
 # Monitoring Configuration
 monitoring:
   # ServiceMonitor for Prometheus

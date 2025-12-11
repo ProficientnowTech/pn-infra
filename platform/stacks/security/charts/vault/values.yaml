@@ -352,3 +352,15 @@ rootTokenSync:
 monitoring:
   grafanaDashboard:
     enabled: true
+
+crossplaneProvider:
+  enabled: true
+  package: xpkg.upbound.io/upbound/provider-vault:v0.8.0
+  providerConfig:
+    name: vault-admin
+    address: http://vault-active.vault.svc.cluster.local:8200
+    skipTlsVerify: true
+    credentialsSecret:
+      namespace: crossplane-system
+      name: vault-admin-token
+      key: token

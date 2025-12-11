@@ -38,7 +38,6 @@ crossplane:
     packages:
     - xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v0.14.0
     - xpkg.upbound.io/crossplane-contrib/provider-helm:v0.19.0
-    - xpkg.upbound.io/upbound/provider-vault:v0.8.0
     - xpkg.upbound.io/crossplane-contrib/provider-argocd:v0.7.0
     - xpkg.upbound.io/upbound/provider-azuread:v1.4.1
     - xpkg.upbound.io/crossplane-contrib/provider-keycloak:v0.5.0
@@ -85,7 +84,7 @@ providerConfig:
 
   # Vault provider config (uses token authentication)
   vault:
-    enabled: true
+    enabled: false
     # Vault address (internal cluster service)
     address: "http://vault-active.vault.svc.cluster.local:8200"
     # Skip TLS verification for internal communication
@@ -123,7 +122,7 @@ vault:
 # ProviderConfig templates
 providerConfigs:
   vault:
-    enabled: true
+    enabled: false
     name: vault-admin
     address: "http://vault-active.vault.svc.cluster.local:8200"
     skipTlsVerify: true

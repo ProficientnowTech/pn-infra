@@ -1,0 +1,17 @@
+{{- $pkgs := .Values.crossplane.provider.packages }}
+{{- if $pkgs }}
+{{- range $i, $pkg := $pkgs }}
+{{- $last := (splitList "/" $pkg | last) }}
+{{- $name := (splitList ":" $last | first) }}
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: {{ $name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  package: {{ $pkg | quote }}
+---
+{{- end }}
+{{- end }}

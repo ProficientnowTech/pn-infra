@@ -4,7 +4,7 @@ global:
   repoURL: 'https://github.com/pnow-devsupreme/pn-infra.git'
   targetRevision: 'main'
 
-namespace: rook-ceph
+namespace: ceph-cluster
 
 multisite:
   enabled: true
@@ -254,16 +254,16 @@ rook-ceph-cluster:
       allowVolumeExpansion: true
       volumeBindingMode: Immediate
       parameters:
-        clusterID: rook-ceph
+        clusterID: ceph-cluster
         pool: plt-critical-replicated
         imageFormat: "2"
         imageFeatures: layering
         csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
-        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/provisioner-secret-namespace: ceph-cluster
         csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
-        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-namespace: ceph-cluster
         csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
-        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-namespace: ceph-cluster
         csi.storage.k8s.io/fstype: ext4
 
   - name: app-critical-replicated
@@ -280,16 +280,16 @@ rook-ceph-cluster:
       allowVolumeExpansion: true
       volumeBindingMode: Immediate
       parameters:
-        clusterID: rook-ceph
+        clusterID: ceph-cluster
         pool: app-critical-replicated
         imageFormat: "2"
         imageFeatures: layering
         csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
-        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/provisioner-secret-namespace: ceph-cluster
         csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
-        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-namespace: ceph-cluster
         csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
-        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-namespace: ceph-cluster
         csi.storage.k8s.io/fstype: ext4
 
   - name: bulk-ec
@@ -306,16 +306,16 @@ rook-ceph-cluster:
       allowVolumeExpansion: true
       volumeBindingMode: Immediate
       parameters:
-        clusterID: rook-ceph
+        clusterID: ceph-cluster
         pool: bulk-ec
         imageFormat: "2"
         imageFeatures: layering
         csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
-        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/provisioner-secret-namespace: ceph-cluster
         csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
-        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-namespace: ceph-cluster
         csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
-        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-namespace: ceph-cluster
         csi.storage.k8s.io/fstype: ext4
   # CephFilesystem for CephFS
   cephFileSystems:
@@ -350,18 +350,18 @@ rook-ceph-cluster:
       mountOptions: []
       parameters:
         csi.storage.k8s.io/provisioner-secret-name: rook-csi-cephfs-provisioner
-        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/provisioner-secret-namespace: ceph-cluster
         csi.storage.k8s.io/controller-expand-secret-name: rook-csi-cephfs-provisioner
-        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-namespace: ceph-cluster
         csi.storage.k8s.io/node-stage-secret-name: rook-csi-cephfs-node
-        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-namespace: ceph-cluster
         csi.storage.k8s.io/fstype: ext4
 
   cephObjectStores:
   - name: app-objectstore
     metadata:
       name: app-objectstore
-      namespace: rook-ceph
+      namespace: ceph-cluster
     spec:
       metadataPool:
         failureDomain: host
@@ -411,7 +411,7 @@ rook-ceph-cluster:
   - name: bulk-objectstore
     metadata:
       name: bulk-objectstore
-      namespace: rook-ceph
+      namespace: ceph-cluster
     spec:
       metadataPool:
         failureDomain: host
@@ -447,30 +447,30 @@ rook-ceph-cluster:
       enabled: false
 
 objectStoreUsers:
-  - name: db-backup-user
-    store: app-objectstore
-    displayName: "Platform Database Backups"
-    quotas:
-      maxSize: "100Gi"
-      maxObjects: 10000
-    labels:
-      buckets.pnats.cloud/purpose: backups
-  - name: app-admin
-    store: app-objectstore
-    displayName: "Application Object Store Admin"
-    quotas:
-      maxSize: "256Gi"
-      maxObjects: 1000000
-    capabilities:
-      user: "*"
-      bucket: "*"
-    labels:
-      buckets.pnats.cloud/purpose: admin
-  - name: telemetry-writer
-    store: bulk-objectstore
-    displayName: "Telemetry Writer"
-    quotas:
-      maxSize: "1Ti"
-      maxObjects: 1000000
-    labels:
-      buckets.pnats.cloud/purpose: telemetry
+- name: db-backup-user
+  store: app-objectstore
+  displayName: "Platform Database Backups"
+  quotas:
+    maxSize: "100Gi"
+    maxObjects: 10000
+  labels:
+    buckets.pnats.cloud/purpose: backups
+- name: app-admin
+  store: app-objectstore
+  displayName: "Application Object Store Admin"
+  quotas:
+    maxSize: "256Gi"
+    maxObjects: 1000000
+  capabilities:
+    user: "*"
+    bucket: "*"
+  labels:
+    buckets.pnats.cloud/purpose: admin
+- name: telemetry-writer
+  store: bulk-objectstore
+  displayName: "Telemetry Writer"
+  quotas:
+    maxSize: "1Ti"
+    maxObjects: 1000000
+  labels:
+    buckets.pnats.cloud/purpose: telemetry

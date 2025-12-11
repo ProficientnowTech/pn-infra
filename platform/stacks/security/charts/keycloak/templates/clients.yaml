@@ -1,0 +1,59 @@
+{{- $root := . }}
+{{- $realm := .Values.realm }}
+{{- range $client := .Values.clients }}
+apiVersion: openidclient.keycloak.crossplane.io/v1alpha1
+kind: Client
+metadata:
+  name: {{ printf "%s-%s" (include "pn-keycloak.fullname" $root) $client.name | trunc 63 | trimSuffix "-" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  deletionPolicy: {{ $client.deletionPolicy | default "Delete" }}
+  providerConfigRef:
+    name: {{ printf "%s-crossplane" (include "pn-keycloak.fullname" $root) }}
+  forProvider:
+    realmId: {{ $realm.name }}
+    clientId: {{ $client.clientId }}
+    name: {{ $client.displayName | default $client.clientId | quote }}
+    description: {{ $client.description | quote }}
+    publicClient: {{ $client.publicClient | default false }}
+    protocol: {{ $client.protocol | default "openid-connect" }}
+    standardFlowEnabled: {{ $client.standardFlowEnabled | default true }}
+    implicitFlowEnabled: {{ $client.implicitFlowEnabled | default false }}
+    directAccessGrantsEnabled: {{ $client.directAccessGrantsEnabled | default false }}
+    serviceAccountsEnabled: {{ $client.serviceAccountsEnabled | default false }}
+    rootUrl: {{ $client.rootUrl | default "" | quote }}
+    baseUrl: {{ $client.baseUrl | default "" | quote }}
+{{- if $client.webOrigins }}
+    webOrigins:
+{{- range $client.webOrigins }}
+      - {{ . }}
+{{- end }}
+{{- end }}
+{{- if $client.redirectUris }}
+    validRedirectUris:
+{{- range $client.redirectUris }}
+      - {{ . }}
+{{- end }}
+{{- end }}
+{{- if $client.defaultClientScopes }}
+    defaultClientScopes:
+{{- range $client.defaultClientScopes }}
+      - {{ . }}
+{{- end }}
+{{- end }}
+{{- if $client.optionalClientScopes }}
+    optionalClientScopes:
+{{- range $client.optionalClientScopes }}
+      - {{ . }}
+{{- end }}
+{{- end }}
+{{- if and (not $client.publicClient) $client.secretRef }}
+    clientSecretSecretRef:
+      namespace: {{ $root.Release.Namespace }}
+      name: {{ $client.secretRef.name | default (printf "pcp-%s-client-secret" $client.name) }}
+      key: {{ $client.secretRef.key | default "client-secret" }}
+{{- end }}
+---
+{{- end }}

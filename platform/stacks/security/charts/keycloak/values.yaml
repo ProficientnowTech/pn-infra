@@ -1,6 +1,12 @@
 # Keycloak Custom Configuration for PN Platform
 # Simplified for PoC - SSO for ArgoCD, Backstage, Kargo
 
+vaultIntegration:
+  mount: secret
+  adminPath: applications/security/keycloak/admin
+  providerPath: applications/security/keycloak/provider
+  postgresPath: applications/security/keycloak/postgres
+
 keycloak:
   # Keycloak image - using bitnamilegacy (free)
   image:
@@ -152,9 +158,9 @@ keycloak:
   metrics:
     enabled: true
     serviceMonitor:
-      enabled: true
+      enabled: false
     prometheusRule:
-      enabled: true
+      enabled: false
 
 # Crossplane Keycloak Provider Configuration
 # Declarative realm, client, identity provider, and group management
@@ -504,11 +510,51 @@ clients:
   - groups
   deletionPolicy: Delete
 
+# Temporal UI client
+- name: temporal-ui
+  enabled: true
+  clientId: temporal-ui
+  displayName: "Temporal UI"
+  description: "Temporal Web UI SSO"
+  publicClient: false
+  protocol: openid-connect
+  standardFlowEnabled: true
+  directAccessGrantsEnabled: false
+  redirectUris:
+  - "https://temporal-ui.pnats.cloud/*"
+  webOrigins:
+  - "https://temporal-ui.pnats.cloud"
+  defaultClientScopes:
+  - profile
+  - email
+  - groups
+  deletionPolicy: Delete
+
+# KubeVirt Manager client
+- name: kubevirt-manager
+  enabled: true
+  clientId: kubevirt-manager
+  displayName: "KubeVirt Manager"
+  description: "KubeVirt Manager UI SSO"
+  publicClient: false
+  protocol: openid-connect
+  standardFlowEnabled: true
+  directAccessGrantsEnabled: false
+  redirectUris:
+  - "https://kubevirt.pnats.cloud/*"
+  webOrigins:
+  - "https://kubevirt.pnats.cloud"
+  defaultClientScopes:
+  - profile
+  - email
+  - groups
+  deletionPolicy: Delete
+
 # Identity Providers Configuration
 identityProviders:
 # GitHub OAuth Provider
 - alias: github
-  enabled: true
+  enabled: false
   providerId: github
   displayName: "GitHub"
 

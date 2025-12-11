@@ -1,0 +1,33 @@
+apiVersion: v2
+name: pn-falco-talon
+description: Falco Talon response engine for PN security stack
+namespace: falco-talon
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+- falco
+- talon
+- runtime-security
+- response
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: security
+  platform.pnats.cloud/component: falco-talon
+  platform.pnats.cloud/docs: 'https://github.com/falcosecurity/falco-talon'
+  platform.pnats.cloud/deploys: 'falco-talon'
+  platform.pnats.cloud/dependencies: '["falco"]'
+
+labels:
+  platform.pnats.cloud/component: falco-talon
+  platform.pnats.cloud/component-category: 'security/runtime'
+
+dependencies:
+- name: falco-talon
+  version: 0.3.2
+  repository: https://falcosecurity.github.io/charts

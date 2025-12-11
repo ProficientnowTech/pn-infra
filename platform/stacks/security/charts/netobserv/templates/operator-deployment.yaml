@@ -1,0 +1,76 @@
+{{- if .Values.operator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netobserv-operator
+  namespace: {{ .Values.flowCollector.namespace }}
+  labels:
+    app.kubernetes.io/name: netobserv-operator
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    control-plane: netobserv-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  replicas: {{ .Values.operator.replicas }}
+  selector:
+    matchLabels:
+      control-plane: netobserv-operator
+  template:
+    metadata:
+      labels:
+        control-plane: netobserv-operator
+        app.kubernetes.io/name: netobserv-operator
+    spec:
+      serviceAccountName: {{ .Values.operator.serviceAccount.name }}
+      securityContext:
+        {{- toYaml .Values.securityContext.pod | nindent 8 }}
+      containers:
+      - name: manager
+        image: {{ .Values.operator.image.repository }}:{{ .Values.operator.image.tag }}
+        imagePullPolicy: {{ .Values.operator.image.pullPolicy }}
+        command:
+        - /manager
+        args:
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        - --metrics-bind-address=:8080
+        env:
+        - name: RELATED_IMAGE_EBPF_AGENT
+          value: {{ .Values.flowCollector.agent.ebpf.image.repository }}:{{ .Values.flowCollector.agent.ebpf.image.tag }}
+        - name: RELATED_IMAGE_FLOWLOGS_PIPELINE
+          value: {{ .Values.flowCollector.processor.image.repository }}:{{ .Values.flowCollector.processor.image.tag }}
+        - name: OPERATOR_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        ports:
+        - containerPort: 8080
+          name: metrics
+          protocol: TCP
+        - containerPort: 8081
+          name: health
+          protocol: TCP
+        {{- if .Values.operator.webhook.enabled }}
+        - containerPort: {{ .Values.operator.webhook.port }}
+          name: webhook
+          protocol: TCP
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: health
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: health
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          {{- toYaml .Values.operator.resources | nindent 10 }}
+        securityContext:
+          {{- toYaml .Values.securityContext.container | nindent 10 }}
+      terminationGracePeriodSeconds: 10
+{{- end }}

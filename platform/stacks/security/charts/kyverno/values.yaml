@@ -1,0 +1,50 @@
+kyverno:
+  fullnameOverride: kyverno
+  installCRDs: true
+
+  admissionController:
+    replicas: 3
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 2
+    resourceFilters:
+      excludeNamespaces:
+      - kube-system
+      - kyverno
+    serviceMonitor:
+      enabled: false
+
+  backgroundController:
+    replicas: 2
+
+  reportsController:
+    replicas: 2
+
+  cleanupController:
+    enabled: true
+    schedule: "0 */6 * * *"
+
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: true
+
+  podSecurityContext:
+    runAsNonRoot: true
+    fsGroup: 2000
+
+  securityContext:
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    seccompProfile:
+      type: RuntimeDefault
+
+  metricsService:
+    create: true
+    ports:
+      - name: metrics
+        port: 8000
+
+  policyReportsCleanup:
+    enabled: true
+    schedule: "0 1 * * *"
+    ttl: 168h

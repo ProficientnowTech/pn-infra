@@ -34,63 +34,36 @@ crossplane:
   # Priority Class
   priorityClassName: system-cluster-critical
 
+  provider:
+    packages:
+    - xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v0.14.0
+    - xpkg.upbound.io/crossplane-contrib/provider-helm:v0.19.0
+    - xpkg.upbound.io/upbound/provider-vault:v0.8.0
+    - xpkg.upbound.io/crossplane-contrib/provider-argocd:v0.7.0
+    - xpkg.upbound.io/upbound/provider-azuread:v1.4.1
+    - xpkg.upbound.io/crossplane-contrib/provider-keycloak:v0.5.0
+    - xpkg.upbound.io/crossplane-contrib/provider-kafka:v0.5.0
+    - xpkg.upbound.io/denniskniep/provider-temporal:v1.5.0
+    - xpkg.upbound.io/edixos/provider-ovh:v2.9.1
+    - xpkg.upbound.io/grafana/provider-grafana:v0.40.0
+    - xpkg.upbound.io/globallogicuki/provider-harbor:v3.11.2
+    - xpkg.upbound.io/tages/provider-postgresql:v0.1.0
+    - xpkg.upbound.io/valkiriaaquaticamendi/provider-proxmox-bpg:v0.11.1
+
+  function:
+    packages:
+    - xpkg.upbound.io/crossplane-contrib/function-environment-configs:v0.3.0
+
   # Args
   args:
     - --enable-composition-revisions
     - --enable-environment-configs
 
-# Crossplane Providers Configuration
-# Providers will be installed via Provider CRDs in templates/
-providers:
-  # Keycloak Provider for declarative Keycloak management
-  keycloak:
-    enabled: true
-    version: "v0.5.0"
-    package: xpkg.upbound.io/crossplane-contrib/provider-keycloak
-
-  # Kubernetes Provider for in-cluster resource management
-  kubernetes:
-    enabled: true
-    version: "v0.14.0"
-    package: xpkg.upbound.io/crossplane-contrib/provider-kubernetes
-
-  # Helm Provider for Helm release management
-  helm:
-    enabled: true
-    version: "v0.19.0"
-    package: xpkg.upbound.io/crossplane-contrib/provider-helm
-
-  # Vault Provider for declarative Vault management
-  vault:
-    enabled: true
-    version: "v0.8.0"
-    package: xpkg.upbound.io/upbound/provider-vault
-
-  # Azure AD Provider for Azure Active Directory management
-  azuread:
-    enabled: true
-    version: "v1.4.1"
-    package: xpkg.upbound.io/upbound/provider-azuread
-
-  # ArgoCD Provider for declarative ArgoCD management
-  argocd:
-    enabled: true
-    version: "v0.7.0"
-    package: xpkg.upbound.io/crossplane-contrib/provider-argocd
-
-# Crossplane Functions Configuration
-functions:
-  # Environment Configs function for shared configuration injection
-  environmentConfigs:
-    enabled: true
-    version: "v0.3.0"
-    package: xpkg.upbound.io/crossplane-contrib/function-environment-configs
-
 # Monitoring Configuration
 monitoring:
   # ServiceMonitor for Prometheus
   serviceMonitor:
-    enabled: true
+    enabled: false
     interval: 30s
     scrapeTimeout: 10s
 
@@ -123,9 +96,9 @@ providerConfig:
 
   # Azure AD provider config (uses service principal)
   azuread:
-    enabled: false  # Disabled by default - requires Azure credentials
+    enabled: true
     # Azure tenant ID
-    tenantId: ""
+    tenantId: "a0318cee-1ae4-49e3-b611-7a6cf6c48ab0"
     # Service principal secret reference
     credentialSecretName: "azuread-service-principal"
     credentialSecretKey: "credentials"
@@ -146,3 +119,125 @@ vault:
   # Deprecated legacy secret seeding mechanism. Bootstrap secrets are now
   # generated via SealedSecrets + PushSecrets (see docs/platform/security/secret-inventory.md).
   secrets: []
+
+# ProviderConfig templates
+providerConfigs:
+  vault:
+    enabled: true
+    name: vault-admin
+    address: "http://vault-active.vault.svc.cluster.local:8200"
+    skipTlsVerify: true
+    credentialsSecret:
+      namespace: crossplane-system
+      name: vault-admin-token
+      key: token
+  extra:
+    - enabled: true
+      name: kafka-default
+      apiVersion: kafka.crossplane.io/v1alpha1
+      credentialsSecret:
+        namespace: crossplane-system
+        name: provider-kafka-credentials
+        key: credentials
+    - enabled: true
+      name: temporal-default
+      apiVersion: temporal.crossplane.io/v1alpha1
+      credentialsSecret:
+        namespace: crossplane-system
+        name: provider-temporal-credentials
+        key: credentials
+    - enabled: true
+      name: ovh-default
+      apiVersion: ovh.edixos.io/v1beta1
+      credentialsSecret:
+        namespace: crossplane-system
+        name: provider-ovh-credentials
+        key: credentials
+    - enabled: true
+      name: grafana-default
+      apiVersion: grafana.crossplane.io/v1beta1
+      credentialsSecret:
+        namespace: crossplane-system
+        name: provider-grafana-credentials
+        key: credentials
+    - enabled: true
+      name: harbor-default
+      apiVersion: harbor.crossplane.io/v1beta1
+      credentialsSecret:
+        namespace: crossplane-system
+        name: provider-harbor-credentials
+        key: credentials
+    - enabled: false
+      name: postgresql-default
+      apiVersion: postgresql.sql.crossplane.io/v1alpha1
+      credentialsSecret:
+        namespace: crossplane-system
+        name: provider-postgresql-credentials
+        key: credentials
+    - enabled: false
+      name: proxmox-bpg-default
+      apiVersion: proxmox.crossplane.io/v1alpha1
+      credentialsSecret:
+        namespace: crossplane-system
+        name: provider-proxmox-bpg-credentials
+        key: credentials
+    - enabled: true
+      name: azuread-default
+      apiVersion: azuread.upbound.io/v1beta1
+      credentialsSecret:
+        namespace: crossplane-system
+        name: azuread-service-principal
+        key: credentials
+
+# ExternalSecrets to pull provider credentials from Vault via ClusterSecretStore
+providerSecretRefs:
+  enabled: true
+  secretStoreRef:
+    name: vault-backend
+  items:
+  - enabled: false
+    name: provider-kafka-credentials
+    namespace: crossplane-system
+    vaultPath: applications/security/crossplane/providers/kafka
+    property: credentials
+  - enabled: false
+    name: provider-temporal-credentials
+    namespace: crossplane-system
+    vaultPath: applications/security/crossplane/providers/temporal
+    property: credentials
+  - enabled: false
+    name: provider-ovh-credentials
+    namespace: crossplane-system
+    vaultPath: applications/security/crossplane/providers/ovh
+    property: credentials
+  - enabled: false
+    name: provider-grafana-credentials
+    namespace: crossplane-system
+    vaultPath: applications/security/crossplane/providers/grafana
+    property: credentials
+  - enabled: false
+    name: provider-harbor-credentials
+    namespace: crossplane-system
+    vaultPath: applications/security/crossplane/providers/harbor
+    property: credentials
+  - enabled: false
+    name: provider-postgresql-credentials
+    namespace: crossplane-system
+    vaultPath: applications/security/crossplane/providers/postgresql
+    property: credentials
+  - enabled: false
+    name: provider-proxmox-bpg-credentials
+    namespace: crossplane-system
+    vaultPath: applications/security/crossplane/providers/proxmox-bpg
+    property: credentials
+  - enabled: true
+    name: azuread-service-principal
+    namespace: crossplane-system
+    vaultPath: applications/security/crossplane/providers/azuread
+    property: credentials
+
+# Vault GitOps secret catalog (rendered as KVSecretV2 resources)
+vaultSecrets:
+  providerConfigRef: vault-admin
+  mount: secret
+  items: []

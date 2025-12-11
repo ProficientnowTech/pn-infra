@@ -1,0 +1,29 @@
+apiVersion: v2
+name: pn-netobserv
+description: Network Observability Operator for Calico flow visibility
+namespace: netobserv
+type: application
+version: 1.0.0
+appVersion: "1.7.0"
+
+keywords:
+- netobserv
+- network-observability
+- ebpf
+- flow-monitoring
+- calico
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: security
+  platform.pnats.cloud/component: netobserv
+  platform.pnats.cloud/docs: 'https://github.com/netobserv/network-observability-operator'
+  platform.pnats.cloud/deploys: 'netobserv-operator,flowcollector'
+  platform.pnats.cloud/dependencies: '["kyverno","falco"]'
+
+labels:
+  platform.pnats.cloud/component: netobserv
+  platform.pnats.cloud/component-category: 'security/network-observability'

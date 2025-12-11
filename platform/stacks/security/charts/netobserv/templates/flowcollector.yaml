@@ -1,0 +1,138 @@
+{{- if .Values.flowCollector.enabled }}
+apiVersion: flows.netobserv.io/v1beta2
+kind: FlowCollector
+metadata:
+  name: {{ .Values.flowCollector.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  namespace: {{ .Values.flowCollector.namespace }}
+
+  # Agent Configuration
+  agent:
+    type: {{ .Values.flowCollector.agent.type }}
+    {{- if eq .Values.flowCollector.agent.type "eBPF" }}
+    ebpf:
+      imagePullPolicy: {{ .Values.flowCollector.agent.ebpf.image.pullPolicy }}
+      image: {{ .Values.flowCollector.agent.ebpf.image.repository }}:{{ .Values.flowCollector.agent.ebpf.image.tag }}
+      sampling: {{ .Values.flowCollector.agent.ebpf.sampling }}
+      cacheActiveTimeout: {{ .Values.flowCollector.agent.ebpf.cacheActiveTimeout }}
+      cacheMaxFlows: {{ .Values.flowCollector.agent.ebpf.cacheMaxFlows }}
+      {{- if .Values.flowCollector.agent.ebpf.interfaces }}
+      interfaces: {{ .Values.flowCollector.agent.ebpf.interfaces | toJson }}
+      {{- end }}
+      {{- if .Values.flowCollector.agent.ebpf.excludeInterfaces }}
+      excludeInterfaces: {{ .Values.flowCollector.agent.ebpf.excludeInterfaces | toJson }}
+      {{- end }}
+      {{- if .Values.flowCollector.agent.ebpf.features }}
+      features: {{ .Values.flowCollector.agent.ebpf.features | toJson }}
+      {{- end }}
+      logLevel: {{ .Values.flowCollector.agent.ebpf.logLevel }}
+      privileged: {{ .Values.flowCollector.agent.ebpf.privileged }}
+      resources:
+        requests:
+          cpu: {{ .Values.flowCollector.agent.ebpf.resources.requests.cpu }}
+          memory: {{ .Values.flowCollector.agent.ebpf.resources.requests.memory }}
+        limits:
+          cpu: {{ .Values.flowCollector.agent.ebpf.resources.limits.cpu }}
+          memory: {{ .Values.flowCollector.agent.ebpf.resources.limits.memory }}
+    {{- end }}
+
+  # Processor Configuration
+  processor:
+    imagePullPolicy: {{ .Values.flowCollector.processor.image.pullPolicy }}
+    image: {{ .Values.flowCollector.processor.image.repository }}:{{ .Values.flowCollector.processor.image.tag }}
+    port: {{ .Values.flowCollector.processor.port }}
+    logLevel: {{ .Values.flowCollector.processor.logLevel }}
+    resources:
+      requests:
+        cpu: {{ .Values.flowCollector.processor.resources.requests.cpu }}
+        memory: {{ .Values.flowCollector.processor.resources.requests.memory }}
+      limits:
+        cpu: {{ .Values.flowCollector.processor.resources.limits.cpu }}
+        memory: {{ .Values.flowCollector.processor.resources.limits.memory }}
+    {{- if .Values.flowCollector.processor.autoscaling.enabled }}
+    autoscaler:
+      status: ENABLED
+      minReplicas: {{ .Values.flowCollector.processor.autoscaling.minReplicas }}
+      maxReplicas: {{ .Values.flowCollector.processor.autoscaling.maxReplicas }}
+      metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: {{ .Values.flowCollector.processor.autoscaling.targetCPU }}
+      - type: Resource
+        resource:
+          name: memory
+          target:
+            type: Utilization
+            averageUtilization: {{ .Values.flowCollector.processor.autoscaling.targetMemory }}
+    {{- else }}
+    replicas: {{ .Values.flowCollector.processor.replicas }}
+    {{- end }}
+    metrics:
+      server:
+        port: {{ .Values.flowCollector.processor.metrics.server.port }}
+        tls:
+          type: {{ .Values.flowCollector.processor.metrics.server.tls.type }}
+
+  # Loki Configuration
+  {{- if .Values.flowCollector.loki.enable }}
+  loki:
+    enable: true
+    url: {{ .Values.flowCollector.loki.url }}
+    {{- if .Values.flowCollector.loki.tenantID }}
+    tenantID: {{ .Values.flowCollector.loki.tenantID }}
+    {{- end }}
+    batchSize: {{ .Values.flowCollector.loki.batchSize }}
+    batchWait: {{ .Values.flowCollector.loki.batchWait }}
+    minBackoff: {{ .Values.flowCollector.loki.minBackoff }}
+    maxBackoff: {{ .Values.flowCollector.loki.maxBackoff }}
+    maxRetries: {{ .Values.flowCollector.loki.maxRetries }}
+    {{- if .Values.flowCollector.loki.staticLabels }}
+    staticLabels: {{ .Values.flowCollector.loki.staticLabels | toJson }}
+    {{- end }}
+    {{- if .Values.flowCollector.loki.tls.enable }}
+    tls:
+      enable: true
+      insecureSkipVerify: {{ .Values.flowCollector.loki.tls.insecureSkipVerify }}
+      {{- if .Values.flowCollector.loki.tls.caCert }}
+      caCert: {{ .Values.flowCollector.loki.tls.caCert | toJson }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+
+  # Prometheus Configuration
+  {{- if .Values.flowCollector.prometheus.enable }}
+  prometheus:
+    enable: true
+    {{- if .Values.flowCollector.prometheus.metrics }}
+    metrics: {{ .Values.flowCollector.prometheus.metrics | toJson }}
+    {{- end }}
+  {{- end }}
+
+  # Console Plugin (optional)
+  {{- if .Values.flowCollector.consolePlugin.enable }}
+  consolePlugin:
+    enable: true
+    register: {{ .Values.flowCollector.consolePlugin.register }}
+  {{- end }}
+
+  # Exporters
+  exporters:
+    {{- if .Values.flowCollector.exporters.ipfix.enabled }}
+    - type: IPFIX
+      ipfix:
+        targetHost: {{ .Values.flowCollector.exporters.ipfix.targetHost }}
+        targetPort: {{ .Values.flowCollector.exporters.ipfix.targetPort }}
+    {{- end }}
+    {{- if .Values.flowCollector.exporters.kafka.enabled }}
+    - type: KAFKA
+      kafka:
+        address: {{ .Values.flowCollector.exporters.kafka.address }}
+        topic: {{ .Values.flowCollector.exporters.kafka.topic }}
+    {{- end }}
+{{- end }}

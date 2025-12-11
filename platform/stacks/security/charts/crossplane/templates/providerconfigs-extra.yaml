@@ -1,0 +1,22 @@
+{{- $list := .Values.providerConfigs.extra }}
+{{- if $list }}
+{{- range $cfg := $list }}
+{{- if and $cfg.enabled $cfg.apiVersion $cfg.name }}
+apiVersion: {{ $cfg.apiVersion }}
+kind: ProviderConfig
+metadata:
+  name: {{ $cfg.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: {{ $cfg.credentialsSecret.namespace | default "crossplane-system" }}
+      name: {{ $cfg.credentialsSecret.name | default (printf "%s-credentials" $cfg.name) }}
+      key: {{ $cfg.credentialsSecret.key | default "credentials" }}
+{{- end }}
+---
+{{- end }}
+{{- end }}

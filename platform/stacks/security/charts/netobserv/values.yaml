@@ -1,0 +1,320 @@
+# NetObserv Operator Configuration for Calico
+
+# Operator Configuration
+operator:
+  enabled: true
+  image:
+    repository: quay.io/netobserv/network-observability-operator
+    tag: "1.7.0"
+    pullPolicy: IfNotPresent
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # ServiceAccount for operator
+  serviceAccount:
+    create: true
+    name: netobserv-operator
+
+  # Enable conversion webhooks for CRD upgrades
+  webhook:
+    enabled: true
+    port: 9443
+
+# FlowCollector Configuration
+flowCollector:
+  enabled: true
+  name: cluster
+
+  # Namespace for NetObserv components
+  namespace: netobserv
+
+  # eBPF Agent Configuration
+  agent:
+    type: eBPF  # Use eBPF for efficient packet capture
+    ebpf:
+      # Agent deployment as DaemonSet on all nodes
+      kind: DaemonSet
+
+      # Image configuration
+      image:
+        repository: quay.io/netobserv/netobserv-ebpf-agent
+        tag: "v1.7.0"
+        pullPolicy: IfNotPresent
+
+      # Sampling configuration (1 = capture all flows, higher = sample)
+      sampling: 50  # Sample 1 in 50 packets for performance
+
+      # Cache settings
+      cacheActiveTimeout: "5s"  # How long to cache active flows
+      cacheMaxFlows: 100000     # Maximum flows in cache
+
+      # Interface to monitor (empty = all interfaces)
+      interfaces: []
+
+      # Exclude specific interfaces (e.g., lo, cni0)
+      excludeInterfaces:
+        - "lo"
+
+      # Resource limits for agent pods
+      resources:
+        requests:
+          cpu: 100m
+          memory: 50Mi
+        limits:
+          cpu: 500m
+          memory: 800Mi
+
+      # Privileged mode required for eBPF
+      privileged: true
+
+      # Features
+      features:
+        - PacketDrop      # Capture packet drops
+        - DNSTracking     # Track DNS queries
+        - FlowRTT         # Measure round-trip time
+
+      # Log level
+      logLevel: info
+
+  # FlowLogs Pipeline Configuration
+  processor:
+    # Image configuration
+    image:
+      repository: quay.io/netobserv/flowlogs-pipeline
+      tag: "v1.7.0"
+      pullPolicy: IfNotPresent
+
+    # Deployment configuration
+    kind: Deployment
+    replicas: 2
+
+    # Resource limits
+    resources:
+      requests:
+        cpu: 100m
+        memory: 100Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    # HPA configuration
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPU: 75
+      targetMemory: 80
+
+    # Port configuration
+    port: 2055  # IPFIX/NetFlow collector port
+    healthPort: 8080
+
+    # Metrics configuration
+    metrics:
+      server:
+        port: 9102
+        tls:
+          type: DISABLED  # Can be enabled with cert-manager
+
+    # Log level
+    logLevel: info
+
+    # Enable Kafka export (optional)
+    kafkaExport:
+      enabled: false
+      # Configure if you want to export flows to Kafka
+      # topic: network-flows
+      # broker: kafka-cluster-kafka-bootstrap.kafka:9092
+
+    # Enrichment configuration
+    enrichment:
+      # Add Kubernetes metadata to flows
+      kubernetes:
+        enabled: true
+        # Labels to add to flows
+        labels:
+          - app
+          - version
+
+      # Add zone/region information
+      topology:
+        enabled: true
+
+  # Loki Configuration (for flow logs storage)
+  loki:
+    enable: true
+
+    # Loki URL (assumes Loki is deployed in monitoring stack)
+    url: "http://loki-gateway.monitoring.svc.cluster.local:80/loki/api/v1/push"
+
+    # Tenant ID for multi-tenancy
+    tenantID: "netobserv"
+
+    # Batch settings
+    batchSize: 102400  # 100 KB batches
+    batchWait: "1s"
+    minBackoff: "1s"
+    maxBackoff: "300s"
+    maxRetries: 10
+
+    # Static labels to add to all flow logs
+    staticLabels:
+      job: "flowlogs-pipeline"
+
+    # TLS configuration
+    tls:
+      enable: false
+      insecureSkipVerify: false
+      # caCert:
+      #   type: secret
+      #   name: loki-ca-cert
+      #   namespace: netobserv
+      #   certFile: ca.crt
+
+  # Prometheus Metrics Configuration
+  prometheus:
+    enable: true
+
+    # Metrics to export
+    metrics:
+      - name: namespace_flows_total
+        type: Counter
+        filter:
+          key: DstK8S_Namespace
+        valueKey: Bytes
+
+      - name: workload_ingress_bytes_total
+        type: Counter
+        filter:
+          key: DstK8S_OwnerName
+        valueKey: Bytes
+
+      - name: workload_egress_bytes_total
+        type: Counter
+        filter:
+          key: SrcK8S_OwnerName
+        valueKey: Bytes
+
+      - name: node_ingress_bytes_total
+        type: Counter
+        filter:
+          key: DstK8S_HostName
+        valueKey: Bytes
+
+  # Console Plugin Configuration (optional - requires OpenShift Console)
+  consolePlugin:
+    enable: false
+    # Only enable if running on OpenShift with Console
+    register: false
+
+  # Export configuration
+  exporters:
+    # IPFIX export (optional)
+    ipfix:
+      enabled: false
+      # targetHost: "ipfix-collector.example.com"
+      # targetPort: 4739
+
+    # Kafka export (optional)
+    kafka:
+      enabled: false
+      # address: "kafka-cluster-kafka-bootstrap.kafka:9092"
+      # topic: "network-flows"
+
+# ServiceMonitor for Prometheus scraping
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    scrapeTimeout: 10s
+
+  # Grafana Dashboard
+  grafanaDashboard:
+    enabled: true
+    namespace: monitoring
+
+# Network Policies
+networkPolicy:
+  enabled: true
+
+  # Allow ingress from Prometheus for metrics scraping
+  allowPrometheus: true
+
+  # Allow egress to Loki
+  allowLoki: true
+
+  # Allow egress to Kafka (if enabled)
+  allowKafka: false
+
+# RBAC Configuration
+rbac:
+  create: true
+
+  # ClusterRole permissions needed
+  rules:
+    - apiGroups: [""]
+      resources: ["nodes", "namespaces", "pods", "services"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["apps"]
+      resources: ["replicasets", "deployments", "daemonsets", "statefulsets"]
+      verbs: ["get", "list", "watch"]
+    - apiGroups: ["flows.netobserv.io"]
+      resources: ["flowcollectors"]
+      verbs: ["get", "list", "watch", "create", "update", "patch"]
+
+# Storage Configuration
+persistence:
+  # Enable persistent storage for temporary flow data
+  enabled: false
+  # storageClass: "plt-blk-hdd-repl"
+  # size: 10Gi
+
+# Security Context
+securityContext:
+  # Pod security context
+  pod:
+    runAsNonRoot: true
+    runAsUser: 65532
+    fsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+
+  # Container security context (for non-eBPF components)
+  container:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 65532
+    capabilities:
+      drop:
+        - ALL
+
+# Advanced Configuration
+advanced:
+  # Flow timeout settings
+  flowTimeout:
+    general: "10s"
+    tcp: "10s"
+    tcpFin: "5s"
+    tcpRst: "5s"
+
+  # Duplicate flow detection
+  deduplication:
+    enabled: true
+    algorithm: "hashmap"
+
+  # Network interface detection
+  interfaceDetection:
+    enabled: true
+    excludeList:
+      - "^veth.*"
+      - "^cali.*"
+      - "^tunl.*"

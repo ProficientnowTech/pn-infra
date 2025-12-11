@@ -40,6 +40,7 @@ external-secrets:
 
   # Security context
   securityContext:
+    enabled: true
     runAsNonRoot: true
     runAsUser: 1000
     fsGroup: 1000
@@ -48,6 +49,7 @@ external-secrets:
 
   # Pod security context
   podSecurityContext:
+    enabled: true
     runAsNonRoot: true
     runAsUser: 1000
     fsGroup: 1000
@@ -61,7 +63,7 @@ external-secrets:
 
   # Service monitor for Prometheus
   serviceMonitor:
-    enabled: true
+    enabled: false
     interval: 30s
 
   # Priority class

@@ -1,6 +1,51 @@
 # Staging Environment
 # Global Configuration - Staging Environment
 applications:
+- name: crossplane
+  annotations:
+    argocd.argoproj.io/sync-wave: '-10'
+  destinationNamespaceOverwrite: crossplane-system
+  syncOptions:
+  - CreateNamespace=true
+  values:
+    providerSecretRefs:
+      items:
+      - enabled: true
+        name: provider-kafka-credentials
+        namespace: crossplane-system
+        vaultPath: applications/security/crossplane/providers/kafka
+        property: credentials
+      - enabled: true
+        name: provider-temporal-credentials
+        namespace: crossplane-system
+        vaultPath: applications/security/crossplane/providers/temporal
+        property: credentials
+      - enabled: true
+        name: provider-grafana-credentials
+        namespace: crossplane-system
+        vaultPath: applications/security/crossplane/providers/grafana
+        property: credentials
+      - enabled: true
+        name: provider-harbor-credentials
+        namespace: crossplane-system
+        vaultPath: applications/security/crossplane/providers/harbor
+        property: credentials
+      - enabled: false
+        name: provider-ovh-credentials
+        namespace: crossplane-system
+        vaultPath: applications/security/crossplane/providers/ovh
+        property: credentials
+      - enabled: false
+        name: provider-postgresql-credentials
+        namespace: crossplane-system
+        vaultPath: applications/security/crossplane/providers/postgresql
+        property: credentials
+      - enabled: false
+        name: provider-proxmox-bpg-credentials
+        namespace: crossplane-system
+        vaultPath: applications/security/crossplane/providers/proxmox-bpg
+        property: credentials
+
 - name: external-secrets
   annotations:
     argocd.argoproj.io/sync-wave: '0'
@@ -33,6 +78,44 @@ applications:
   syncOptions:
   - CreateNamespace=true
   - ServerSideApply=true
+
+- name: kyverno
+  annotations:
+    argocd.argoproj.io/sync-wave: '20'
+  destinationNamespaceOverwrite: kyverno
+  syncOptions:
+  - CreateNamespace=true
+
+- name: falco
+  annotations:
+    argocd.argoproj.io/sync-wave: '40'
+  destinationNamespaceOverwrite: falco
+  syncOptions:
+  - CreateNamespace=true
+
+- name: falco-talon
+  annotations:
+    argocd.argoproj.io/sync-wave: '45'
+  destinationNamespaceOverwrite: falco-talon
+  syncOptions:
+  - CreateNamespace=true
+
+- name: netobserv
+  annotations:
+    argocd.argoproj.io/sync-wave: '50'
+  destinationNamespaceOverwrite: netobserv
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+  ignoreDifferences:
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    jqPathExpressions:
+    - .spec.conversion.webhook.clientConfig.caBundle
+  - group: apps
+    kind: DaemonSet
+    jqPathExpressions:
+    - .spec.template.spec.containers[].resources
 
 commonLabels:
   platform.pnats.cloud/environment: 'staging'

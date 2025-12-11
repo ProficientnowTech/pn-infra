@@ -1,0 +1,56 @@
+falco:
+  fullnameOverride: falco
+  driver:
+    kind: ebpf
+  priorityClassName: system-cluster-critical
+
+  podSecurityContext:
+    runAsNonRoot: false
+    fsGroup: 0
+
+  securityContext:
+    privileged: true
+    runAsUser: 0
+    runAsNonRoot: false
+    allowPrivilegeEscalation: true
+
+  falco:
+    grpc:
+      enabled: true
+      bindAddress: "unix:///var/run/falco/falco.sock"
+    httpServer:
+      enabled: true
+      listenPort: 8765
+    jsonOutput: true
+    plugins:
+      - name: cloudtrail
+        library_path: libcloudtrail.so
+        init_config: ""
+        open_params: "file:///mnt/plugins/cloudtrail-config.json"
+    rulesAdditional:
+      - |
+        - rule: Kubernetes Sensitive Mount
+          desc: Detect pods mounting sensitive host paths
+          condition: evt.type = "open" and evt.dir = "<" and fd.name startswith "/etc/kubernetes"
+          output: "Pod %k8s.pod.name mounts host path %fd.name"
+          priority: WARNING
+          tags: [k8s]
+
+  falcosidekick:
+    enabled: true
+    replicaCount: 1
+    config:
+      slack:
+        webhookurl: ""
+      loki:
+        hostport: http://loki.monitoring:3100
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+additionalRuleFiles: []

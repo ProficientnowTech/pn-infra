@@ -1,0 +1,70 @@
+{{- $root := . }}
+{{- $realm := .Values.realm }}
+{{- range $idp := .Values.identityProviders }}
+apiVersion: {{ printf "%s.keycloak.crossplane.io/v1alpha1" $idp.providerId }}
+kind: IdentityProvider
+metadata:
+  name: {{ printf "%s-%s" (include "pn-keycloak.fullname" $root) $idp.alias | trunc 63 | trimSuffix "-" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  deletionPolicy: {{ $idp.deletionPolicy | default "Delete" }}
+  providerConfigRef:
+    name: {{ printf "%s-crossplane" (include "pn-keycloak.fullname" $root) }}
+  forProvider:
+    realmId: {{ $realm.name }}
+    alias: {{ $idp.alias }}
+    displayName: {{ $idp.displayName | quote }}
+    trustEmail: {{ $idp.trustEmail }}
+    storeToken: {{ $idp.storeToken }}
+    addReadTokenRoleOnCreate: {{ $idp.addReadTokenRoleOnCreate }}
+    authenticateByDefault: {{ $idp.authenticateByDefault }}
+    linkOnly: {{ $idp.linkOnly }}
+    firstBrokerLoginFlowAlias: {{ $idp.firstBrokerLoginFlowAlias | quote }}
+    updateProfileFirstLoginMode: {{ $idp.updateProfileFirstLoginMode | quote }}
+    enabled: {{ $idp.enabled }}
+{{- if $idp.config }}
+    config:
+{{- range $key, $value := $idp.config }}
+      {{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}
+{{- if $idp.config.clientIdSecretName }}
+    clientIdSecretRef:
+      name: {{ $idp.config.clientIdSecretName }}
+      namespace: {{ $root.Release.Namespace }}
+      key: {{ $idp.config.clientIdSecretKey | default "client-id" }}
+{{- end }}
+{{- if $idp.config.clientSecretSecretName }}
+    clientSecretSecretRef:
+      name: {{ $idp.config.clientSecretSecretName }}
+      namespace: {{ $root.Release.Namespace }}
+      key: {{ $idp.config.clientSecretSecretKey | default "client-secret" }}
+{{- end }}
+---
+{{- if $idp.mappers }}
+{{- range $mapper := $idp.mappers }}
+apiVersion: identityprovider.keycloak.crossplane.io/v1alpha1
+kind: Mapper
+metadata:
+  name: {{ printf "%s-%s-%s" (include "pn-keycloak.fullname" $root) $idp.alias $mapper.name | trunc 63 | trimSuffix "-" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "26"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  providerConfigRef:
+    name: {{ printf "%s-crossplane" (include "pn-keycloak.fullname" $root) }}
+  forProvider:
+    name: {{ $mapper.name }}
+    identityProviderAlias: {{ $idp.alias }}
+    identityProviderMapper: {{ $mapper.identityProviderMapper }}
+    realmId: {{ $realm.name }}
+    config:
+{{- range $key, $value := $mapper.config }}
+      {{ $key }}: {{ $value | quote }}
+{{- end }}
+---
+{{- end }}
+{{- end }}
+{{- end }}

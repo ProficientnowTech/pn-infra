@@ -1,0 +1,14 @@
+apiVersion: keycloak.crossplane.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: {{ printf "%s-crossplane" (include "pn-keycloak.fullname" .) }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: {{ .Release.Namespace }}
+      name: keycloak-provider-credentials
+      key: credentials

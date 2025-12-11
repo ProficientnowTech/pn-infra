@@ -1,0 +1,19 @@
+{{- $cfg := .Values.providerConfigs.vault }}
+{{- if and $cfg $cfg.enabled }}
+apiVersion: vault.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: {{ $cfg.name }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  address: {{ $cfg.address | quote }}
+  skipTlsVerify: {{ $cfg.skipTlsVerify | default false }}
+  credentials:
+    source: Secret
+    secretRef:
+      namespace: {{ $cfg.credentialsSecret.namespace }}
+      name: {{ $cfg.credentialsSecret.name }}
+      key: {{ $cfg.credentialsSecret.key }}
+{{- end }}

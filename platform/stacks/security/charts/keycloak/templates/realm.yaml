@@ -1,0 +1,51 @@
+{{- $realm := .Values.realm }}
+{{- if $realm.enabled }}
+apiVersion: realm.keycloak.crossplane.io/v1alpha1
+kind: Realm
+metadata:
+  name: {{ printf "%s-%s" (include "pn-keycloak.fullname" .) $realm.name | trunc 63 | trimSuffix "-" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  deletionPolicy: {{ $realm.deletionPolicy | default "Delete" }}
+  providerConfigRef:
+    name: {{ printf "%s-crossplane" (include "pn-keycloak.fullname" .) }}
+  forProvider:
+    realm: {{ $realm.name }}
+    displayName: {{ $realm.displayName | quote }}
+    loginWithEmailAllowed: {{ $realm.loginWithEmailAllowed }}
+    registrationAllowed: {{ $realm.registrationAllowed }}
+    registrationEmailAsUsername: {{ $realm.registrationEmailAsUsername }}
+    duplicateEmailsAllowed: {{ $realm.duplicateEmailsAllowed }}
+    resetPasswordAllowed: {{ $realm.resetPasswordAllowed }}
+    editUsernameAllowed: {{ $realm.editUsernameAllowed }}
+    rememberMe: {{ $realm.rememberMe }}
+    verifyEmail: {{ $realm.verifyEmail }}
+    sslRequired: {{ $realm.sslRequired }}
+    bruteForceProtected: {{ $realm.bruteForceProtected }}
+    permanentLockout: {{ $realm.permanentLockout }}
+    maxFailureWaitSeconds: {{ $realm.maxFailureWaitSeconds }}
+    minimumQuickLoginWaitSeconds: {{ $realm.minimumQuickLoginWaitSeconds }}
+    waitIncrementSeconds: {{ $realm.waitIncrementSeconds }}
+    quickLoginCheckMilliSeconds: {{ $realm.quickLoginCheckMilliSeconds }}
+    maxDeltaTimeSeconds: {{ $realm.maxDeltaTimeSeconds }}
+    failureFactor: {{ $realm.failureFactor }}
+    passwordPolicy: {{ $realm.passwordPolicy | quote }}
+    accessTokenLifespan: "{{ $realm.accessTokenLifespan }}s"
+    accessTokenLifespanForImplicitFlow: "{{ $realm.accessTokenLifespanForImplicitFlow }}s"
+    ssoSessionIdleTimeout: "{{ $realm.ssoSessionIdleTimeout }}s"
+    ssoSessionMaxLifespan: "{{ $realm.ssoSessionMaxLifespan }}s"
+    offlineSessionIdleTimeout: "{{ $realm.offlineSessionIdleTimeout }}s"
+    loginTheme: {{ $realm.loginTheme }}
+    attributes:
+{{- range $key, $val := $realm.attributes }}
+      {{ $key }}: {{ index $val 0 | quote }}
+{{- end }}
+    internationalization:
+      - defaultLocale: {{ $realm.defaultLocale | default "en" }}
+        supportedLocales:
+{{- range $realm.supportedLocales }}
+          - {{ . }}
+{{- end }}
+{{- end }}

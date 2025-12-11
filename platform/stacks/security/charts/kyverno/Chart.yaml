@@ -1,0 +1,33 @@
+apiVersion: v2
+name: pn-kyverno
+description: Kyverno policy controller configured for PN security stack
+namespace: kyverno
+type: application
+version: 1.0.0
+appVersion: "3.6.1"
+
+keywords:
+- kyverno
+- policy
+- admission-controller
+- security
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: security
+  platform.pnats.cloud/component: kyverno
+  platform.pnats.cloud/docs: 'https://kyverno.io/docs/'
+  platform.pnats.cloud/deploys: 'kyverno'
+  platform.pnats.cloud/dependencies: '["cert-manager","ingress-nginx"]'
+
+labels:
+  platform.pnats.cloud/component: kyverno
+  platform.pnats.cloud/component-category: 'security/policy'
+
+dependencies:
+- name: kyverno
+  version: 3.6.1
+  repository: https://kyverno.github.io/kyverno/

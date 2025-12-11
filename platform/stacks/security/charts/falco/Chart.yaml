@@ -1,0 +1,33 @@
+apiVersion: v2
+name: pn-falco
+description: Falco runtime security configured for PN security stack
+namespace: falco
+type: application
+version: 1.0.0
+appVersion: "0.38.2"
+
+keywords:
+- falco
+- runtime-security
+- cncf
+- security
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: security
+  platform.pnats.cloud/component: falco
+  platform.pnats.cloud/docs: 'https://falco.org/docs/'
+  platform.pnats.cloud/deploys: 'falco'
+  platform.pnats.cloud/dependencies: '["kyverno"]'
+
+labels:
+  platform.pnats.cloud/component: falco
+  platform.pnats.cloud/component-category: 'security/runtime'
+
+dependencies:
+- name: falco
+  version: 4.1.2
+  repository: https://falcosecurity.github.io/charts

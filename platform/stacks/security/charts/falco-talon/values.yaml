@@ -1,0 +1,33 @@
+falco-talon:
+  falco:
+    grpc:
+      endpoint: unix:///var/run/falco/falco.sock
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: true
+  rbac:
+    create: true
+  actions:
+    enabled: true
+    config:
+      actions:
+        - name: delete-pod
+          description: Delete compromised pod
+          serviceAccount: falco-talon
+          bindings:
+            - eventSource: falco
+              rule: Kubernetes Sensitive Mount
+          steps:
+            - type: kubernetes.delete
+              resource: pod
+              namespaceFromEvent: true
+              nameFromEvent: true

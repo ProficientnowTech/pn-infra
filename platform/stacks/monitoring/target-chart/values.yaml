@@ -34,11 +34,11 @@ commonAnnotations:
   platform.pnats.cloud/managed-by: 'platform-core'
   platform.pnats.cloud/generated-by: 'platform-core-chart'
   platform.pnats.cloud/deploys: '["prometheus","grafana","kubecost","loki","promtail","tempo","gatus"]'
-  platform.pnats.cloud/dependencies: '["ingress-nginx","cert-manager","external-dns","metallb","keycloak","vault","exteral-secrets"]'
+  platform.pnats.cloud/dependencies: '[]'
 # Applications list - override in values-{environment}.yaml
 applications: []
 dependencies: []
 dependencyCheck:
-  enabled: true
+  enabled: false
   pollIntervalSeconds: 10
   image: bitnamilegacy/kubectl:1.30.3

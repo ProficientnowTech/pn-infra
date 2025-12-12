@@ -5,7 +5,7 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: '-200'
   destinationNamespaceOverwrite: 'ceph-operator'
-  syncOptons:
+  syncOptions:
   - ServerSideApply=true
   - Replace=true
 
@@ -17,6 +17,10 @@ applications:
     targetRevision: v2
     path: platform/stacks/storage/charts/ceph-cluster
   destinationNamespaceOverwrite: 'rook-ceph'
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+  - RespectIgnoreDifferences=true
   ignoreDifferences:
   - group: ceph.rook.io
     kind: CephCluster

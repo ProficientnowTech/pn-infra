@@ -17,6 +17,10 @@ applications:
     targetRevision: v2
     path: platform/stacks/storage/charts/ceph-cluster
   destinationNamespaceOverwrite: 'ceph-cluster'
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+  - RespectIgnoreDifferences=true
   ignoreDifferences:
   - group: ceph.rook.io
     kind: CephCluster

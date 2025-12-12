@@ -93,7 +93,7 @@ spec:
       {{- end }}
     {{- end }}
     {{- else }}
-    path: {{ .path | default (printf "platform/stacks/monitoring/charts/%s" .name) }}
+    path: {{ .path | default (printf "platform/stacks/developer-platform/charts/%s" .name) }}
     {{- end }}
   {{- end }}
   destination:

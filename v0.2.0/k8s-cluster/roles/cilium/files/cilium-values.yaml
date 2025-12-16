@@ -13,12 +13,24 @@ hubble:
   relay:
     enabled: true
   ui:
-    enabled: false
+    enabled: true
+  metrics:
+    enabled:
+      - dns
+      - drop
+      - tcp
+      - flow
+      - icmp
+      - http
 
 ipam:
   mode: kubernetes
 
 kubeProxyReplacement: true
+
+# Allow Multus to manage CNI configuration alongside Cilium
+cni:
+  exclusive: false
 
 operator:
   replicas: 2

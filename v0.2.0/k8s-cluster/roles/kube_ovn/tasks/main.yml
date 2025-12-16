@@ -8,6 +8,10 @@
     repo_url: https://kubeovn.github.io/kube-ovn/
     kubeconfig: "{{ kubeconfig }}"
 
+- name: Load Kube-OVN values from file
+  ansible.builtin.set_fact:
+    _kube_ovn_values: "{{ lookup('file', role_path ~ '/files/kube-ovn-values.yaml') | from_yaml }}"
+
 - name: Install/upgrade Kube-OVN
   kubernetes.core.helm:
     name: kube-ovn
@@ -18,4 +22,11 @@
     kubeconfig: "{{ kubeconfig }}"
     update_repo_cache: true
     state: "{{ _kube_ovn_state }}"
-    values: "{{ kube_ovn_values | default({}) }}"
+    values: "{{ _kube_ovn_values | combine(kube_ovn_values | default({})) }}"
+
+- name: Apply Kube-OVN NetworkAttachmentDefinition
+  kubernetes.core.k8s:
+    state: "{{ _kube_ovn_state }}"
+    kubeconfig: "{{ kubeconfig }}"
+    src: network-attachment-definition.yaml
+  when: _kube_ovn_state == 'present'

@@ -1,0 +1,14 @@
+# Kube-OVN configuration for use as secondary CNI with Cilium primary
+# Based on: https://kubeovn.github.io/docs/v1.12.x/en/advance/with-cilium/
+
+# Disable network policies - Cilium handles this
+ENABLE_NP: false
+
+# Set CNI config priority to 10 (not 01) so Multus/Cilium take precedence
+CNI_CONFIG_PRIORITY: "10"
+
+# CNI configuration
+cni_conf:
+  CNI_CONF_NAME: "10-kube-ovn.conflist"
+  MOUNT_LOCAL_BIN_DIR: "/opt/cni/bin"
+  CNI_CONF_DIR: "/etc/cni/net.d"

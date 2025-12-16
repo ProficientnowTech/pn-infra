@@ -62,5 +62,5 @@ kubeconfig
 *.pub
 *.secret
 *.env
-
+*.kube
 inventory

@@ -8,10 +8,11 @@ set -e
 
 # Configuration
 KUBESPRAY_VERSION="v2.28.1"
+# Default to our published image; allow override via IMAGE_NAME env
+IMAGE_NAME="${IMAGE_NAME:-ghcr.io/proficientnowtech/kubespray-pncp:${KUBESPRAY_VERSION}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INVENTORY_PATH="${SCRIPT_DIR}/inventory/pn-production"
 SSH_KEY_PATH="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
-IMAGE_NAME="quay.io/kubespray/kubespray:${KUBESPRAY_VERSION}"
 
 # Colors for output
 RED='\033[0;31m'

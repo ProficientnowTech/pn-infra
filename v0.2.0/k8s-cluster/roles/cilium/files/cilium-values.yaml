@@ -1,1 +1,19 @@
-{{ lookup('ansible.builtin.file', playbook_dir ~ '/../cilium-values.yaml') }}
+# Minimal Cilium values; chart defaults are mostly retained.
+# Adjust as needed for your environment.
+cluster:
+  name: pn-cluster
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: false
+
+ipam:
+  mode: kubernetes
+
+kubeProxyReplacement: strict
+
+operator:
+  replicas: 2

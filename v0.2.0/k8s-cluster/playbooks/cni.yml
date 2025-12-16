@@ -9,6 +9,9 @@
     cilium_state: "{{ lookup('env','CILIUM_STATE') | default('present', true) }}"
     multus_state: "{{ lookup('env','MULTUS_STATE') | default('present', true) }}"
     kube_ovn_state: "{{ lookup('env','KUBE_OVN_STATE') | default('present', true) }}"
+    cilium_helm_version: "1.18.4"
+    multus_version: "v4.1.4"
+    kube_ovn_chart_version: "1.14.20"
   tasks:
     - name: Fail fast if kubeconfig missing
       ansible.builtin.assert:
@@ -20,7 +23,7 @@
   roles:
     - role: cilium
       vars:
-        cilium_helm_version: "1.16.4"
+        cilium_helm_version: "1.18.4"
         cilium_namespace: "kube-system"
     - role: multus
     - role: kube_ovn

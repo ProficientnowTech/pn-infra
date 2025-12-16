@@ -2,6 +2,7 @@ FROM alpine:3.20
 
 ARG KUBESPRAY_VERSION=2.28.1
 ARG KUBECTL_VERSION=1.31.4
+ARG HELM_VERSION=3.15.4
 
 ENV PIP_BREAK_SYSTEM_PACKAGES=1
 
@@ -29,6 +30,13 @@ RUN set -eux; \
     curl -fsSLO "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl"; \
     install -m 0755 kubectl /usr/local/bin/kubectl; \
     rm kubectl
+
+# helm for addons
+RUN set -eux; \
+    curl -fsSLO "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz"; \
+    tar -xzf "helm-v${HELM_VERSION}-linux-amd64.tar.gz" -C /tmp; \
+    install -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm; \
+    rm -rf /tmp/linux-amd64 "helm-v${HELM_VERSION}-linux-amd64.tar.gz"
 
 ENV ANSIBLE_HOST_KEY_CHECKING=False \
     PYTHONUNBUFFERED=1 \

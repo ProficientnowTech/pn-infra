@@ -12,6 +12,7 @@
   kubernetes.core.helm:
     name: kube-ovn
     chart_ref: kube-ovn/kube-ovn
+    chart_version: "{{ kube_ovn_chart_version }}"
     release_namespace: "{{ kube_ovn_namespace }}"
     create_namespace: true
     kubeconfig: "{{ kubeconfig }}"

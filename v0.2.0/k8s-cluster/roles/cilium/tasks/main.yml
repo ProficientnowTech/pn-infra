@@ -14,6 +14,12 @@
     dest: /tmp/cilium/values.yaml
     mode: '0644'
 
+- name: Ensure Cilium helm repo
+  kubernetes.core.helm_repository:
+    name: cilium
+    repo_url: https://helm.cilium.io/
+    kubeconfig: "{{ kubeconfig }}"
+
 - name: Install/upgrade Cilium via Helm
   kubernetes.core.helm:
     name: cilium

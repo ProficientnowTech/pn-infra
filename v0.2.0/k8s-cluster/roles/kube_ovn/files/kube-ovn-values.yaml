@@ -25,6 +25,8 @@ masterNodesLabels:
 # Match cluster service CIDR (Kubespray default is 10.233.0.0/18)
 ipv4:
   SVC_CIDR: "10.233.0.0/18"
+  POD_CIDR: "10.16.0.0/16"
+  POD_GATEWAY: "10.16.0.1"
 
 # Helm chart keys to pin apiserver to the control-plane VIP
 apiserverEndpoint: "https://192.168.102.2:6443"
@@ -32,18 +34,17 @@ apiserver: "https://192.168.102.2:6443"
 apiServerHost: "192.168.102.2"
 apiServerPort: 6443
 
-# VLAN configuration for Kube-OVN networks
+# VLAN configuration for Kube-OVN networks (provider names <= 12 chars)
 networking:
   NETWORK_TYPE: vlan
   vlan:
-    PROVIDER_NAME: "nested-clusters"
+    PROVIDER_NAME: "nested-cls"
     VLAN_INTERFACE_NAME: "enp6s18"
-    VLAN_NAME: "nested-clusters"
+    VLAN_NAME: "nested-cls"
     VLAN_ID: "100"
-  # Secondary VLAN for nested K8s apps inside VMs (if used separately)
-  # Represented via extra provider for workloads; you can create a separate NAD using this provider
+  # Secondary VLAN for nested K8s apps inside VMs
   extraVLANs:
-    - name: "nested-k8s-apps"
-      provider: "nested-k8s-apps"
+    - name: "nested-k8s"
+      provider: "nested-k8s"
       iface: "enp6s18"
       vlanId: 101

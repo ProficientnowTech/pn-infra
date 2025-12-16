@@ -84,6 +84,7 @@
           spec:
             containers:
               - name: kube-ovn-pinger
+                image: docker.io/kubeovn/kube-ovn:v{{ kube_ovn_chart_version }}
                 env:
                   - name: KUBERNETES_SERVICE_HOST
                     value: "{{ kube_ovn_values.apiServerHost | default('192.168.102.2') }}"

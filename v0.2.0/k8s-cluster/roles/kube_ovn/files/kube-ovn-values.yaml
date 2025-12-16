@@ -12,3 +12,6 @@ cni_conf:
   CNI_CONF_NAME: "10-kube-ovn.conflist"
   MOUNT_LOCAL_BIN_DIR: "/opt/cni/bin"
   CNI_CONF_DIR: "/etc/cni/net.d"
+
+# Use existing master labels instead of kube-ovn/role=master
+MASTER_NODES_LABEL: "node-role.kubernetes.io/control-plane"

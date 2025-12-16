@@ -3,6 +3,11 @@
 cluster:
   name: pn-cluster
 
+# API server access - use direct endpoint instead of service ClusterIP
+# This allows Cilium to bootstrap without an existing CNI
+k8sServiceHost: 192.168.102.2
+k8sServicePort: 6443
+
 hubble:
   enabled: true
   relay:

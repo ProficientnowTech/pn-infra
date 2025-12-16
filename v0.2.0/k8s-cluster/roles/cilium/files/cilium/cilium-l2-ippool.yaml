@@ -1,1 +1,8 @@
-{{ lookup('ansible.builtin.file', playbook_dir ~ '/../cilium/cilium-l2-ippool.yaml') }}
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: public-pool
+spec:
+  blocks:
+    - cidr: 103.110.174.18/29  # Covers 103.110.174.18-103.110.174.23

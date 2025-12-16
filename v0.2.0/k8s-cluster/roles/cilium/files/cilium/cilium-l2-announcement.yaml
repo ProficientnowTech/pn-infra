@@ -1,1 +1,11 @@
-{{ lookup('ansible.builtin.file', playbook_dir ~ '/../cilium/cilium-l2-announcement.yaml') }}
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: public-l2-announcement
+spec:
+  loadBalancerIPs: true
+  interfaces:
+    - public_traffic
+  nodeSelector:
+    matchLabels: {}  # Apply to all nodes

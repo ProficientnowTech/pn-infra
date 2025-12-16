@@ -2,16 +2,48 @@
 # Based on: https://kubeovn.github.io/docs/v1.12.x/en/advance/with-cilium/
 
 # Disable network policies - Cilium handles this
-ENABLE_NP: false
+func:
+  ENABLE_NP: false
+  # leave other func defaults intact
 
-# Set CNI config priority to 10 (not 01) so Multus/Cilium take precedence
-CNI_CONFIG_PRIORITY: "10"
-
-# CNI configuration
+# CNI configuration (set as secondary behind Cilium/Multus)
 cni_conf:
-  CNI_CONF_NAME: "10-kube-ovn.conflist"
-  MOUNT_LOCAL_BIN_DIR: "/opt/cni/bin"
+  CNI_CONFIG_PRIORITY: "20"
   CNI_CONF_DIR: "/etc/cni/net.d"
+  MOUNT_CNI_CONF_DIR: "/etc/cni/net.d"
+  CNI_BIN_DIR: "/opt/cni/bin"
+  CNI_CONF_FILE: "/kube-ovn/20-kube-ovn.conflist"
+  LOCAL_BIN_DIR: "/usr/local/bin"
+  MOUNT_LOCAL_BIN_DIR: true
+  NON_PRIMARY_CNI: true
 
 # Use existing master labels instead of kube-ovn/role=master
 MASTER_NODES_LABEL: "node-role.kubernetes.io/control-plane"
+masterNodesLabels:
+  node-role.kubernetes.io/control-plane: ""
+
+# Match cluster service CIDR (Kubespray default is 10.233.0.0/18)
+ipv4:
+  SVC_CIDR: "10.233.0.0/18"
+
+# Helm chart keys to pin apiserver to the control-plane VIP
+apiserverEndpoint: "https://192.168.102.2:6443"
+apiserver: "https://192.168.102.2:6443"
+apiServerHost: "192.168.102.2"
+apiServerPort: 6443
+
+# VLAN configuration for Kube-OVN networks
+networking:
+  NETWORK_TYPE: vlan
+  vlan:
+    PROVIDER_NAME: "nested-clusters"
+    VLAN_INTERFACE_NAME: "enp6s18"
+    VLAN_NAME: "nested-clusters"
+    VLAN_ID: "100"
+  # Secondary VLAN for nested K8s apps inside VMs (if used separately)
+  # Represented via extra provider for workloads; you can create a separate NAD using this provider
+  extraVLANs:
+    - name: "nested-k8s-apps"
+      provider: "nested-k8s-apps"
+      iface: "enp6s18"
+      vlanId: 101

@@ -24,6 +24,72 @@
     state: "{{ _kube_ovn_state }}"
     values: "{{ _kube_ovn_values | combine(kube_ovn_values | default({})) }}"
 
+- name: Force API endpoint env on kube-ovn-cni DaemonSet
+  kubernetes.core.k8s:
+    state: patched
+    kubeconfig: "{{ kubeconfig }}"
+    kind: DaemonSet
+    api_version: apps/v1
+    name: kube-ovn-cni
+    namespace: kube-system
+    merge_type:
+      - strategic-merge
+    definition:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: cni-server
+                env:
+                  - name: KUBERNETES_SERVICE_HOST
+                    value: "{{ kube_ovn_values.apiServerHost | default('192.168.102.2') }}"
+                  - name: KUBERNETES_SERVICE_PORT
+                    value: "{{ kube_ovn_values.apiServerPort | default(6443) | string }}"
+
+- name: Force API endpoint env on kube-ovn-controller Deployment
+  kubernetes.core.k8s:
+    state: patched
+    kubeconfig: "{{ kubeconfig }}"
+    kind: Deployment
+    api_version: apps/v1
+    name: kube-ovn-controller
+    namespace: kube-system
+    merge_type:
+      - strategic-merge
+    definition:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: kube-ovn-controller
+                env:
+                  - name: KUBERNETES_SERVICE_HOST
+                    value: "{{ kube_ovn_values.apiServerHost | default('192.168.102.2') }}"
+                  - name: KUBERNETES_SERVICE_PORT
+                    value: "{{ kube_ovn_values.apiServerPort | default(6443) | string }}"
+
+- name: Force API endpoint env on kube-ovn-pinger DaemonSet
+  kubernetes.core.k8s:
+    state: patched
+    kubeconfig: "{{ kubeconfig }}"
+    kind: DaemonSet
+    api_version: apps/v1
+    name: kube-ovn-pinger
+    namespace: kube-system
+    merge_type:
+      - strategic-merge
+    definition:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: kube-ovn-pinger
+                env:
+                  - name: KUBERNETES_SERVICE_HOST
+                    value: "{{ kube_ovn_values.apiServerHost | default('192.168.102.2') }}"
+                  - name: KUBERNETES_SERVICE_PORT
+                    value: "{{ kube_ovn_values.apiServerPort | default(6443) | string }}"
+
 - name: Apply Kube-OVN NetworkAttachmentDefinition
   kubernetes.core.k8s:
     state: "{{ _kube_ovn_state }}"

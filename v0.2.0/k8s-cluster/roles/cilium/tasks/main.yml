@@ -1,0 +1,42 @@
+- name: Set cilium state
+  ansible.builtin.set_fact:
+    _cilium_state: "{{ cilium_state | default('present') }}"
+
+- name: Create values directory
+  ansible.builtin.file:
+    path: /tmp/cilium
+    state: directory
+    mode: '0755'
+
+- name: Render Cilium values
+  ansible.builtin.copy:
+    src: cilium-values.yaml
+    dest: /tmp/cilium/values.yaml
+    mode: '0644'
+
+- name: Install/upgrade Cilium via Helm
+  kubernetes.core.helm:
+    name: cilium
+    chart_ref: cilium/cilium
+    chart_version: "{{ cilium_helm_version }}"
+    release_namespace: "{{ cilium_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ kubeconfig }}"
+    update_repo_cache: true
+    values_files:
+      - /tmp/cilium/values.yaml
+    state: "{{ _cilium_state }}"
+
+- name: Apply Cilium L2 IP Pool
+  kubernetes.core.k8s:
+    state: "{{ _cilium_state }}"
+    kubeconfig: "{{ kubeconfig }}"
+    src: cilium/cilium-l2-ippool.yaml
+  when: _cilium_state == 'present'
+
+- name: Apply Cilium L2 Announcement
+  kubernetes.core.k8s:
+    state: "{{ _cilium_state }}"
+    kubeconfig: "{{ kubeconfig }}"
+    src: cilium/cilium-l2-announcement.yaml
+  when: _cilium_state == 'present'

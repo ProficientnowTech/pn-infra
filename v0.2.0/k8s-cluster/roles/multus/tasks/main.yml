@@ -1,0 +1,9 @@
+- name: Set multus state
+  ansible.builtin.set_fact:
+    _multus_state: "{{ multus_state | default('present') }}"
+
+- name: Deploy Multus from upstream manifest
+  kubernetes.core.k8s:
+    state: "{{ _multus_state }}"
+    kubeconfig: "{{ kubeconfig }}"
+    src: https://raw.githubusercontent.com/k8snetworkplumbingwg/multus-cni/master/deployments/multus-daemonset-thick.yml

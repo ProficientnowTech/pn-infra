@@ -1,0 +1,20 @@
+- name: Set kube-ovn state
+  ansible.builtin.set_fact:
+    _kube_ovn_state: "{{ kube_ovn_state | default('present') }}"
+
+- name: Add kube-ovn helm repo
+  kubernetes.core.helm_repository:
+    name: kube-ovn
+    repo_url: https://kubeovn.github.io/kube-ovn/
+    kubeconfig: "{{ kubeconfig }}"
+
+- name: Install/upgrade Kube-OVN
+  kubernetes.core.helm:
+    name: kube-ovn
+    chart_ref: kube-ovn/kube-ovn
+    release_namespace: "{{ kube_ovn_namespace }}"
+    create_namespace: true
+    kubeconfig: "{{ kubeconfig }}"
+    update_repo_cache: true
+    state: "{{ _kube_ovn_state }}"
+    values: "{{ kube_ovn_values | default({}) }}"

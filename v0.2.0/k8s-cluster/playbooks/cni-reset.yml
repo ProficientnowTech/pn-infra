@@ -1,0 +1,24 @@
+---
+- hosts: localhost
+  gather_facts: false
+  vars:
+    kubeconfig: "{{ lookup('env', 'KUBECONFIG') | default('~/.kube/config', true) }}"
+    cilium_state: absent
+    multus_state: absent
+    kube_ovn_state: absent
+  tasks:
+    - name: Fail fast if kubeconfig missing
+      ansible.builtin.assert:
+        that:
+          - kubeconfig is not none
+          - kubeconfig | length > 0
+        fail_msg: "KUBECONFIG not set; export KUBECONFIG to target cluster before running this playbook."
+  roles:
+    - role: cilium
+      vars:
+        cilium_helm_version: "1.16.4"
+        cilium_namespace: "kube-system"
+    - role: multus
+    - role: kube_ovn
+      vars:
+        kube_ovn_namespace: "kube-system"

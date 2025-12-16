@@ -1,0 +1,1 @@
+{{ lookup('ansible.builtin.file', playbook_dir ~ '/../cilium/cilium-l2-ippool.yaml') }}

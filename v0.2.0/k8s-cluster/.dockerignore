@@ -1,0 +1,88 @@
+# .dockerignore for Kubespray-Cilium Docker Image
+# Excludes unnecessary files from Docker build context
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+!CILIUM-DEPLOYMENT.md
+docs/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Inventory (large, not needed in image)
+inventory/*/credentials/
+inventory/*/artifacts/
+*.retry
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build artifacts
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Backups
+*.bak
+*.backup
+*~
+
+# SSH keys (security)
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*.pub
+
+# Kubernetes configs
+*.kubeconfig
+kubeconfig
+.kube/
+
+# Ansible
+*.retry
+.ansible/
+
+# Test files
+test/
+tests/
+*_test.go
+*_test.py
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Large binary files
+*.tar.gz
+*.tar
+*.zip
+*.iso
+
+# OS specific
+Thumbs.db
+ehthumbs.db

@@ -22,7 +22,8 @@ RUN set -eux; \
     python3 -m pip install --no-cache-dir --break-system-packages \
       -r /opt/kubespray/requirements.txt; \
     python3 -m pip install --no-cache-dir --break-system-packages \
-      kubernetes; \
+      kubernetes \
+      openshift; \
     ansible-galaxy collection install kubernetes.core; \
     ln -s /opt/kubespray /kubespray; \
     apk del .build-deps; \

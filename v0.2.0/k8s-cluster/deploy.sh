@@ -8,10 +8,11 @@ set -e
 
 # Configuration
 KUBESPRAY_VERSION="v2.28.1"
-# Default to our published image; allow override via IMAGE_NAME env
-IMAGE_NAME="${IMAGE_NAME:-ghcr.io/proficientnowtech/kubespray-pncp:${KUBESPRAY_VERSION}}"
+# Default to our published Kubespray image (latest); allow override via IMAGE_NAME env
+IMAGE_NAME="${IMAGE_NAME:-ghcr.io/proficientnowtech/kubespray-pncp:latest}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INVENTORY_PATH="${SCRIPT_DIR}/inventory/pn-production"
+HOSTS_FILE="${INVENTORY_PATH}/hosts.yml"
 SSH_KEY_PATH="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
 
 # Colors for output
@@ -64,7 +65,7 @@ EXAMPLES:
 
 CONFIGURATION:
     Kubespray Version: ${KUBESPRAY_VERSION}
-    Inventory Path: ${INVENTORY_PATH}
+    Inventory Path: ${HOSTS_FILE}
     SSH Key: ${SSH_KEY_PATH}
 EOF
 }
@@ -108,8 +109,8 @@ validate_prerequisites() {
 	fi
 
 	# Check inventory
-	if [[ ! -f "${INVENTORY_PATH}/inventory.ini" ]]; then
-		log_error "Inventory file not found at ${INVENTORY_PATH}/inventory.ini"
+	if [[ ! -f "${HOSTS_FILE}" ]]; then
+		log_error "Inventory file not found at ${HOSTS_FILE}"
 		exit 1
 	fi
 
@@ -125,8 +126,23 @@ validate_prerequisites() {
 validate_ssh_connectivity() {
 	log_info "Validating SSH connectivity..."
 
-	# Extract hosts from inventory
-	local hosts=$(awk '/^\[.*\]/ {next} /^[a-zA-Z]/ {print $2}' "${INVENTORY_PATH}/inventory.ini" | grep "ansible_host=" | sed 's/.*ansible_host=//' | sed 's/ .*//' | head -3)
+	# Extract first few hosts from hosts.yml
+	local hosts
+	hosts=$(python3 - <<'PY'
+import yaml, pathlib
+inv = pathlib.Path("inventory/pn-production/hosts.yml")
+data = yaml.safe_load(inv.read_text())
+hosts = data.get("all", {}).get("hosts", {}) if isinstance(data, dict) else {}
+count = 0
+for _, meta in hosts.items():
+    ip = meta.get("ansible_host")
+    if ip:
+        print(ip)
+        count += 1
+    if count >= 3:
+        break
+PY
+)
 
 	local failed_hosts=""
 	for host in $hosts; do
@@ -155,11 +171,17 @@ check_docker_image() {
 		log_success "Docker image ${IMAGE_NAME} found locally"
 		if [[ "$FORCE_PULL" == "true" ]]; then
 			log_info "Force pull requested, updating image..."
-			docker pull "${IMAGE_NAME}"
+			if ! docker pull "${IMAGE_NAME}"; then
+				log_error "Failed to pull Docker image ${IMAGE_NAME}"
+				exit 1
+			fi
 		fi
 	else
 		log_info "Docker image not found locally, pulling..."
-		docker pull "${IMAGE_NAME}"
+		if ! docker pull "${IMAGE_NAME}"; then
+			log_error "Failed to pull Docker image ${IMAGE_NAME}"
+			exit 1
+		fi
 	fi
 }
 
@@ -174,7 +196,7 @@ run_kubespray() {
 	local cmd="cd /kubespray && chmod 600 /root/.ssh/id_rsa"
 
 	# Add verbose flag
-	local ansible_args="-i inventory/pn-production/inventory.ini"
+	local ansible_args="-i inventory/pn-production/hosts.yml"
 	[[ "$VERBOSE" == "true" ]] && ansible_args="$ansible_args -v"
 	[[ "$DRY_RUN" == "true" ]] && ansible_args="$ansible_args --check"
 	[[ -n "$LIMIT_HOSTS" ]] && ansible_args="$ansible_args --limit $LIMIT_HOSTS"

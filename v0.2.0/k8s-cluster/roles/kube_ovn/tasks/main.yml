@@ -42,7 +42,7 @@
               - name: cni-server
                 env:
                   - name: KUBERNETES_SERVICE_HOST
-                    value: "{{ kube_ovn_values.apiServerHost | default('192.168.102.2') }}"
+                    value: "{{ kube_ovn_values.apiServerHost | default('192.168.100.2') }}"
                   - name: KUBERNETES_SERVICE_PORT
                     value: "{{ kube_ovn_values.apiServerPort | default(6443) | string }}"
 
@@ -64,7 +64,7 @@
               - name: kube-ovn-controller
                 env:
                   - name: KUBERNETES_SERVICE_HOST
-                    value: "{{ kube_ovn_values.apiServerHost | default('192.168.102.2') }}"
+                    value: "{{ kube_ovn_values.apiServerHost | default('192.168.100.2') }}"
                   - name: KUBERNETES_SERVICE_PORT
                     value: "{{ kube_ovn_values.apiServerPort | default(6443) | string }}"
 
@@ -87,9 +87,86 @@
                 image: docker.io/kubeovn/kube-ovn:v{{ kube_ovn_chart_version }}
                 env:
                   - name: KUBERNETES_SERVICE_HOST
-                    value: "{{ kube_ovn_values.apiServerHost | default('192.168.102.2') }}"
+                    value: "{{ kube_ovn_values.apiServerHost | default('192.168.100.2') }}"
                   - name: KUBERNETES_SERVICE_PORT
                     value: "{{ kube_ovn_values.apiServerPort | default(6443) | string }}"
+
+- name: Clean up legacy kube-ovn CNI config files (avoid accidental default use)
+  kubernetes.core.k8s:
+    state: present
+    kubeconfig: "{{ kubeconfig }}"
+    definition:
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: kube-ovn-cni-cleanup
+        namespace: kube-system
+        labels:
+          app: kube-ovn
+          task: cleanup
+      spec:
+        selector:
+          matchLabels:
+            name: kube-ovn-cni-cleanup
+        template:
+          metadata:
+            labels:
+              name: kube-ovn-cni-cleanup
+          spec:
+            hostNetwork: true
+            dnsPolicy: ClusterFirstWithHostNet
+            containers:
+              - name: cleanup
+                image: docker.io/library/busybox:1.36
+                securityContext:
+                  privileged: true
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    rm -f /host/etc/cni/net.d/00-kube-ovn.conf \
+                          /host/etc/cni/net.d/00-kube-ovn.conflist \
+                          /host/etc/cni/net.d/01-kube-ovn.conflist \
+                          /host/etc/cni/net.d/10-kube-ovn.conflist
+                    sleep 5
+                volumeMounts:
+                  - name: cni-dir
+                    mountPath: /host/etc/cni/net.d
+            tolerations:
+              - operator: Exists
+            volumes:
+              - name: cni-dir
+                hostPath:
+                  path: /etc/cni/net.d
+                  type: Directory
+  when: _kube_ovn_state == 'present'
+
+- name: Wait for kube-ovn CNI cleanup to run
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: DaemonSet
+    name: kube-ovn-cni-cleanup
+    namespace: kube-system
+    kubeconfig: "{{ kubeconfig }}"
+  register: cleanup_ds
+  until: >
+    cleanup_ds.resources | length > 0
+    and cleanup_ds.resources[0].status.numberReady is defined
+    and cleanup_ds.resources[0].status.desiredNumberScheduled is defined
+    and (cleanup_ds.resources[0].status.numberReady | int) == (cleanup_ds.resources[0].status.desiredNumberScheduled | int)
+  retries: 20
+  delay: 3
+  when: _kube_ovn_state == 'present'
+
+- name: Remove kube-ovn CNI cleanup DaemonSet
+  kubernetes.core.k8s:
+    state: absent
+    kubeconfig: "{{ kubeconfig }}"
+    api_version: apps/v1
+    kind: DaemonSet
+    name: kube-ovn-cni-cleanup
+    namespace: kube-system
+  when: _kube_ovn_state == 'present'
 
 - name: Apply Kube-OVN NetworkAttachmentDefinition
   kubernetes.core.k8s:

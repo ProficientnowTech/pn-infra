@@ -92,12 +92,19 @@ OPTIONS:
     -e, --extra ARGS       Pass additional arguments
     -h, --help             Show this help
 
+ENVIRONMENT VARIABLES:
+    CILIUM_STATE=present           # Install Cilium (default: absent)
+    MULTUS_STATE=present           # Install Multus (default: absent)
+    KUBE_OVN_STATE=present         # Install Kube-OVN (default: absent)
+
 EXAMPLES:
-    $0 validate                    # Run validation only
-    $0 deploy                      # Validate then deploy
-    $0 deploy -v                   # Verbose deployment
-    $0 scale -l k8s-worker-07      # Scale with specific host
-    $0 deploy --skip-validation    # Emergency deploy without validation
+    $0 validate                                    # Run validation only
+    $0 deploy                                      # Deploy cluster with Calico CNI
+    $0 deploy -v                                   # Verbose deployment
+    $0 scale -l k8s-worker-07                      # Scale with specific host
+    $0 deploy --skip-validation                    # Emergency deploy without validation
+    CILIUM_STATE=present $0 cni                    # Install Cilium CNI
+    MULTUS_STATE=present KUBE_OVN_STATE=present $0 cni  # Install all CNI components
 EOF
 }
 
@@ -350,15 +357,21 @@ validate)
 	;;
 deploy | reset | upgrade | scale | recover | facts)
 	enforce_validation "$OPERATION"
+
+	# For reset operation: CNI reset MUST happen BEFORE cluster destruction
+	if [[ "$OPERATION" == "reset" ]]; then
+		log_info "Resetting CNI components before cluster destruction..."
+		copy_kubeconfig || log_warning "Could not copy kubeconfig, CNI reset may fail"
+		run_cni_playbooks "cni-reset.yml" || log_warning "CNI reset playbook failed/was skipped"
+	fi
+
+	# Run the main deployment operation (deploy/reset/upgrade/etc)
 	if run_deployment "$OPERATION" "${DEPLOY_ARGS[@]}"; then
-		# Copy kubeconfig after successful deployment operations
+		# Copy kubeconfig and install CNI after successful deployment operations
 		if [[ "$OPERATION" == "deploy" || "$OPERATION" == "upgrade" || "$OPERATION" == "scale" ]]; then
 			copy_kubeconfig
 			run_cni_playbooks "cni.yml"
 		fi
-	fi
-	if [[ "$OPERATION" == "reset" ]]; then
-		run_cni_playbooks "cni-reset.yml" || log_warning "CNI reset playbook failed/was skipped"
 	fi
 	;;
 status)

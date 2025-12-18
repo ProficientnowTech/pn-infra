@@ -29,22 +29,7 @@ ipv4:
   POD_GATEWAY: "10.16.0.1"
 
 # Helm chart keys to pin apiserver to the control-plane VIP
-apiserverEndpoint: "https://192.168.102.2:6443"
-apiserver: "https://192.168.102.2:6443"
-apiServerHost: "192.168.102.2"
+apiserverEndpoint: "https://192.168.100.2:6443"
+apiserver: "https://192.168.100.2:6443"
+apiServerHost: "192.168.100.2"
 apiServerPort: 6443
-
-# VLAN configuration for Kube-OVN networks (provider names <= 12 chars)
-networking:
-  NETWORK_TYPE: vlan
-  vlan:
-    PROVIDER_NAME: "nested-cls"
-    VLAN_INTERFACE_NAME: "enp6s18"
-    VLAN_NAME: "nested-cls"
-    VLAN_ID: "100"
-  # Secondary VLAN for nested K8s apps inside VMs
-  extraVLANs:
-    - name: "nested-k8s"
-      provider: "nested-k8s"
-      iface: "enp6s18"
-      vlanId: 101

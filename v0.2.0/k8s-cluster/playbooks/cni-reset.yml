@@ -3,9 +3,12 @@
   gather_facts: false
   vars:
     kubeconfig: "{{ lookup('env', 'KUBECONFIG') | default('~/.kube/config', true) }}"
-    cilium_state: absent
-    multus_state: absent
-    kube_ovn_state: absent
+    cilium_state: "{{ lookup('env','CILIUM_STATE') | default('absent', true) }}"
+    multus_state: "{{ lookup('env','MULTUS_STATE') | default('absent', true) }}"
+    kube_ovn_state: "{{ lookup('env','KUBE_OVN_STATE') | default('absent', true) }}"
+    cilium_helm_version: "1.13.17"
+    multus_version: "v4.1.4"
+    kube_ovn_chart_version: "1.14.20"
   tasks:
     - name: Fail fast if kubeconfig missing
       ansible.builtin.assert:
@@ -16,9 +19,11 @@
   roles:
     - role: cilium
       vars:
-        cilium_helm_version: "1.16.4"
         cilium_namespace: "kube-system"
+      when: cilium_state == 'absent'
     - role: multus
+      when: multus_state == 'absent'
     - role: kube_ovn
       vars:
         kube_ovn_namespace: "kube-system"
+      when: kube_ovn_state == 'absent'

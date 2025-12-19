@@ -1,0 +1,65 @@
+---
+# Kubernetes dashboard
+# RBAC required. see docs/getting-started.md for access details.
+dashboard_enabled: true
+
+# Helm deployment
+helm_enabled: true
+
+# Registry deployment
+registry_enabled: false
+# registry_namespace: kube-system
+# registry_storage_class: 'registry-storage'
+# registry_disk_size: '10Gi'
+
+# Metrics Server deployment
+metrics_server_enabled: true
+# metrics_server_container_port: 10250
+# metrics_server_kubelet_insecure_tls: true
+# metrics_server_metric_resolution: 15s
+# metrics_server_kubelet_preferred_address_types: "InternalIP,ExternalIP,Hostname"
+# metrics_server_host_network: false
+metrics_server_replicas: 2
+
+# Rancher Local Path Provisioner
+local_path_provisioner_enabled: false
+# Local volume provisioner deployment
+local_volume_provisioner_enabled: false
+local_volume_provisioner_tolerations:
+- effect: NoSchedule
+  operator: Exists
+
+# CSI Volume Snapshot Controller deployment, set this to true if your CSI is able to manage snapshots
+# currently, setting cinder_csi_enabled=true would automatically enable the snapshot controller
+# Longhorn is an external CSI that would also require setting this to true but it is not included in kubespray
+# csi_snapshot_controller_enabled: false
+# csi snapshot namespace
+snapshot_controller_namespace: kube-system
+
+# Gateway API CRDs
+gateway_api_enabled: false
+# Nginx ingress controller deployment
+ingress_nginx_enabled: false
+# ALB ingress controller deployment
+ingress_alb_enabled: false
+# Cert manager deployment
+cert_manager_enabled: false
+# MetalLB deployment
+metallb_enabled: false
+argocd_enabled: false
+
+# Kube VIP - enabled for control plane HA (works without CNI)
+kube_vip_enabled: true
+kube_vip_arp_enabled: true
+kube_vip_controlplane_enabled: true
+kube_vip_address: 192.168.100.2
+kube_vip_interface: enp6s18
+kube_vip_services_enabled: false
+# kube_vip_dns_mode: first
+# kube_vip_cp_detect: false
+# kube_vip_leasename: plndr-cp-lock
+# kube_vip_enable_node_labeling: false
+# kube_vip_lb_fwdmethod: local
+
+# Node Feature Discovery
+node_feature_discovery_enabled: false

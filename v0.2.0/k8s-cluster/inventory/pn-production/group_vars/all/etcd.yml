@@ -1,0 +1,19 @@
+---
+etcd_data_dir: /etcd-data/etcd
+etcd_backup_dir: /etcd-data/etcd-backups
+container_manager: containerd
+etcd_deployment_type: host
+etcd_snapshot_count: 10000
+etcd_snapshot_retention: 5
+
+# ADD THESE LINES TO FIX THE URL FORMATTING:
+etcd_cert_dir: /etc/ssl/etcd/ssl
+etcd_client_url_scheme: https
+etcd_client_port: 2379
+etcd_peer_url_scheme: https
+etcd_peer_port: 2380
+
+# Ensure proper binding to int_traffic interface
+etcd_address: '{{ ip }}'
+etcd_listen_client_urls: 'https://{{ ip }}:2379,https://127.0.0.1:2379'
+etcd_advertise_client_urls: 'https://{{ ip }}:2379'

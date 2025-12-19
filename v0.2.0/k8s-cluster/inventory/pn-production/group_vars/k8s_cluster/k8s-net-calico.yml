@@ -1,0 +1,51 @@
+---
+# Calico CNI configuration for single network setup
+# This file configures Calico to use the correct network interface after VLAN removal
+
+# IP-in-IP encapsulation mode (options: Always, CrossSubnet, Never)
+# Use "Never" for better performance on single flat network
+calico_ipip_mode: 'Never'
+
+# VXLAN encapsulation mode (options: Always, CrossSubnet, Never)
+# Use "Never" since we're on a flat network
+calico_vxlan_mode: 'Never'
+
+# Network backend (options: bird, vxlan, none)
+# Use "bird" for BGP routing on flat network
+calico_network_backend: bird
+
+# IP autodetection method
+# Use CIDR-based detection to find interface with IP in 192.168.100.0/24
+# This works across nodes with different interface names (enp6s18, eno2, enp5s0f1, etc.)
+calico_ip_auto_method: "cidr=192.168.100.0/24"
+
+# IPv4 pool CIDR (must match kube_pods_subnet)
+calico_pool_cidr: "10.233.64.0/18"
+
+# IPv4 pool block size (CIDR prefix for each node)
+calico_pool_blocksize: 24
+
+# NAT outgoing traffic
+calico_nat_outgoing: true
+
+# Enable Calico policy controller
+calico_policy_controller: true
+
+# MTU for Calico interfaces
+# Standard Ethernet MTU without encapsulation overhead
+calico_mtu: 1500
+
+# Felix configuration
+# Log severity (options: Debug, Info, Warning, Error, Fatal)
+calico_felix_log_severity_screen: "Info"
+
+# Prometheus metrics
+calico_felix_prometheusmetricsenabled: true
+calico_felix_prometheusmetricsport: 9091
+
+# Typha configuration (improves scalability for large clusters)
+# Enable for clusters with 50+ nodes
+typha_enabled: false
+
+# Calico version (let Kubespray manage this)
+# calico_version: "v3.27.0"

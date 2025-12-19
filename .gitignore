@@ -65,7 +65,7 @@ kubeconfig
 *_rsa
 *.pub
 *.secret
-*.env
+*.env.local
 *.creds
 
 platform/bootstrap/.generated/

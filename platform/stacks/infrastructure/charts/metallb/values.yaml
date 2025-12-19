@@ -10,5 +10,3 @@ l2Advertisement:
   name: public-l2-advertisement
   ipAddressPools:
   - public-pool
-  interfaces:
-  - public_traffic

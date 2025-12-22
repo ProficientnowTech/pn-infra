@@ -7,8 +7,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${ROOT_DIR}/../.." && pwd)"
 SPEC_DIR="${ROOT_DIR}/platform/bootstrap/secrets/specs"
 GENERATED_DIR="${ROOT_DIR}/platform/bootstrap/.generated"
-SEALED_DIR="${GENERATED_DIR}/sealed"
-PUSH_DIR="${GENERATED_DIR}/push"
+CHART_DIR="${ROOT_DIR}/platform/bootstrap/secrets/chart"
+MANIFEST_DIR="${CHART_DIR}/files/manifests"
+SEALED_DIR="${MANIFEST_DIR}/sealed"
+PUSH_DIR="${MANIFEST_DIR}/push"
 STATE_DIR="${GENERATED_DIR}/state"
 ENV_FILE="${ROOT_DIR}/platform/bootstrap/secrets/.env.local"
 DEFAULT_SECRET_STORE_NAME="${VAULT_SECRET_STORE_NAME:-vault-backend}"
@@ -17,6 +19,9 @@ GITHUB_APP_TOKEN_VARS="${GITHUB_APP_TOKEN_VARS:-BACKSTAGE_GITHUB_TOKEN}"
 GITHUB_TOKEN_HELPER="${SCRIPT_DIR}/github-app-token.sh"
 TEMP_GITHUB_KEY_FILE=""
 SEALED_SECRETS_CERT_FILE=""
+HELM_RELEASE_NAME="${BOOTSTRAP_SECRETS_RELEASE:-bootstrap-secrets}"
+HELM_RELEASE_NAMESPACE="${BOOTSTRAP_SECRETS_NAMESPACE:-argocd}"
+declare -A NAMESPACES=()
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -66,11 +71,17 @@ expand_path() {
 }
 
 ensure_dirs() {
-	mkdir -p "$SEALED_DIR" "$PUSH_DIR" "$STATE_DIR"
+	mkdir -p "$CHART_DIR" "$MANIFEST_DIR" "$SEALED_DIR" "$PUSH_DIR" "$STATE_DIR"
+	find "$SEALED_DIR" -maxdepth 1 -type f -name '*.yaml' -delete
+	find "$PUSH_DIR" -maxdepth 1 -type f -name '*.yaml' -delete
 }
 
 ensure_binaries() {
+	local require_helm="$1"
 	local bins=(yq jq kubeseal kubectl openssl)
+	if [[ "$require_helm" == "true" ]]; then
+		bins+=(helm)
+	fi
 	for bin in "${bins[@]}"; do
 		command -v "$bin" >/dev/null 2>&1 || fatal "Required binary '$bin' not found in PATH"
 	done
@@ -292,7 +303,7 @@ build_push_secret_json() {
 }
 
 process_spec() {
-	local file="$1" apply="$2" force="$3"
+	local file="$1" force="$2"
 	local spec_json
 	spec_json="$(yq -o=json "$file")"
 	local name namespace type
@@ -303,6 +314,7 @@ process_spec() {
 		warn "Skipping $file (missing name/namespace)"
 		return
 	}
+	NAMESPACES["$namespace"]=1
 
 	local state_file="${STATE_DIR}/${namespace}-${name}.json"
 	local state_json
@@ -409,15 +421,24 @@ process_spec() {
 		push_json_file="${PUSH_DIR}/${namespace}-${name}-push.yaml"
 		printf '%s\n' "$push_json" | yq -P >"$push_json_file"
 	fi
-	if [[ "$apply" == "true" ]]; then
-		kubectl apply -f "$sealed_path"
-		if [[ -n "$push_json_file" ]]; then
-			kubectl apply -f "$push_json_file"
-		fi
-		log "Applied secrets for $namespace/$name"
-	else
-		log "Rendered secrets for $namespace/$name"
+	log "Rendered secrets for $namespace/$name -> $sealed_path${push_json_file:+, $push_json_file}"
+}
+
+deploy_with_helm() {
+	local manifest_count
+	manifest_count="$(find "$MANIFEST_DIR" -type f -name '*.yaml' | wc -l | tr -d ' ')"
+	if [[ "${manifest_count:-0}" -eq 0 ]]; then
+		warn "No generated manifests found under $MANIFEST_DIR; skipping Helm apply."
+		return
 	fi
+
+	log "Deploying bootstrap secrets with Helm release ${HELM_RELEASE_NAME} in namespace ${HELM_RELEASE_NAMESPACE}"
+	helm upgrade --install "$HELM_RELEASE_NAME" "$CHART_DIR" \
+		--namespace "$HELM_RELEASE_NAMESPACE" \
+		--create-namespace \
+		--wait \
+		--atomic
+	log "Helm release ${HELM_RELEASE_NAME} applied with ${manifest_count} manifest(s)"
 }
 
 main() {
@@ -429,7 +450,7 @@ main() {
 		-h | --help)
 			cat <<EOF
 Usage: $SCRIPT_NAME [--apply] [--force]
-  --apply   Apply generated manifests with kubectl
+  --apply   Deploy generated manifests with Helm
   --force   Regenerate cached values even if state exists
 EOF
 			exit 0
@@ -442,7 +463,7 @@ EOF
 	done
 
 	ensure_dirs
-	ensure_binaries
+	ensure_binaries "$apply"
 	load_env_file
 	ensure_github_app_token
 	ensure_sealed_secrets_cert
@@ -453,8 +474,11 @@ EOF
 		exit 0
 	}
 	for spec in "${spec_files[@]}"; do
-		process_spec "$spec" "$apply" "$force"
+		process_spec "$spec" "$force"
 	done
+	if [[ "$apply" == "true" ]]; then
+		deploy_with_helm
+	fi
 }
 
 main "$@"

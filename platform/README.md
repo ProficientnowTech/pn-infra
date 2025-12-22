@@ -451,16 +451,17 @@ Example applications created:
 ### Generated Secrets
 
 ```
-platform/bootstrap/.generated/
+platform/bootstrap/secrets/chart/files/manifests/
 ├── sealed/
 │   ├── monitoring-grafana-admin.yaml         # SealedSecret
 │   └── vault-vault-root.yaml                 # SealedSecret
-├── push/
-│   ├── monitoring-grafana-admin-push.yaml    # PushSecret (Vault sync)
-│   └── vault-vault-root-push.yaml            # PushSecret
-└── state/
-    ├── monitoring-grafana-admin.json         # Cached values
-    └── vault-vault-root.json                 # Cached values
+└── push/
+    ├── monitoring-grafana-admin-push.yaml    # PushSecret (Vault sync)
+    └── vault-vault-root-push.yaml            # PushSecret
+
+platform/bootstrap/.generated/state/
+├── monitoring-grafana-admin.json             # Cached values
+└── vault-vault-root.json                     # Cached values
 ```
 
 ### Platform Service Endpoints
@@ -511,9 +512,9 @@ Depending on stack configuration:
    - Generated (`generate` field)
 5. Applies hashing if specified (`hash` field)
 6. Caches values in `.generated/state/` for idempotency
-7. Generates SealedSecret using `kubeseal`
-8. Creates PushSecret for Vault sync (if `vault` configured)
-9. Optionally applies to cluster (`--apply` flag)
+7. Generates SealedSecret manifests under `platform/bootstrap/secrets/chart/files/manifests/sealed/`
+8. Creates PushSecret manifests for Vault sync (if `vault` configured) under `platform/bootstrap/secrets/chart/files/manifests/push/`
+9. Optionally deploys everything via Helm (`--apply` flag) using the chart at `platform/bootstrap/secrets/chart` (release `bootstrap-secrets`, namespace `argocd` by default)
 
 ### Secret Spec Fields
 

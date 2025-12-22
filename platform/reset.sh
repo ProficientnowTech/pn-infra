@@ -7,9 +7,9 @@
 # 1. Deletes all ArgoCD applications
 # 2. Removes all Helm releases
 # 3. Removes platform secrets (Cloudflare, SSH keys)
-# 4. Removes MetalLB configuration resources
-# 5. Deletes all namespaces (except protected: kube-system, default, kube-public, kube-node-lease, metallb-system)
-# 6. Removes all CRDs (except protected: K8s core and MetalLB CRDs)
+# 4. Removes MetalLB resources (IPAddressPools, L2Advertisements, BGP configs)
+# 5. Deletes all platform namespaces (except protected: kube-system, default, kube-public, kube-node-lease)
+# 6. Removes all platform CRDs (except protected: K8s core and networking CNI CRDs)
 # 7. Cleans all PVCs and PVs
 # 8. Wipes Ceph cluster data from all disks on all nodes
 # 9. Removes Rook Ceph state from nodes
@@ -343,8 +343,8 @@ reset_metallb_resources() {
 		return 0
 	fi
 
-	# Only delete resources managed by metallb-addresspool kustomization
-	# Do NOT delete MetalLB controller/speaker or namespace itself
+	# Delete MetalLB configuration resources
+	# Note: MetalLB namespace and controller/speaker will be deleted by delete_namespaces step
 
 	log INFO "Deleting MetalLB IPAddressPools..."
 	kubectl delete ipaddresspool --all -n metallb-system --timeout=60s 2>/dev/null || true
@@ -358,7 +358,7 @@ reset_metallb_resources() {
 	log INFO "Deleting MetalLB BGPPeers..."
 	kubectl delete bgppeer --all -n metallb-system --timeout=60s 2>/dev/null || true
 
-	log SUCCESS "MetalLB configuration resources cleaned up (MetalLB controller/speaker unchanged)"
+	log SUCCESS "MetalLB configuration resources cleaned up"
 }
 
 # Step 5: Clean Rook Ceph cluster
@@ -463,7 +463,7 @@ delete_namespaces() {
 	log STEP "Step 7: Deleting platform namespaces..."
 
 	# Protected namespaces that should NOT be deleted
-	local protected_namespaces="default kube-system kube-public kube-node-lease metallb-system"
+	local protected_namespaces="default kube-system kube-public kube-node-lease"
 
 	# Get all namespaces
 	local all_namespaces=$(kubectl get namespaces -o name | sed 's|namespace/||')
@@ -560,9 +560,9 @@ delete_crds() {
 
 	log INFO "Found $(echo "$crds" | wc -l) CRDs"
 
-	# List of CRDs to keep (core Kubernetes, MetalLB, networking providers)
-	local protected_crds="certificatesigningrequests.certificates.k8s.io ipaddresspools.metallb.io l2advertisements.metallb.io bfdprofiles.metallb.io bgpadvertisements.metallb.io bgppeers.metallb.io communities.metallb.io"
-	local protected_crd_patterns="(certificatesigningrequests\.certificates\.k8s\.io|metallb\.io|projectcalico\.org|crd\.projectcalico\.org|tigera\.io|k8s\.cni\.cncf\.io)"
+	# List of CRDs to keep (core Kubernetes and networking providers)
+	local protected_crds="certificatesigningrequests.certificates.k8s.io"
+	local protected_crd_patterns="(certificatesigningrequests\.certificates\.k8s\.io|projectcalico\.org|crd\.projectcalico\.org|tigera\.io|k8s\.cni\.cncf\.io)"
 
 	# Remove finalizers and delete CRDs
 	for crd in $crds; do
@@ -588,7 +588,7 @@ delete_crds() {
 	local timeout=60
 	local elapsed=0
 	while [ $elapsed -lt $timeout ]; do
-		local remaining=$(kubectl get crds 2>/dev/null | grep -vE "^NAME|certificatesigningrequests|metallb.io|projectcalico.org|crd.projectcalico.org|tigera.io|k8s.cni.cncf.io" | wc -l)
+		local remaining=$(kubectl get crds 2>/dev/null | grep -vE "^NAME|certificatesigningrequests|projectcalico.org|crd.projectcalico.org|tigera.io|k8s.cni.cncf.io" | wc -l)
 		if [ "$remaining" -eq 0 ]; then
 			log SUCCESS "All CRDs deleted"
 			return 0
@@ -600,7 +600,7 @@ delete_crds() {
 
 	# Force delete remaining CRDs
 	log WARN "Timeout waiting for CRDs, forcing deletion..."
-	for crd in $(kubectl get crds -o name 2>/dev/null | grep -vE "certificatesigningrequests|metallb.io|projectcalico.org|crd.projectcalico.org|tigera.io|k8s.cni.cncf.io" || true); do
+	for crd in $(kubectl get crds -o name 2>/dev/null | grep -vE "certificatesigningrequests|projectcalico.org|crd.projectcalico.org|tigera.io|k8s.cni.cncf.io" || true); do
 		kubectl delete $crd --force --grace-period=0 2>/dev/null || true
 	done
 
@@ -724,10 +724,10 @@ verify_cluster_state() {
 	local issues=0
 
 	# Check namespaces
-	local ns_count=$(kubectl get namespaces --no-headers 2>/dev/null | grep -vE "^(default|kube-system|kube-public|kube-node-lease|metallb-system)" | wc -l)
+	local ns_count=$(kubectl get namespaces --no-headers 2>/dev/null | grep -vE "^(default|kube-system|kube-public|kube-node-lease)" | wc -l)
 	if [ "$ns_count" -gt 0 ]; then
 		log WARN "Found $ns_count unexpected namespaces remaining"
-		kubectl get namespaces --no-headers | grep -vE "^(default|kube-system|kube-public|kube-node-lease|metallb-system)"
+		kubectl get namespaces --no-headers | grep -vE "^(default|kube-system|kube-public|kube-node-lease)"
 		issues=$((issues + 1))
 	else
 		log INFO "✓ Only system namespaces remain"
@@ -754,13 +754,13 @@ verify_cluster_state() {
 	fi
 
 	# Check CRDs
-	local crd_count=$(kubectl get crds --no-headers 2>/dev/null | grep -vE "certificatesigningrequests|metallb.io" | wc -l)
+	local crd_count=$(kubectl get crds --no-headers 2>/dev/null | grep -vE "certificatesigningrequests|projectcalico.org|crd.projectcalico.org|tigera.io|k8s.cni.cncf.io" | wc -l)
 	if [ "$crd_count" -gt 0 ]; then
 		log WARN "Found $crd_count CRDs remaining"
-		kubectl get crds | grep -vE "NAME|certificatesigningrequests|metallb.io"
+		kubectl get crds | grep -vE "NAME|certificatesigningrequests|projectcalico.org|crd.projectcalico.org|tigera.io|k8s.cni.cncf.io"
 		issues=$((issues + 1))
 	else
-		log INFO "✓ Only system and MetalLB CRDs remain"
+		log INFO "✓ Only system and networking CRDs remain"
 	fi
 
 	# Check storage classes
@@ -830,6 +830,11 @@ main() {
 		# Light mode - only platform apps and namespaces
 		delete_namespaces
 		delete_crds
+
+		# Delete storage classes
+		log INFO "Deleting storage classes..."
+		kubectl delete storageclass --all 2>/dev/null || true
+
 		log SUCCESS "Light reset completed - Ceph data preserved"
 	fi
 

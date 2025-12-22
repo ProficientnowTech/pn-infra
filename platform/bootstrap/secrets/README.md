@@ -49,9 +49,11 @@ as `applications/developer-platform/harbor/core` rather than `secret/data/...`.
 
 1. Read every spec in `specs/`.
 2. Generate deterministic values (cached in `.generated/state`).
-3. Create SealedSecret manifests under `.generated/sealed`.
-4. Create matching PushSecret manifests under `.generated/push`.
-5. Apply both manifests via `kubectl apply`.
+3. Write SealedSecret manifests under `platform/bootstrap/secrets/chart/files/manifests/sealed/`.
+4. Write matching PushSecret manifests under `platform/bootstrap/secrets/chart/files/manifests/push/`.
+5. Deploy both via `helm upgrade --install` against `platform/bootstrap/secrets/chart` (release `bootstrap-secrets` in namespace `argocd` by default).
+
+The rendered manifests are gitignored. Customize the Helm release/namespace with `BOOTSTRAP_SECRETS_RELEASE` and `BOOTSTRAP_SECRETS_NAMESPACE` if needed.
 
 All generated values are cached under `.generated/state/`. Delete the corresponding
 `<namespace>-<name>.json` (or pass `--force`) to re-roll credentials.

@@ -3,7 +3,7 @@
 # Run rook-disk-reset.sh on all nodes via SSH
 
 # Configuration
-NODES=("192.168.106.111" "192.168.106.112" "192.168.106.113" "192.168.106.122")
+NODES=("192.168.100.111" "192.168.100.112" "192.168.100.113" "192.168.100.122")
 DEVICE="/dev/sdb"
 SSH_USER="ansible"
 SSH_KEY="/home/devsupreme/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"

@@ -63,4 +63,7 @@ kubeconfig
 *.secret
 *.env
 *.kube
-inventory
+*.creds
+# Allow tracked inventories (e.g., v0.2.0/k8s-cluster/inventory)
+# But exclude credentials directories
+**/credentials/

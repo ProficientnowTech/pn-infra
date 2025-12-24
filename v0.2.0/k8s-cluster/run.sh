@@ -176,6 +176,30 @@ PY
 	fi
 }
 
+apply_post_deploy_manifests() {
+	local kubeconfig_path="${KUBECONFIG_LOCAL}"
+	local manifests_dir="${SCRIPT_DIR}/manifests"
+
+	if [[ ! -f "$kubeconfig_path" ]]; then
+		log_warning "Kubeconfig missing at $kubeconfig_path; skipping post-deploy manifests"
+		return 0
+	fi
+	if [[ ! -d "$manifests_dir" ]]; then
+		return 0
+	fi
+	if ! KUBECONFIG="$kubeconfig_path" kubectl cluster-info >/dev/null 2>&1; then
+		log_warning "Cluster not reachable via $kubeconfig_path; skipping post-deploy manifests"
+		return 0
+	fi
+
+	local manifest
+	for manifest in "$manifests_dir"/*.yaml; do
+		[[ -f "$manifest" ]] || continue
+		log_info "Applying post-deploy manifest: $manifest"
+		KUBECONFIG="$kubeconfig_path" kubectl apply -f "$manifest" >/dev/null
+	done
+}
+
 enforce_validation() {
 	local operation="$1"
 
@@ -248,6 +272,7 @@ deploy | reset | upgrade | scale | recover | facts)
 		# Copy kubeconfig after successful deployment operations
 		if [[ "$OPERATION" == "deploy" || "$OPERATION" == "upgrade" || "$OPERATION" == "scale" ]]; then
 			copy_kubeconfig
+			apply_post_deploy_manifests
 		fi
 	fi
 	;;
@@ -263,6 +288,7 @@ shell)
 	;;
 kubeconfig)
 	copy_kubeconfig
+	apply_post_deploy_manifests
 	;;
 *)
 	log_error "Unknown operation: $OPERATION"

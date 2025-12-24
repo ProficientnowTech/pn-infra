@@ -1,0 +1,6 @@
+---
+# Host-specific variables for k8s-master-04
+ansible_user: ansible
+ansible_ssh_private_key_file: /root/.ssh/id_rsa
+ansible_become: true
+

@@ -7,6 +7,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INVENTORY_PATH="${SCRIPT_DIR}/inventory/pn-production"
+HOSTS_FILE="${INVENTORY_PATH}/hosts.yml"
+IMAGE_NAME="${IMAGE_NAME:-ghcr.io/proficientnowtech/kubespray-pncp:latest}"
 
 # Colors
 RED='\033[0;31m'
@@ -55,10 +57,9 @@ check_docker() {
         return
     fi
     
-    # Check if we can pull Kubespray image
-    local kubespray_version="v2.28.1"
-    if ! docker pull quay.io/kubespray/kubespray:${kubespray_version} >/dev/null 2>&1; then
-        log_warning "Cannot pull Kubespray Docker image - check network connectivity"
+    # Check if we can pull the configured Kubespray image
+    if ! docker pull "${IMAGE_NAME}" >/dev/null 2>&1; then
+        log_warning "Cannot pull Kubespray Docker image (${IMAGE_NAME}) - check network connectivity"
     fi
 }
 
@@ -83,9 +84,9 @@ check_ssh() {
 check_inventory() {
     log_info "Checking Kubespray inventory and configuration..."
     
-    # Check inventory file
-    if [[ ! -f "${INVENTORY_PATH}/inventory.ini" ]]; then
-        log_error "Inventory file not found: ${INVENTORY_PATH}/inventory.ini"
+    # Check inventory file (canonical)
+    if [[ ! -f "${HOSTS_FILE}" ]]; then
+        log_error "Inventory file not found: ${HOSTS_FILE}"
         return
     fi
     
@@ -105,16 +106,29 @@ check_inventory() {
     # Check network plugin configuration
     local k8s_config="${INVENTORY_PATH}/group_vars/k8s_cluster/k8s-cluster.yml"
     if [[ -f "$k8s_config" ]]; then
-        if ! grep -q "kube_network_plugin:" "$k8s_config"; then
-            log_error "Network plugin not configured in k8s-cluster.yml"
-        else
-            local network_plugin=$(grep "kube_network_plugin:" "$k8s_config" | cut -d: -f2 | xargs)
-            local multus_enabled=$(grep "kube_network_plugin_multus:" "$k8s_config" | cut -d: -f2 | xargs)
-            
-            log_info "Network plugin: $network_plugin"
-            if [[ "$multus_enabled" == "true" && "$network_plugin" == "calico" ]]; then
-                log_warning "Multus + Calico may cause CNI deployment issues"
-            fi
+        if ! python3 - <<PY
+import pathlib, sys, yaml
+p = pathlib.Path("${k8s_config}")
+cfg = yaml.safe_load(p.read_text()) or {}
+plugin = cfg.get("kube_network_plugin")
+multus = bool(cfg.get("kube_network_plugin_multus", False))
+lb = cfg.get("loadbalancer_apiserver", None)
+vip = cfg.get("kube_vip_address", None)
+print(f"[VALIDATE] Network plugin: {plugin!s}")
+if plugin is None:
+    print("[ERROR] Network plugin not configured in k8s-cluster.yml")
+    sys.exit(1)
+if plugin != "calico":
+    print(f"[WARNING] Expected calico for a simple cluster; found: {plugin}")
+if multus:
+    print("[WARNING] Multus is enabled; for a simple cluster, keep kube_network_plugin_multus: false")
+if lb not in (None, {}, ""):
+    if isinstance(lb, dict) and lb.get("address") and vip and (str(lb.get("address")) != str(vip)):
+        print(f"[WARNING] loadbalancer_apiserver.address ({lb.get('address')}) != kube_vip_address ({vip}); these should normally match for kube-vip HA")
+    print("[INFO] loadbalancer_apiserver is set; ensure kube-vip is enabled and the VIP is reachable during bootstrap")
+PY
+        then
+            log_error "Network plugin validation failed (see output above)"
         fi
     fi
 }
@@ -123,35 +137,42 @@ check_inventory() {
 check_connectivity() {
     log_info "Testing SSH connectivity to cluster nodes..."
     
-    local inventory_file="${INVENTORY_PATH}/inventory.ini"
     local ssh_key="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
     local test_hosts=()
-    
-    # Extract first few hosts for testing
-    while IFS= read -r line; do
-        if [[ $line =~ ^[a-zA-Z0-9-]+.*ansible_host= ]]; then
-            local host_ip=$(echo "$line" | grep -o 'ansible_host=[^ ]*' | cut -d= -f2)
-            test_hosts+=("$host_ip")
-            [[ ${#test_hosts[@]} -ge 3 ]] && break
-        fi
-    done < "$inventory_file"
+    local max_parallel=20
+
+    # Extract all hosts from hosts.yml for testing
+    while IFS= read -r ip; do
+        [[ -n "$ip" ]] || continue
+        test_hosts+=("$ip")
+    done < <(python3 - <<PY
+import yaml, pathlib
+inv = pathlib.Path("${HOSTS_FILE}")
+data = yaml.safe_load(inv.read_text())
+hosts = data.get("all", {}).get("hosts", {}) if isinstance(data, dict) else {}
+for _, meta in hosts.items():
+    ip = meta.get("ansible_host")
+    if ip:
+        print(ip)
+PY
+    )
     
     if [[ ${#test_hosts[@]} -eq 0 ]]; then
         log_warning "No hosts found in inventory for connectivity testing"
         return
     fi
-    
-    local failed_hosts=()
-    for host in "${test_hosts[@]}"; do
-        if ! timeout 10 ssh -i "$ssh_key" -o ConnectTimeout=5 -o StrictHostKeyChecking=no ansible@"$host" "echo 'SSH test'" >/dev/null 2>&1; then
-            failed_hosts+=("$host")
-        fi
-    done
-    
-    if [[ ${#failed_hosts[@]} -gt 0 ]]; then
-        log_error "SSH connectivity failed for hosts: ${failed_hosts[*]}"
+
+    # Run SSH checks in parallel for faster failure detection.
+    local failed
+    failed="$(
+        printf '%s\n' "${test_hosts[@]}" | xargs -P "${max_parallel}" -I{} bash -c \
+            'timeout 8 ssh -i "'"${ssh_key}"'" -o IdentitiesOnly=yes -o IdentityAgent=none -o PreferredAuthentications=publickey -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ansible@"{}" "echo ok" >/dev/null 2>&1 || echo "{}"'
+    )"
+
+    if [[ -n "$failed" ]]; then
+        log_error "SSH connectivity failed for hosts: ${failed//$'\n'/ }"
     else
-        log_success "SSH connectivity verified for test hosts"
+        log_success "SSH connectivity verified for all hosts"
     fi
 }
 

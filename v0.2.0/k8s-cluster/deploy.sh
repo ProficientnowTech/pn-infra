@@ -126,33 +126,29 @@ validate_prerequisites() {
 validate_ssh_connectivity() {
 	log_info "Validating SSH connectivity..."
 
-	# Extract first few hosts from hosts.yml
+	# Extract all hosts from inventory (fail fast if any are unreachable).
 	local hosts
-	hosts=$(python3 - <<'PY'
+	hosts="$(python3 - <<PY
 import yaml, pathlib
-inv = pathlib.Path("inventory/pn-production/hosts.yml")
+inv = pathlib.Path("${HOSTS_FILE}")
 data = yaml.safe_load(inv.read_text())
 hosts = data.get("all", {}).get("hosts", {}) if isinstance(data, dict) else {}
-count = 0
 for _, meta in hosts.items():
     ip = meta.get("ansible_host")
     if ip:
         print(ip)
-        count += 1
-    if count >= 3:
-        break
 PY
-)
+)"
 
-	local failed_hosts=""
-	for host in $hosts; do
-		if ! timeout 5 ssh -i "${SSH_KEY_PATH}" -o ConnectTimeout=5 -o StrictHostKeyChecking=no ansible@"$host" "echo 'SSH test successful'" >/dev/null 2>&1; then
-			failed_hosts="$failed_hosts $host"
-		fi
-	done
+	local max_parallel=20
+	local failed_hosts
+	failed_hosts="$(
+		printf '%s\n' ${hosts} | xargs -P "${max_parallel}" -I{} bash -c \
+			'timeout 8 ssh -i "'"${SSH_KEY_PATH}"'" -o IdentitiesOnly=yes -o IdentityAgent=none -o PreferredAuthentications=publickey -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ansible@"{}" "echo ok" >/dev/null 2>&1 || echo "{}"'
+	)"
 
 	if [[ -n "$failed_hosts" ]]; then
-		log_warning "SSH connectivity failed for hosts:$failed_hosts"
+		log_warning "SSH connectivity failed for hosts: ${failed_hosts//$'\n'/ }"
 		log_warning "Deployment may fail. Check SSH keys and network connectivity."
 		read -p "Continue anyway? (y/N): " -n 1 -r
 		echo
@@ -194,6 +190,7 @@ run_kubespray() {
 
 	# Build command arguments
 	local cmd="cd /kubespray && chmod 600 /root/.ssh/id_rsa"
+	local ansible_cfg_host="${SCRIPT_DIR}/ansible.cfg"
 
 	# Add verbose flag
 	local ansible_args="-i inventory/pn-production/hosts.yml"
@@ -207,8 +204,10 @@ run_kubespray() {
 
 	# Run the container
 	docker run --rm -it \
+		-e ANSIBLE_CONFIG=/kubespray/ansible.cfg \
 		--mount type=bind,source="${INVENTORY_PATH}",dst="/kubespray/inventory/pn-production/" \
 		--mount type=bind,source="${SSH_KEY_PATH}",dst="/root/.ssh/id_rsa" \
+		--mount type=bind,source="${ansible_cfg_host}",dst="/kubespray/ansible.cfg,readonly" \
 		"${IMAGE_NAME}" \
 		bash -c "$cmd"
 
@@ -286,7 +285,7 @@ open_shell() {
 	log_info "Opening interactive Kubespray container shell..."
 	log_info "Inventory mounted at: /kubespray/inventory/pn-production/"
 	log_info "SSH Key mounted at: /root/.ssh/id_rsa"
-	log_info "Run 'ansible-playbook -i inventory/pn-production/inventory.ini cluster.yml -b' to deploy"
+	log_info "Run 'ansible-playbook -i inventory/pn-production/hosts.yml cluster.yml -b' to deploy"
 
 	docker run --rm -it \
 		--mount type=bind,source="${INVENTORY_PATH}",dst="/kubespray/inventory/pn-production/" \

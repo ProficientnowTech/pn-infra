@@ -191,12 +191,14 @@ argocd_enabled: false
 
 # The plugin manager for kubectl
 
-# Kube VIP - enabled for control plane HA (works without CNI)
+# Kube VIP - enabled for control plane HA
 kube_vip_enabled: true
 kube_vip_arp_enabled: true
 kube_vip_controlplane_enabled: true
-kube_vip_address: 192.168.102.2
-kube_vip_interface: int_traffic
+# VIP must live on the same L2 network as the control-plane node IPs
+kube_vip_address: 192.168.100.2
+# Interface is standardized across nodes
+kube_vip_interface: enp6s18
 kube_vip_services_enabled: false
 # kube_vip_dns_mode: first
 # kube_vip_cp_detect: false

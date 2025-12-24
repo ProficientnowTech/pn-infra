@@ -8,11 +8,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VALIDATE_SCRIPT="${SCRIPT_DIR}/validate.sh"
 DEPLOY_SCRIPT="${SCRIPT_DIR}/deploy.sh"
-CNI_IMAGE="${CNI_IMAGE:-ghcr.io/proficientnowtech/kubespray-pncp:latest}"
 KUBECONFIG_LOCAL="${SCRIPT_DIR}/.kube/config"
 KUBECONFIG_HOME="${HOME}/.kube/config"
 SSH_KEY_PATH="${SSH_KEY_PATH:-${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646}"
-DOCKER_BIN="docker"
 
 # Colors
 RED='\033[0;31m'
@@ -79,8 +77,6 @@ OPERATIONS:
     status          Check deployment status
     shell           Open interactive shell
     kubeconfig      Copy kubeconfig from first master (only)
-    cni             Run post-deploy CNI playbook (requires kubeconfig)
-    cni-reset       Run CNI reset playbook (requires kubeconfig)
     
 OPTIONS:
     --skip-validation       Skip validation (EMERGENCY USE ONLY)
@@ -92,19 +88,12 @@ OPTIONS:
     -e, --extra ARGS       Pass additional arguments
     -h, --help             Show this help
 
-ENVIRONMENT VARIABLES:
-    CILIUM_STATE=present           # Install Cilium (default: absent)
-    MULTUS_STATE=present           # Install Multus (default: absent)
-    KUBE_OVN_STATE=present         # Install Kube-OVN (default: absent)
-
 EXAMPLES:
     $0 validate                                    # Run validation only
     $0 deploy                                      # Deploy cluster with Calico CNI
     $0 deploy -v                                   # Verbose deployment
     $0 scale -l k8s-worker-07                      # Scale with specific host
     $0 deploy --skip-validation                    # Emergency deploy without validation
-    CILIUM_STATE=present $0 cni                    # Install Cilium CNI
-    MULTUS_STATE=present KUBE_OVN_STATE=present $0 cni  # Install all CNI components
 EOF
 }
 
@@ -168,7 +157,7 @@ PY
 	ansible_user=$(grep "ansible_user:" "$SCRIPT_DIR/inventory/pn-production/host_vars/${master_hostname}.yml" 2>/dev/null | awk '{print $2}' || echo "root")
 
 	# Copy kubeconfig directly via sudo cat over SSH
-	local SSH_OPTS=(-i "$SSH_KEY_PATH" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
+	local SSH_OPTS=(-i "$SSH_KEY_PATH" -o IdentitiesOnly=yes -o IdentityAgent=none -o PreferredAuthentications=publickey -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null)
 	if ssh "${SSH_OPTS[@]}" "$ansible_user@$master_ip" "sudo cat /etc/kubernetes/admin.conf" >"$KUBECONFIG_LOCAL"; then
 		# Also copy to user default location for convenience
 		cp "$KUBECONFIG_LOCAL" "$KUBECONFIG_HOME"
@@ -212,7 +201,7 @@ validate | deploy | reset | upgrade | scale | recover | facts | status | shell)
         OPERATION="$1"
         shift
         ;;
-kubeconfig | cni | cni-reset)
+kubeconfig)
         OPERATION="$1"
         shift
         ;;
@@ -246,110 +235,6 @@ done
 log_info "Operation: $OPERATION"
 ensure_inventory
 
-select_docker() {
-	if $DOCKER_BIN info >/dev/null 2>&1; then
-		return 0
-	fi
-	if sudo -n docker info >/dev/null 2>&1; then
-		DOCKER_BIN="sudo docker"
-		return 0
-	fi
-	log_error "Docker daemon not accessible (need access to /var/run/docker.sock or sudo rights)"
-	return 1
-}
-
-ensure_cni_image() {
-	select_docker || return 1
-	if [[ "$FORCE_PULL" == "true" ]] || ! $DOCKER_BIN image inspect "${CNI_IMAGE}" >/dev/null 2>&1; then
-		log_info "Pulling CNI image ${CNI_IMAGE}..."
-		$DOCKER_BIN pull "${CNI_IMAGE}"
-	fi
-}
-
-run_cni_playbook() {
-	local playbook="$1"
-	local playbook_path="${SCRIPT_DIR}/playbooks/${playbook}"
-	local roles_path="${SCRIPT_DIR}/roles"
-	local kubeconfig_path="${KUBECONFIG_LOCAL}"
-
-	if [[ ! -f "$playbook_path" ]]; then
-		log_warning "CNI playbook not found: $playbook_path (skipping)"
-		return 0
-	fi
-
-	if [[ ! -d "$roles_path" ]]; then
-		log_error "CNI roles directory missing: $roles_path"
-		return 1
-	fi
-
-	if [[ ! -f "$kubeconfig_path" ]]; then
-		log_warning "Kubeconfig not found at $kubeconfig_path; attempting to copy from master..."
-		copy_kubeconfig
-		if [[ ! -f "$kubeconfig_path" ]]; then
-			log_error "Kubeconfig still missing after copy attempt; aborting CNI playbook ${playbook}"
-			return 1
-		fi
-	fi
-
-	ensure_cni_image || return 1
-
-	log_info "Running CNI playbook ${playbook} via ${CNI_IMAGE}"
-	$DOCKER_BIN run --rm \
-		-e KUBECONFIG=/root/.kube/config \
-		-e ANSIBLE_ROLES_PATH=/workspace/roles \
-		-e ANSIBLE_STDOUT_CALLBACK=default \
-		-e ANSIBLE_CALLBACKS_ENABLED=profile_tasks,timer \
-		-e ANSIBLE_DISPLAY_SKIPPED_HOSTS=False \
-		-e ANSIBLE_FORCE_COLOR=True \
-		-e ANSIBLE_CONFIG=/workspace/playbooks/ansible.cfg \
-		-v "${kubeconfig_path}":/root/.kube/config:ro \
-		-v "${SCRIPT_DIR}":/workspace \
-		"${CNI_IMAGE}" \
-		ansible-playbook -i localhost, -c local "/workspace/playbooks/${playbook}"
-}
-
-run_cni_playbooks() {
-	local kubeconfig_path="${KUBECONFIG_LOCAL}"
-	local roles_path="${SCRIPT_DIR}/roles"
-	if [[ ! -d "$roles_path" ]]; then
-		log_error "CNI roles directory missing: $roles_path"
-		return 1
-	fi
-	if [[ ! -f "$kubeconfig_path" ]]; then
-		log_warning "Kubeconfig not found at $kubeconfig_path; attempting to copy from master..."
-		copy_kubeconfig
-		if [[ ! -f "$kubeconfig_path" ]]; then
-			log_error "Kubeconfig still missing after copy attempt; aborting CNI playbooks"
-			return 1
-		fi
-	fi
-	ensure_cni_image
-
-	local cmds=()
-	for pb in "$@"; do
-		if [[ ! -f "${SCRIPT_DIR}/playbooks/${pb}" ]]; then
-			log_error "CNI playbook not found: ${SCRIPT_DIR}/playbooks/${pb}"
-			return 1
-		fi
-		cmds+=("ansible-playbook -i localhost, -c local /workspace/playbooks/${pb}")
-		cmds+=("&&")
-	done
-	cmds=("${cmds[@]:0:${#cmds[@]}-1}") # drop trailing &&
-	log_info "Running CNI playbooks (${*}) via ${CNI_IMAGE}"
-	$DOCKER_BIN run --rm \
-		-e KUBECONFIG=/root/.kube/config \
-		-e ANSIBLE_ROLES_PATH=/workspace/roles \
-		-e ANSIBLE_STDOUT_CALLBACK=default \
-		-e ANSIBLE_CALLBACKS_ENABLED=profile_tasks,timer \
-		-e ANSIBLE_DISPLAY_SKIPPED_HOSTS=False \
-		-e ANSIBLE_FORCE_COLOR=True \
-		-e ANSIBLE_CONFIG=/workspace/playbooks/ansible.cfg \
-		-v "${kubeconfig_path}":/root/.kube/config:ro \
-		-v "${SCRIPT_DIR}":/workspace \
-		"${CNI_IMAGE}" \
-		sh -c "${cmds[*]}"
-}
-
 # Execute operation
 case $OPERATION in
 validate)
@@ -358,19 +243,11 @@ validate)
 deploy | reset | upgrade | scale | recover | facts)
 	enforce_validation "$OPERATION"
 
-	# For reset operation: CNI reset MUST happen BEFORE cluster destruction
-	if [[ "$OPERATION" == "reset" ]]; then
-		log_info "Resetting CNI components before cluster destruction..."
-		copy_kubeconfig || log_warning "Could not copy kubeconfig, CNI reset may fail"
-		run_cni_playbooks "cni-reset.yml" || log_warning "CNI reset playbook failed/was skipped"
-	fi
-
 	# Run the main deployment operation (deploy/reset/upgrade/etc)
 	if run_deployment "$OPERATION" "${DEPLOY_ARGS[@]}"; then
-		# Copy kubeconfig and install CNI after successful deployment operations
+		# Copy kubeconfig after successful deployment operations
 		if [[ "$OPERATION" == "deploy" || "$OPERATION" == "upgrade" || "$OPERATION" == "scale" ]]; then
 			copy_kubeconfig
-			run_cni_playbooks "cni.yml"
 		fi
 	fi
 	;;
@@ -383,14 +260,6 @@ status)
 	;;
 shell)
 	run_deployment "shell" "${DEPLOY_ARGS[@]}"
-	;;
-cni)
-	copy_kubeconfig
-	run_cni_playbooks "cni.yml"
-	;;
-cni-reset)
-	copy_kubeconfig
-	run_cni_playbooks "cni-reset.yml"
 	;;
 kubeconfig)
 	copy_kubeconfig

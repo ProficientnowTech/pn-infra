@@ -64,10 +64,10 @@ credentials_dir: '{{ inventory_dir }}/credentials'
 # Choose network plugin (cilium, calico, kube-ovn or flannel. Use cni for generic cni plugin)
 # Can also be set to 'cloud', which lets the cloud provider setup appropriate routing
 # Setting to 'cni' means no CNI will be deployed - manual CNI installation required
-kube_network_plugin: cni
+kube_network_plugin: calico
 
 # Setting multi_networking to true will install Multus: https://github.com/k8snetworkplumbingwg/multus-cni
-kube_network_plugin_multus: true
+kube_network_plugin_multus: false
 
 # Kubernetes internal network for services, unused block of space.
 # kube_service_addresses: 10.233.0.0/18
@@ -121,7 +121,7 @@ kube_proxy_mode: iptables
 
 # Remove kube-proxy after deployment (required for Cilium in kube-proxy replacement mode)
 # This allows Cilium to replace kube-proxy functionality completely
-kube_proxy_remove: true
+kube_proxy_remove: false
 
 # configure arp_ignore and arp_announce to avoid answering ARP queries from kube-ipvs0 interface
 # must be set to true for MetalLB, kube-vip(ARP enabled) to work
@@ -148,7 +148,7 @@ kube_encrypt_secret_data: false
 
 # DNS configuration.
 # Kubernetes cluster name, also will be used as DNS domain
-# cluster_name: pn-cluster.local
+cluster_name: prod-ap-south-2a.local
 # Subdomains of DNS domain to be resolved via /etc/resolv.conf for hostnet pods
 ndots: 2
 # dns_timeout: 2
@@ -208,7 +208,7 @@ enable_coredns_k8s_endpoint_pod_names: false
 # Can be docker_dns, host_resolvconf or none
 resolvconf_mode: host_resolvconf
 # Deploy netchecker app to verify DNS resolve as an HTTP service
-deploy_netchecker: false
+deploy_netchecker: true
 # Ip address of the kubernetes skydns service
 skydns_server: "{{ kube_service_subnets.split(',') | first | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(3) | ansible.utils.ipaddr('address') }}"
 skydns_server_secondary: "{{ kube_service_subnets.split(',') | first | ansible.utils.ipaddr('net') | ansible.utils.ipaddr(4) | ansible.utils.ipaddr('address') }}"
@@ -230,13 +230,15 @@ k8s_image_pull_policy: IfNotPresent
 # audit log for kubernetes
 kubernetes_audit: true
 
-## Load balancer for API server
+## API server HA (kube-vip)
+# Use kube-vip VIP as the kubeadm controlPlaneEndpoint so kubeconfigs and joins
+# consistently target the HA endpoint.
 loadbalancer_apiserver:
-  address: '192.168.102.2'
+  address: "{{ kube_vip_address }}"
   port: 6443
 
-# Override the default DNS-based endpoint with IP-based endpoint
-apiserver_loadbalancer_domain_name: '192.168.102.2'
+# Ensure kubeadm uses an address that actually resolves/reaches the VIP
+apiserver_loadbalancer_domain_name: "{{ kube_vip_address }}"
 
 # define kubelet config dir for dynamic kubelet
 # kubelet_config_dir:
@@ -358,7 +360,7 @@ nvidia_accelerator_enabled: false
 event_ttl_duration: '1h0m0s'
 
 ## Automatically renew K8S control plane certificates on first Monday of each month
-auto_renew_certificates: false
+auto_renew_certificates: true
 # First Monday of each month
 # auto_renew_certificates_systemd_calendar: "Mon *-*-1,2,3,4,5,6,7 03:00:00"
 
@@ -382,8 +384,21 @@ kubeadm_patches: []
 # - ...
 # Patches are applied in the order they are specified.
 
-# Set to true to remove the role binding to anonymous users created by kubeadm
+# Set to true to remove the role binding to anonymous users created by kubeadm.
+# We use kubeadm file discovery for joins (see below), so bootstrap does not rely
+# on anonymous access to `kube-public/cluster-info`.
 remove_anonymous_access: false
+
+# NOTE: Disable kubeadm file discovery.
+# File discovery requires distributing a discovery kubeconfig to every joining
+# control-plane node before kubeadm validates the JoinConfiguration. In our
+# environment this has been fragile and is currently breaking joins with:
+#   discovery.file.kubeConfigPath: ... not a valid HTTPS URL or a file on disk
+#
+# We instead use token discovery and keep anonymous access enabled during
+# bootstrap. Once the cluster is fully up, we can harden it by turning
+# `remove_anonymous_access` back on in a dedicated hardening step.
+kubeadm_use_file_discovery: false
 
 ## Multus Secondary CNI Configuration for KubeVirt VMs
 # Kube-OVN will be deployed as a secondary CNI via Multus for nested K8s clusters

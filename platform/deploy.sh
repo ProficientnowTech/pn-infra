@@ -257,12 +257,12 @@ check_applications_health() {
 			continue
 		fi
 
-		# Parse data efficiently
+		# Parse data efficiently (with null-safety)
 		local total_apps synced_apps healthy_apps progressing_apps
 		total_apps=$(echo "$apps_data" | jq -r '.items | length')
-		synced_apps=$(echo "$apps_data" | jq -r '[.items[] | select(.status.sync.status == "Synced")] | length')
-		healthy_apps=$(echo "$apps_data" | jq -r '[.items[] | select(.status.health.status == "Healthy")] | length')
-		progressing_apps=$(echo "$apps_data" | jq -r '[.items[] | select(.status.sync.status == "OutOfSync" or .status.operationState.phase == "Running")] | length')
+		synced_apps=$(echo "$apps_data" | jq -r '[.items[] | select(.status.sync.status? == "Synced")] | length')
+		healthy_apps=$(echo "$apps_data" | jq -r '[.items[] | select(.status.health.status? == "Healthy")] | length')
+		progressing_apps=$(echo "$apps_data" | jq -r '[.items[] | select((.status.sync.status? == "OutOfSync") or (.status.operationState.phase? == "Running"))] | length')
 
 		# Build status line
 		local status_line="${BLUE}[${attempt}/${max_attempts}]${NC} Apps:${total_apps} ${GREEN}✓:${healthy_apps}/${synced_apps}${NC}"

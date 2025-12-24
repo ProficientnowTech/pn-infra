@@ -22,6 +22,7 @@ OPERATION=""
 SKIP_VALIDATION=""
 ENVIRONMENT="production"
 SSH_PRIVATE_KEY_PATH="$HOME/.ssh/github_keys"
+RESET_MODE="light"
 
 log_info() {
 	echo -e "${BLUE}[INFO]    [$(date +'%H:%M:%S')] [Orchestrator]${NC} $1"
@@ -96,12 +97,14 @@ OPERATIONS:
 OPTIONS:
     --skip-validation       Skip validation (EMERGENCY USE ONLY)
     --env ENVIRONMENT       Environment (production|staging|development)
+    --full                  Full reset mode (includes Ceph data wipe)
     -h, --help              Show this help
 
 EXAMPLES:
     ${0##*/} validate                    # Run platform validation
     ${0##*/} deploy                      # Validate then deploy platform
-    ${0##*/} reset                       # Reset platform (remove all apps and ArgoCD)
+    ${0##*/} reset                       # Light reset (remove all apps and ArgoCD)
+    ${0##*/} reset --full                # Full reset (includes Ceph data wipe)
     ${0##*/} setup-secrets               # Render bootstrap sealed secrets only
     ${0##*/} deploy --env staging        # Deploy staging environment
     ${0##*/} status                      # Check platform status
@@ -167,9 +170,14 @@ reset_platform() {
 	# Make script executable if not already
 	chmod +x "$reset_script"
 
-	# Call reset script with light mode flag (default behavior)
-	# For full reset with Ceph wipe, user should call reset.sh directly
-	bash "$reset_script" --light
+	# Call reset script with specified mode
+	# Note: reset.sh defaults to full mode when no flag is passed
+	if [[ "$RESET_MODE" == "light" ]]; then
+		bash "$reset_script" --light
+	else
+		# Full reset mode - don't pass any flag (defaults to full)
+		bash "$reset_script"
+	fi
 }
 
 # Parse arguments
@@ -186,6 +194,10 @@ while [[ $# -gt 0 ]]; do
 	--env)
 		ENVIRONMENT="$2"
 		shift 2
+		;;
+	--full)
+		RESET_MODE="full"
+		shift
 		;;
 	-h | --help)
 		usage

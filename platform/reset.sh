@@ -629,7 +629,7 @@ clean_ceph_data_from_nodes() {
 			if kubectl get node "$node" &>/dev/null; then
 				# Use kubectl debug to run on node
 				log INFO "  Executing cleanup on $node for $device..."
-				kubectl debug node/"$node" -it --image=alpine -- sh -c "
+				kubectl debug node/"$node" --quiet --image=alpine -- sh -c "
                     apk add --no-cache util-linux e2fsprogs lvm2 2>/dev/null || true
 
                     # Cleanup script inline
@@ -651,7 +651,7 @@ clean_ceph_data_from_nodes() {
                     dd if=/dev/zero of='$device' bs=1M count=1024 conv=fsync 2>/dev/null || true
 
                     echo 'Device $device cleaned'
-                " 2>&1 | grep -v "Defaulting container" || log WARN "  Failed to clean $device on $node"
+                " 2>&1 | grep -v -E "Defaulting container|Creating debugging pod|Unable to use a TTY|If you don't see a command prompt|falling back to streaming logs" || log WARN "  Failed to clean $device on $node"
 			else
 				log WARN "  Node $node not found, skipping device cleanup"
 			fi
@@ -672,14 +672,14 @@ remove_rook_state() {
 		log INFO "Cleaning Rook state on node: $node"
 
 		# Remove /var/lib/rook directory
-		kubectl debug node/"$node" -it --image=alpine -- sh -c "
+		kubectl debug node/"$node" --quiet --image=alpine -- sh -c "
             rm -rf /host/var/lib/rook
             rm -rf /host/var/lib/kubelet/plugins/rook-ceph.rbd.csi.ceph.com
             rm -rf /host/var/lib/kubelet/plugins/rook-ceph.cephfs.csi.ceph.com
             rm -rf /host/var/lib/kubelet/plugins_registry/rook-ceph.rbd.csi.ceph.com-reg.sock
             rm -rf /host/var/lib/kubelet/plugins_registry/rook-ceph.cephfs.csi.ceph.com-reg.sock
             echo 'Rook state cleaned on $node'
-        " 2>&1 | grep -v "Defaulting container" || log WARN "Failed to clean Rook state on $node"
+        " 2>&1 | grep -v -E "Defaulting container|Creating debugging pod|Unable to use a TTY|If you don't see a command prompt|falling back to streaming logs" || log WARN "Failed to clean Rook state on $node"
 	done
 
 	log SUCCESS "Rook state cleanup completed"

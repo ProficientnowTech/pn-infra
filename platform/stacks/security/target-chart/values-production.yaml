@@ -41,43 +41,43 @@ applications:
   - CreateNamespace=true
   - ServerSideApply=true
 
-- name: kyverno
-  annotations:
-    argocd.argoproj.io/sync-wave: '20'
-  destinationNamespaceOverwrite: kyverno
-  syncOptions:
-  - CreateNamespace=true
+# - name: kyverno
+#   annotations:
+#     argocd.argoproj.io/sync-wave: '20'
+#   destinationNamespaceOverwrite: kyverno
+#   syncOptions:
+#   - CreateNamespace=true
 
-- name: falco
-  annotations:
-    argocd.argoproj.io/sync-wave: '40'
-  destinationNamespaceOverwrite: falco
-  syncOptions:
-  - CreateNamespace=true
+# - name: falco
+#   annotations:
+#     argocd.argoproj.io/sync-wave: '40'
+#   destinationNamespaceOverwrite: falco
+#   syncOptions:
+#   - CreateNamespace=true
 
-- name: falco-talon
-  annotations:
-    argocd.argoproj.io/sync-wave: '45'
-  destinationNamespaceOverwrite: falco-talon
-  syncOptions:
-  - CreateNamespace=true
+# - name: falco-talon
+#   annotations:
+#     argocd.argoproj.io/sync-wave: '45'
+#   destinationNamespaceOverwrite: falco-talon
+#   syncOptions:
+#   - CreateNamespace=true
 
-- name: netobserv
-  annotations:
-    argocd.argoproj.io/sync-wave: '50'
-  destinationNamespaceOverwrite: netobserv
-  syncOptions:
-  - CreateNamespace=true
-  - ServerSideApply=true
-  ignoreDifferences:
-  - group: apiextensions.k8s.io
-    kind: CustomResourceDefinition
-    jqPathExpressions:
-    - .spec.conversion.webhook.clientConfig.caBundle
-  - group: apps
-    kind: DaemonSet
-    jqPathExpressions:
-    - .spec.template.spec.containers[].resources
+# - name: netobserv
+#   annotations:
+#     argocd.argoproj.io/sync-wave: '50'
+#   destinationNamespaceOverwrite: netobserv
+#   syncOptions:
+#   - CreateNamespace=true
+#   - ServerSideApply=true
+#   ignoreDifferences:
+#   - group: apiextensions.k8s.io
+#     kind: CustomResourceDefinition
+#     jqPathExpressions:
+#     - .spec.conversion.webhook.clientConfig.caBundle
+#   - group: apps
+#     kind: DaemonSet
+#     jqPathExpressions:
+#     - .spec.template.spec.containers[].resources
 
 commonLabels:
   platform.pnats.cloud/environment: 'production'

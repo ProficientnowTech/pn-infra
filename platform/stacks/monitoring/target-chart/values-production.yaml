@@ -49,19 +49,19 @@ applications:
 #   syncOptions:
 #   - ServerSideApply=true
 
-- name: kubecost
-  annotations:
-    argocd.argoproj.io/sync-wave: "60"
-  destinationNamespaceOverwrite: monitoring
-  syncOptions:
-  - ServerSideApply=true
+# - name: kubecost
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "60"
+#   destinationNamespaceOverwrite: monitoring
+#   syncOptions:
+#   - ServerSideApply=true
 
-- name: oneuptime
-  annotations:
-    argocd.argoproj.io/sync-wave: "70"
-  destinationNamespaceOverwrite: monitoring-stack
-  syncOptions:
-  - ServerSideApply=true
+# - name: oneuptime
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "70"
+#   destinationNamespaceOverwrite: monitoring-stack
+#   syncOptions:
+#   - ServerSideApply=true
 
 commonLabels:
   platform.pnats.cloud/environment: 'production'

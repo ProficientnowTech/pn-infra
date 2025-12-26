@@ -198,17 +198,17 @@ vault:
                 fi
 
                 # external-secrets operator policy and role
-                if ! vault policy read external-secrets-policy >/dev/null 2>&1; then
-                  printf '%s\n' \
-                    'path "secret/data/*" {' \
-                    '  capabilities = ["read", "list"]' \
-                    '}' \
-                    'path "secret/metadata/*" {' \
-                    '  capabilities = ["read", "list"]' \
-                    '}' \
-                    | vault policy write external-secrets-policy -
-                  echo "External Secrets Operator policy created"
-                fi
+                # Allow ESO to both read secrets (ExternalSecret) and write secrets (PushSecret)
+                # but scope writes to our GitOps prefix under the KV v2 mount.
+                printf '%s\n' \
+                  'path "secret/data/applications/*" {' \
+                  '  capabilities = ["create", "update", "read", "list"]' \
+                  '}' \
+                  'path "secret/metadata/applications/*" {' \
+                  '  capabilities = ["create", "update", "read", "list"]' \
+                  '}' \
+                  | vault policy write external-secrets-policy -
+                echo "External Secrets Operator policy ensured"
 
                 if ! vault read auth/kubernetes/role/external-secrets >/dev/null 2>&1; then
                   vault write auth/kubernetes/role/external-secrets \

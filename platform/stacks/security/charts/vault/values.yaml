@@ -198,14 +198,14 @@ vault:
 
                 # external-secrets operator policy and role
                 if ! vault policy read external-secrets-policy >/dev/null 2>&1; then
-                  vault policy write external-secrets-policy - <<'EOF'
-        path "secret/data/*" {
-          capabilities = ["read", "list"]
-        }
-        path "secret/metadata/*" {
-          capabilities = ["read", "list"]
-        }
-        EOF
+                  printf '%s\n' \
+                    'path "secret/data/*" {' \
+                    '  capabilities = ["read", "list"]' \
+                    '}' \
+                    'path "secret/metadata/*" {' \
+                    '  capabilities = ["read", "list"]' \
+                    '}' \
+                    | vault policy write external-secrets-policy -
                   echo "External Secrets Operator policy created"
                 fi
 

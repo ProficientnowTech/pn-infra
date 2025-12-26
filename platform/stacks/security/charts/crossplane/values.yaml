@@ -39,7 +39,9 @@ crossplane:
     - xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v0.14.0
     - xpkg.upbound.io/crossplane-contrib/provider-helm:v0.19.0
     - xpkg.upbound.io/crossplane-contrib/provider-argocd:v0.7.0
-    - xpkg.upbound.io/upbound/provider-azuread:v1.4.1
+    # Disabled by default: requires provisioning `azuread-service-principal` in Vault.
+    # Enable once `applications/security/crossplane/providers/azuread.credentials` exists.
+    # - xpkg.upbound.io/upbound/provider-azuread:v1.4.1
     - xpkg.upbound.io/crossplane-contrib/provider-keycloak:v0.5.0
     - xpkg.upbound.io/crossplane-contrib/provider-kafka:v0.5.0
     - xpkg.upbound.io/denniskniep/provider-temporal:v1.5.0
@@ -90,7 +92,7 @@ providerConfig:
 
   # Azure AD provider config (uses service principal)
   azuread:
-    enabled: true
+    enabled: false
     # Azure tenant ID
     tenantId: "a0318cee-1ae4-49e3-b611-7a6cf6c48ab0"
     # Service principal secret reference
@@ -175,7 +177,7 @@ providerConfigs:
         namespace: crossplane-system
         name: provider-proxmox-bpg-credentials
         key: credentials
-    - enabled: true
+    - enabled: false
       name: azuread-default
       apiVersion: azuread.upbound.io/v1beta1
       credentialsSecret:
@@ -224,7 +226,7 @@ providerSecretRefs:
     namespace: crossplane-system
     vaultPath: applications/security/crossplane/providers/proxmox-bpg
     property: credentials
-  - enabled: true
+  - enabled: false
     name: azuread-service-principal
     namespace: crossplane-system
     vaultPath: applications/security/crossplane/providers/azuread

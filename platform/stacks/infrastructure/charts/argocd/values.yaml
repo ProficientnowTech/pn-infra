@@ -101,6 +101,52 @@ argo-cd:
 
             return hs
       application.instanceLabelKey: argocd.argoproj.io/instance
+      # Explicit health override for Crossplane Provider resources.
+      # ArgoCD has shipped a buggy built-in health check for pkg.crossplane.io/Provider
+      # that can throw: "cannot perform concat operation between string and nil".
+      # Setting this key avoids ComparisonError and lets apps compute health normally.
+      resource.customizations.health.pkg.crossplane.io_Provider: |
+        hs = {}
+        hs.status = "Progressing"
+        hs.message = ""
+
+        if obj.status == nil then
+          return hs
+        end
+
+        if obj.status.conditions == nil then
+          return hs
+        end
+
+        local installed = nil
+        local healthy = nil
+
+        for _, c in ipairs(obj.status.conditions) do
+          if c.type == "Installed" then
+            installed = c
+          elseif c.type == "Healthy" then
+            healthy = c
+          end
+        end
+
+        local chosen = healthy or installed
+        if chosen == nil then
+          return hs
+        end
+
+        if chosen.status == "True" then
+          hs.status = "Healthy"
+        elseif chosen.status == "False" then
+          hs.status = "Degraded"
+        end
+
+        if chosen.message ~= nil then
+          hs.message = tostring(chosen.message)
+        elseif chosen.reason ~= nil then
+          hs.message = tostring(chosen.reason)
+        end
+
+        return hs
     params:
       # Run server without TLS (nginx ingress terminates TLS)
       server.insecure: "true"

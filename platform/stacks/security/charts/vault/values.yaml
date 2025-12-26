@@ -5,7 +5,8 @@
 
 eso:
   enabled: true
-  providerUrl: "http://vault-active.vault.svc.cluster.local:8200"
+  # Do not hardcode `.svc.cluster.local` because this cluster uses a custom DNS domain.
+  providerUrl: "http://vault-active.vault.svc:8200"
   backendName: vault-backend
   mount: secret
   kubernetesAuth:
@@ -359,7 +360,8 @@ crossplaneProvider:
   package: xpkg.upbound.io/upbound/provider-vault:v3.0.3
   providerConfig:
     name: vault-admin
-    address: http://vault-active.vault.svc.cluster.local:8200
+    # Do not hardcode `.svc.cluster.local` because this cluster uses a custom DNS domain.
+    address: http://vault-active.vault.svc:8200
     skipTlsVerify: true
     credentialsSecret:
       namespace: crossplane-system

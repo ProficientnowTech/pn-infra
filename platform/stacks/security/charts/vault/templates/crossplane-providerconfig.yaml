@@ -18,7 +18,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  address: {{ $cfg.providerConfig.address | default "http://vault-active.vault.svc.cluster.local:8200" | quote }}
+  address: {{ $cfg.providerConfig.address | default "http://vault-active.vault.svc:8200" | quote }}
   skip_tls_verify: {{ $cfg.providerConfig.skipTlsVerify | default true }}
   credentials:
     source: Secret

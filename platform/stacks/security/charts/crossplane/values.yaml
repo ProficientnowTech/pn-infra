@@ -81,7 +81,7 @@ providerConfig:
   vault:
     enabled: false
     # Vault address (internal cluster service)
-    address: "http://vault-active.vault.svc.cluster.local:8200"
+    address: "http://vault-active.vault.svc:8200"
     # Skip TLS verification for internal communication
     skipTlsVerify: true
     # Token secret reference
@@ -119,7 +119,7 @@ providerConfigs:
   vault:
     enabled: false
     name: vault-admin
-    address: "http://vault-active.vault.svc.cluster.local:8200"
+    address: "http://vault-active.vault.svc:8200"
     skipTlsVerify: true
     credentialsSecret:
       namespace: crossplane-system

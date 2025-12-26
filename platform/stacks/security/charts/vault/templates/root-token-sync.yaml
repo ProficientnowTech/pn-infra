@@ -37,7 +37,8 @@ metadata:
   namespace: {{ .Release.Namespace }}
   annotations:
     argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    # Ensure failed/previous hook Jobs don't block subsequent syncs.
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded,HookFailed
     argocd.argoproj.io/sync-wave: "65"
 spec:
   backoffLimit: 3

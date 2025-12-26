@@ -55,7 +55,9 @@ spec:
         - /bin/sh
         - -c
         - |
-          set -euo pipefail
+          # NOTE: This Job runs under `/bin/sh` (not bash). `pipefail` is not POSIX
+          # and breaks on shells like `dash` with: "set: Illegal option -o pipefail".
+          set -eu
           attempt=0
           maxAttempts=60
           until kubectl get secret -n {{ $cfg.sourceNamespace }} {{ $cfg.sourceSecret }} >/dev/null 2>&1; do

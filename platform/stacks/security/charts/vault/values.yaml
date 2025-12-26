@@ -7,6 +7,8 @@ eso:
   enabled: true
   # Do not hardcode `.svc.cluster.local` because this cluster uses a custom DNS domain.
   providerUrl: "http://vault-active.vault.svc:8200"
+  # Vault Enterprise namespaces (empty for OSS Vault)
+  vaultNamespace: ""
   backendName: vault-backend
   mount: secret
   kubernetesAuth:

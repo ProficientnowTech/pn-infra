@@ -347,7 +347,8 @@ rootTokenSync:
   targetSecret: vault-admin-token
   targetSecretKey: token
   serviceAccountName: vault-root-token-sync
-  image: docker.io/bitnami/kubectl:1.30.3
+  # Bitnami moved many images to the legacy registry path.
+  image: docker.io/bitnamilegacy/kubectl:1.30.3
 
 # Monitoring Configuration
 monitoring:

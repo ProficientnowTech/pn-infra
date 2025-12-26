@@ -16,7 +16,7 @@ spec:
       serviceAccountName: argocd-server
       containers:
       - name: ceph-health-checker
-        image: bitnami/kubectl:latest
+        image: bitnamilegacy/kubectl:latest
         command:
         - sh
         - -c

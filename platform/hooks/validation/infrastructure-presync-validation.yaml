@@ -16,7 +16,7 @@ spec:
       serviceAccountName: argocd-server
       containers:
       - name: infrastructure-validator
-        image: bitnami/kubectl:latest
+        image: bitnamilegacy/kubectl:latest
         command:
         - sh
         - -c

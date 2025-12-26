@@ -1660,7 +1660,7 @@ spec:
       name: Create Pull Request
       action: publish:github:pull-request
       input:
-        repoUrl: github.com?repo=pn-infra&owner=pnow-devsupreme
+        repoUrl: github.com?repo=pn-infra&owner=ProficientnowTech
         branchName: cluster-${{ parameters.environment }}
         title: 'Provision ${{ parameters.environment }} Kubernetes Cluster'
         description: |
@@ -1750,7 +1750,7 @@ spec:
       name: Create Pull Request
       action: publish:github:pull-request
       input:
-        repoUrl: github.com?repo=pn-infra&owner=pnow-devsupreme
+        repoUrl: github.com?repo=pn-infra&owner=ProficientnowTech
         branchName: db-${{ parameters.environment }}-${{ parameters.appName }}
         title: 'Provision ${{ parameters.environment }} database for ${{ parameters.appName }}'
         description: |

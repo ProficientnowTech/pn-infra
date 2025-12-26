@@ -126,14 +126,14 @@ Default Scopes: read:user user:email read:org
 - Users auto-register on first login
 
 **Option B: Organization Members Only** (Recommended)
-- Restrict to GitHub organization: `pnow-devsupreme` (or your org)
+- Restrict to GitHub organization: `ProficientnowTech` (or your org)
 - Check organization membership via GitHub API
 - Deny access if not a member
 
 **Implementation**:
 ```javascript
 // Keycloak Authentication Flow Script
-var organizationName = "pnow-devsupreme";
+var organizationName = "ProficientnowTech";
 var userOrganizations = user.getAttribute("organizations");
 
 if (!userOrganizations || !userOrganizations.contains(organizationName)) {
@@ -198,9 +198,9 @@ server:
     policy.default: role:readonly
     policy.csv: |
       # GitHub organization admin access
-      g, pnow-devsupreme:admins, role:admin
+      g, ProficientnowTech:admins, role:admin
       # GitHub organization developer access
-      g, pnow-devsupreme:developers, role:developer
+      g, ProficientnowTech:developers, role:developer
 ```
 
 #### External Secret for Dex Client Secret
@@ -1478,7 +1478,7 @@ curl -I https://temporal-ui.pnats.cloud
 
 #### Test 2: Access Control (GitHub Org Membership)
 ```bash
-# User IN GitHub org pnow-devsupreme → Access granted
+# User IN GitHub org ProficientnowTech → Access granted
 # User NOT in org → Access denied
 
 # Test by creating test user not in org
@@ -1487,8 +1487,8 @@ curl -I https://temporal-ui.pnats.cloud
 
 #### Test 3: Role Mapping
 ```bash
-# GitHub team: pnow-devsupreme/admins → ArgoCD role:admin
-# GitHub team: pnow-devsupreme/developers → ArgoCD role:developer
+# GitHub team: ProficientnowTech/admins → ArgoCD role:admin
+# GitHub team: ProficientnowTech/developers → ArgoCD role:developer
 
 # Verify with:
 argocd account get-user-info

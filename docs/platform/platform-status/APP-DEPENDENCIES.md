@@ -716,7 +716,7 @@ These are foundational and should be deployed in order before other apps.
 ### Git Repository
 - **Required By**: argocd-self, backstage
 - **Purpose**: Source of truth for GitOps
-- **Current**: GitHub (pnow-devsupreme/pn-infra)
+- **Current**: GitHub (ProficientnowTech/pn-infra)
 
 ### Container Registries
 - **Required By**: All apps

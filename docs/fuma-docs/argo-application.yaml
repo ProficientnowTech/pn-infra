@@ -8,7 +8,7 @@ metadata:
 spec:
   project: docs
   source:
-    repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+    repoURL: https://github.com/ProficientnowTech/pn-infra.git
     targetRevision: HEAD
     path: docs/fuma-docs/chart
   destination:

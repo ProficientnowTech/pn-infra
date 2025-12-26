@@ -1,0 +1,55 @@
+---
+# ScyllaDB Monitoring Stack - Grafana Ingress
+# This exposes the ScyllaDB monitoring Grafana dashboard
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scylla-monitoring
+  namespace: scylla-operator
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+    # Optional: IP allowlisting
+    # nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8"
+
+spec:
+  ingressClassName: nginx
+
+  tls:
+  - hosts:
+    - scylla-monitoring.pnats.cloud
+    secretName: scylla-monitoring-tls
+
+  rules:
+  - host: scylla-monitoring.pnats.cloud
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: scylla-monitoring-grafana  # Service name from monitoring stack
+            port:
+              number: 3000
+---
+# Note: ScyllaDB Monitoring Stack deployment
+#
+# 1. Install ScyllaDB Operator first
+# 2. Deploy ScyllaDB Manager (helm install scylla-manager scylla/scylla-manager)
+# 3. Deploy Monitoring Stack:
+#    git clone https://github.com/scylladb/scylla-monitoring.git
+#    cd scylla-monitoring
+#    ./start-all.sh -d <data-dir> -s <scylla-server-ip>
+#
+# 4. For Kubernetes deployment, you may need to deploy Prometheus, Grafana separately
+#    or use the monitoring stack's Kubernetes manifests
+#
+# Default Grafana credentials:
+#   Username: admin
+#   Password: admin (change on first login)
+#
+# To enable authentication, run monitoring stack with -a option:
+#   ./start-all.sh -d <data-dir> -s <scylla-server-ip> -a

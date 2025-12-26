@@ -16,3 +16,8 @@ annotations:
   category: Database
   platform.pn-infra.io/component: postgres-operator
   platform.pn-infra.io/sync-wave: "300"
+
+dependencies:
+- name: postgres-operator
+  version: 1.15.0
+  repository: https://opensource.zalando.com/postgres-operator/charts/postgres-operator

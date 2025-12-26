@@ -13,7 +13,7 @@ Deploys a Ceph storage cluster managed by Rook operator, providing persistent st
 ```yaml
 # Global repository settings
 global:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  repoURL: 'git@github.com:ProficientnowTech/pn-infra.git'
   targetRevision: 'main'
 
 # Labels configuration

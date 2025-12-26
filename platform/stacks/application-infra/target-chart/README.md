@@ -18,7 +18,7 @@
 ```yaml
 # Repository settings
 default:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  repoURL: 'git@github.com:ProficientnowTech/pn-infra.git'
   targetRevision: 'main'
 
 # Stack identifier

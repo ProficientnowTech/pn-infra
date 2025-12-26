@@ -13,7 +13,7 @@ Deploys Prometheus for metrics collection, storage, and alerting across the plat
 ```yaml
 # Global repository settings
 global:
-  repoURL: "git@github.com:pnow-devsupreme/pn-infra.git"
+  repoURL: "git@github.com:ProficientnowTech/pn-infra.git"
   targetRevision: "main"
   rbac:
     create: true

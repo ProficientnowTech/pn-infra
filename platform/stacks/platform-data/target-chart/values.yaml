@@ -1,7 +1,7 @@
 argocdNamespace: argocd
 stackName: platform-data
 default:
-  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  repoURL: https://github.com/ProficientnowTech/pn-infra.git
   targetRevision: v2
 global:
   project: platform-data

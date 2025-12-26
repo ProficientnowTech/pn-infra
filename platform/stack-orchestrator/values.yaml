@@ -2,7 +2,7 @@ argocdNamespace: argocd
 environment: production
 
 default:
-  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  repoURL: https://github.com/ProficientnowTech/pn-infra.git
   targetRevision: v2
   destinationServer: https://kubernetes.default.svc
   project: platform

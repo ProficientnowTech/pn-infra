@@ -1,0 +1,82 @@
+---
+# Global configuration
+global:
+  repoURL: 'https://github.com/ProficientnowTech/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: scylladb-operator
+  component-category: database
+  db-type: nosql-db
+  db-type-name: scylladb
+  managed-by: argocd
+
+# ScyllaDB Operator Configuration
+# Based on: https://operator.docs.scylladb.com/
+scylla-operator:
+  enabled: true
+
+  # Operator replicas with leader election (HA setup)
+  replicas: 2
+
+  # Operator image configuration
+  image:
+    repository: scylladb/scylla-operator
+    pullPolicy: IfNotPresent
+
+  # Log level: 0-9 (higher = more detailed)
+  logLevel: 2
+
+  # Resource limits for the operator
+  resources:
+    requests:
+      cpu: 100m
+      memory: 20Mi
+    limits:
+      cpu: 500m
+      memory: 128Mi
+
+  # Pod anti-affinity for HA
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: scylla-operator
+          topologyKey: kubernetes.io/hostname
+
+  # Webhook configuration
+  webhook:
+    # Create self-signed certificate using cert-manager
+    createSelfSignedCertificate: true
+
+  # Webhook server configuration (HA setup)
+  webhookServerReplicas: 2
+
+  webhookServerResources:
+    requests:
+      cpu: 10m
+      memory: 20Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  webhookServerAffinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: webhook-server
+          topologyKey: kubernetes.io/hostname
+
+  # Service account
+  serviceAccount:
+    create: true
+
+  # Security context
+  securityContext: {}

@@ -6,17 +6,17 @@ version: 0.1.0
 appVersion: '1.0'
 
 keywords:
-  - argocd
-  - projects
-  - governance
-  - rbac
-  - multi-tenancy
+- argocd
+- projects
+- governance
+- rbac
+- multi-tenancy
 
-home: https://github.com/pnow-devsupreme/pn-infra.git
+home: https://github.com/ProficientnowTech/pn-infra.git
 
 maintainers:
-  - name: Platform Team
-    email: platform-admin@pnats.cloud
+- name: Platform Team
+  email: platform-admin@pnats.cloud
 
 annotations:
   platform.pnats.cloud/component: argocd-projects

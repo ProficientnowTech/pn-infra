@@ -3,7 +3,7 @@ argocdNamespace: argocd
 stackName: developer-platform
 # Default repository configuration
 default:
-  repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  repoURL: https://github.com/ProficientnowTech/pn-infra.git
   targetRevision: v2
 # Global configuration for all applications
 global:

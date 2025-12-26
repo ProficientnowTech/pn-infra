@@ -1,0 +1,164 @@
+---
+# Small Tier Cluster Pool Example
+# Supports 250 small tenants per cluster
+# Deploy multiple instances of this for horizontal scaling
+apiVersion: psmdb.percona.com/v1
+kind: PerconaServerMongoDB
+metadata:
+  name: small-tenant-pool-01
+  namespace: mongodb-small-tier
+  labels:
+    tier: small
+    pool-id: "01"
+spec:
+  crVersion: "1.21.0"
+  image: percona/percona-server-mongodb:7.0.15-9
+  imagePullPolicy: Always
+
+  # Secrets
+  secrets:
+    users: small-pool-01-secrets
+    encryptionKey: small-pool-01-encryption
+
+  # TLS Configuration
+  tls:
+    mode: requireTLS
+    certValidityDuration: "8760h"
+
+  # Replica Set Configuration
+  replsets:
+    - name: rs0
+      size: 3
+
+      # Anti-affinity for HA
+      affinity:
+        antiAffinityTopologyKey: "kubernetes.io/hostname"
+
+      # Pod Disruption Budget
+      podDisruptionBudget:
+        maxUnavailable: 1
+
+      # Resources for 250 small tenants
+      resources:
+        limits:
+          cpu: "4"
+          memory: "16Gi"
+        requests:
+          cpu: "2"
+          memory: "8Gi"
+
+      # Storage
+      volumeSpec:
+        persistentVolumeClaim:
+          storageClassName: "fast-ssd"
+          resources:
+            requests:
+              storage: 500Gi  # ~2GB per tenant average
+
+      # MongoDB Configuration
+      configuration: |
+        operationProfiling:
+          mode: slowOp
+          slowOpThresholdMs: 100
+        security:
+          enableEncryption: true
+          encryptionCipherMode: AES256-GCM
+        storage:
+          wiredTiger:
+            engineConfig:
+              cacheSizeRatio: 0.5
+            collectionConfig:
+              blockCompressor: snappy
+        setParameter:
+          # Support ~8 connections per tenant (250 * 8 = 2000)
+          maxIncomingConnections: 2000
+          # Enable connection pooling
+          ShardingTaskExecutorPoolMaxSize: 50
+
+  # System users (app will create tenant users dynamically)
+  users:
+    - name: admin
+      db: admin
+      passwordSecretRef:
+        name: small-pool-01-admin-password
+        key: password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+
+    - name: backup
+      db: admin
+      passwordSecretRef:
+        name: small-pool-01-backup-password
+        key: password
+      roles:
+        - name: backup
+          db: admin
+        - name: clusterMonitor
+          db: admin
+
+  # Backup Configuration
+  backup:
+    enabled: true
+
+    # Storage
+    storages:
+      s3-small-tier:
+        type: s3
+        s3:
+          bucket: mongodb-backups-small-tier
+          credentialsSecret: s3-backup-credentials
+          region: us-east-1
+          prefix: "pool-01"
+
+    # PITR for point-in-time recovery
+    pitr:
+      enabled: true
+      compressionType: gzip
+      compressionLevel: 6
+      oplogSpanMin: 60  # 1 hour oplog retention
+
+    # Backup tasks
+    tasks:
+      # Daily physical backup
+      - name: daily-physical
+        enabled: true
+        schedule: "0 2 * * *"
+        storageName: s3-small-tier
+        type: physical
+        compressionType: gzip
+        compressionLevel: 6
+        keep: 3  # Keep 3 days for small tier
+
+      # Weekly backup for longer retention
+      - name: weekly
+        enabled: true
+        schedule: "0 3 * * 0"
+        storageName: s3-small-tier
+        type: physical
+        compressionType: gzip
+        keep: 2  # Keep 2 weeks
+
+    # Backup resources
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+      requests:
+        cpu: "300m"
+        memory: "512Mi"
+
+  # PMM Monitoring
+  pmm:
+    enabled: true
+    image: percona/pmm-client:2
+    serverHost: pmm-server.monitoring.svc.cluster.local
+    resources:
+      limits:
+        cpu: "300m"
+        memory: "512Mi"
+      requests:
+        cpu: "200m"
+        memory: "256Mi"

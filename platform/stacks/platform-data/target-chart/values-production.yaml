@@ -1,1 +1,11 @@
-applications: []
+applications:
+- name: pg-clusters
+  sources:
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/platform-data/pg-clusters
+  destinationNamespaceOverwrite: 'platform-pg-clusters'
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+  - RespectIgnoreDifferences=true

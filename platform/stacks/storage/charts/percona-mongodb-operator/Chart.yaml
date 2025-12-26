@@ -1,0 +1,25 @@
+apiVersion: v2
+name: percona-mongodb-operator
+description: Percona Operator for MongoDB - Production-ready MongoDB operator with enterprise features
+type: application
+version: 0.1.0
+appVersion: "1.21.1"
+
+keywords:
+- mongodb
+- database
+- nosql
+- percona
+- document-store
+- replicaset
+- sharding
+
+annotations:
+  category: Database
+  platform.pn-infra.io/component: percona-mongodb-operator
+  platform.pn-infra.io/sync-wave: "150"
+
+dependencies:
+- name: psmdb-operator
+  version: 1.21.2
+  repository: https://percona.github.io/percona-helm-charts/

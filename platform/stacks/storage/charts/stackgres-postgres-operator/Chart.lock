@@ -1,0 +1,6 @@
+dependencies:
+- name: stackgres-operator
+  repository: https://stackgres.io/downloads/stackgres-k8s/stackgres/helm
+  version: 1.17.3
+digest: sha256:a8b244548705fb1d03cff96851b2ea11e7e9f4e42c77eccf148f61085cfd9180
+generated: "2025-12-26T14:13:22.272940813+05:30"

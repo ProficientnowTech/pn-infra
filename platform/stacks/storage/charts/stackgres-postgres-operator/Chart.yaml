@@ -15,3 +15,8 @@ annotations:
   category: Storage
   platform.pn-infra.io/component: stackgres-operator
   platform.pn-infra.io/sync-wave: "150"
+
+dependencies:
+- name: stackgres-operator
+  version: 1.17.3
+  repository: https://stackgres.io/downloads/stackgres-k8s/stackgres/helm

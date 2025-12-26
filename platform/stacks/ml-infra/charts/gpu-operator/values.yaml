@@ -1,13 +1,13 @@
 ---
 # Global configuration
 global:
-  repoURL: 'git@github.com:pnow-devsupreme/pn-infra.git'
+  repoURL: 'git@github.com:ProficientnowTech/pn-infra.git'
   targetRevision: 'main'
 
 # Labels configuration
 labels:
   component: ml-infrastructure
-  managed-by: argocd  # Override default Helm with ArgoCD
+  managed-by: argocd # Override default Helm with ArgoCD
 
 # GPU Operator configuration
 operator:
@@ -165,9 +165,9 @@ nodeSelector:
 
 # Tolerations for GPU nodes
 tolerations:
-  - key: nvidia.com/gpu
-    operator: Exists
-    effect: NoSchedule
+- key: nvidia.com/gpu
+  operator: Exists
+  effect: NoSchedule
 
 # PSP configuration
 psp:

@@ -13,7 +13,7 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: '-100'
   sources:
-  - repoURL: https://github.com/pnow-devsupreme/pn-infra.git
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
     targetRevision: v2
     path: platform/stacks/storage/charts/ceph-cluster
   destinationNamespaceOverwrite: 'rook-ceph'
@@ -57,6 +57,30 @@ applications:
   annotations:
     argocd.argoproj.io/sync-wave: '0'
   destinationNamespaceOverwrite: stackgres-postgres-operator
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true
+
+- name: cloudnative-pg-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: cloudnative-pg-operator
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true
+
+- name: scylladb-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: scylla-operator
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true
+
+- name: percona-mongodb-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: percona-mongodb-operator
   syncOptions:
   - ServerSideApply=true
   - Replace=true

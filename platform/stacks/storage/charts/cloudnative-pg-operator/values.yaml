@@ -1,0 +1,83 @@
+---
+# Global configuration
+global:
+  repoURL: 'https://github.com/ProficientnowTech/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: cloudnative-pg-operator
+  component-category: database
+  db-type: relational-db
+  db-type-name: postgres
+  managed-by: argocd
+
+# CloudNativePG Operator Configuration
+# Based on: https://cloudnative-pg.io/
+cloudnative-pg:
+  enabled: true
+
+  # Operator configuration
+  config:
+    # Create system-wide resources
+    create: true
+    # Webhook configuration
+    webhook:
+      port: 9443
+      mutating:
+        create: true
+        failurePolicy: Fail
+      validating:
+        create: true
+        failurePolicy: Fail
+
+  # Controller configuration
+  replicaCount: 3
+
+  # Resource limits for the operator
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Monitoring
+  monitoring:
+    # Enable Prometheus PodMonitor
+    podMonitorEnabled: true
+
+  # Security context
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 10001
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop:
+      - ALL
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+
+  # Service account
+  serviceAccount:
+    create: true
+    name: cloudnative-pg
+
+  # Image configuration (defaults to official images)
+  image:
+    repository: ghcr.io/cloudnative-pg/cloudnative-pg
+    pullPolicy: IfNotPresent
+
+  # Webhook service
+  service:
+    type: ClusterIP
+    port: 443

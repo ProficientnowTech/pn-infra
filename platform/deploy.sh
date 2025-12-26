@@ -258,11 +258,14 @@ check_applications_health() {
 		fi
 
 		# Parse data efficiently (with null-safety)
+		# NOTE: `kubectl get ... -o json` should return `.items` as an array, but in
+		# some transient states (CRD registering / apiserver cache) it can be null.
+		# Always coalesce to [] to avoid jq "Cannot iterate over null".
 		local total_apps synced_apps healthy_apps progressing_apps
-		total_apps=$(echo "$apps_data" | jq -r '.items | length')
-		synced_apps=$(echo "$apps_data" | jq -r '[.items[] | select(.status.sync.status? == "Synced")] | length')
-		healthy_apps=$(echo "$apps_data" | jq -r '[.items[] | select(.status.health.status? == "Healthy")] | length')
-		progressing_apps=$(echo "$apps_data" | jq -r '[.items[] | select((.status.sync.status? == "OutOfSync") or (.status.operationState.phase? == "Running"))] | length')
+		total_apps=$(echo "$apps_data" | jq -r '(.items // []) | length')
+		synced_apps=$(echo "$apps_data" | jq -r '[((.items // [])[]) | select(.status.sync.status? == "Synced")] | length')
+		healthy_apps=$(echo "$apps_data" | jq -r '[((.items // [])[]) | select(.status.health.status? == "Healthy")] | length')
+		progressing_apps=$(echo "$apps_data" | jq -r '[((.items // [])[]) | select((.status.sync.status? == "OutOfSync") or (.status.operationState.phase? == "Running"))] | length')
 
 		# Build status line
 		local status_line="${BLUE}[${attempt}/${max_attempts}]${NC} Apps:${total_apps} ${GREEN}✓:${healthy_apps}/${synced_apps}${NC}"
@@ -417,7 +420,7 @@ check_platform_deployed() {
 	fi
 
 	local total_apps
-	total_apps=$(echo "$apps_data" | jq -r '.items | length')
+	total_apps=$(echo "$apps_data" | jq -r '(.items // []) | length')
 
 	if [[ $total_apps -eq 0 ]]; then
 		log_info "Zero applications found - platform not deployed"

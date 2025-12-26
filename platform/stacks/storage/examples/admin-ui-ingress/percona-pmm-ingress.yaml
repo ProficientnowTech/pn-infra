@@ -1,0 +1,84 @@
+---
+# Percona Monitoring and Management (PMM) Server Ingress
+# For monitoring Percona MongoDB (and other Percona databases)
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pmm-server
+  namespace: monitoring  # Adjust namespace as needed
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # PMM 3.x requires gRPC support
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/grpc-backend: "true"  # CRITICAL for PMM 3.x
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-passthrough: "false"
+
+    # Increase timeouts for long-running queries
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+
+    # Optional: IP allowlisting
+    # nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8"
+
+spec:
+  ingressClassName: nginx
+
+  tls:
+  - hosts:
+    - pmm.pnats.cloud
+    secretName: pmm-server-tls
+
+  rules:
+  - host: pmm.pnats.cloud
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: pmm-service  # PMM server service name
+            port:
+              number: 443
+---
+# PMM Server Deployment (if not already deployed)
+#
+# Deploy PMM Server:
+#   helm repo add percona https://percona.github.io/percona-helm-charts/
+#   helm install pmm percona/pmm \
+#     --namespace monitoring \
+#     --create-namespace \
+#     --set service.type=ClusterIP \
+#     --set ingress.enabled=false  # We'll create ingress separately
+#
+# Default credentials:
+#   Username: admin
+#   Password: admin (CHANGE IMMEDIATELY!)
+#
+# Get admin password:
+#   kubectl get secret pmm-secret -n monitoring \
+#     -o jsonpath='{.data.PMM_ADMIN_PASSWORD}' | base64 --decode
+#
+# Change password after first login via PMM UI:
+#   Settings → Change Password
+---
+# Configure MongoDB Cluster to use PMM
+# Add to your PerconaServerMongoDB CR:
+#
+# spec:
+#   pmm:
+#     enabled: true
+#     image:
+#       repository: percona/pmm-client
+#       tag: 3.4.1
+#     serverHost: pmm-service.monitoring.svc.cluster.local
+#     resources:
+#       requests:
+#         cpu: 200m
+#         memory: 256Mi
+#       limits:
+#         cpu: 500m
+#         memory: 512Mi

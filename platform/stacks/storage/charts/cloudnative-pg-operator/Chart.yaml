@@ -1,0 +1,24 @@
+apiVersion: v2
+name: cloudnative-pg-operator
+description: CloudNativePG Operator for PostgreSQL on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.25.1"
+
+keywords:
+- postgresql
+- database
+- cloud-native
+- operator
+- kubernetes
+- postgres
+
+annotations:
+  category: Database
+  platform.pn-infra.io/component: cloudnative-pg-operator
+  platform.pn-infra.io/sync-wave: "300"
+
+dependencies:
+- name: cloudnative-pg
+  version: 0.23.1
+  repository: https://cloudnative-pg.github.io/charts

@@ -1,0 +1,59 @@
+---
+# Global configuration
+global:
+  repoURL: 'https://github.com/ProficientnowTech/pn-infra.git'
+  targetRevision: 'main'
+
+# Labels configuration
+labels:
+  component: stackgres-operator
+  component-category: database
+  db-type: relational-db
+  db-type-name: postgres
+  managed-by: argocd
+
+# StackGres Operator Configuration
+# Based on: https://stackgres.io/
+stackgres-operator:
+  enabled: true
+
+  # Operator deployment configuration
+  deploy:
+    restapi: true
+
+  # Resource limits for the operator
+  operator:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  restapi:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+  # Enable admin UI
+  adminui:
+    enabled: true
+
+    # Expose HTTP for ingress (recommended over HTTPS passthrough)
+    service:
+      type: ClusterIP
+      exposeHTTP: true # Set to true for easier ingress integration
+
+    # Resource limits for admin UI
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi

@@ -1,0 +1,52 @@
+---
+# StackGres Admin UI Ingress Configuration
+# Deploy this after installing the StackGres operator
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: stackgres-admin-ui
+  namespace: stackgres-postgres-operator
+  annotations:
+    # Use cert-manager for TLS certificates
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # NGINX ingress annotations
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"  # Use HTTP since exposeHTTP: true
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+    # Optional: Basic authentication (uncomment if needed)
+    # nginx.ingress.kubernetes.io/auth-type: basic
+    # nginx.ingress.kubernetes.io/auth-secret: stackgres-basic-auth
+    # nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required - StackGres Admin'
+
+    # Optional: IP allowlisting (uncomment and modify)
+    # nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8,192.168.0.0/16"
+
+spec:
+  ingressClassName: nginx
+
+  tls:
+  - hosts:
+    - stackgres.pnats.cloud
+    secretName: stackgres-admin-ui-tls
+
+  rules:
+  - host: stackgres.pnats.cloud
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: stackgres-restapi
+            port:
+              number: 80  # HTTP port when exposeHTTP: true
+---
+# Optional: Create basic auth secret for additional security
+# Generate password with: htpasswd -c auth admin
+# kubectl create secret generic stackgres-basic-auth --from-file=auth -n stackgres-postgres-operator
+---
+# Get default admin credentials with:
+# kubectl get secret -n stackgres-postgres-operator stackgres-restapi \
+#   --template '{{ printf "username = %s\npassword = %s\n" (.data.k8sUsername | base64decode) (.data.clearPassword | base64decode) }}'

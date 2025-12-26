@@ -1,0 +1,133 @@
+---
+# Medium Tier Cluster Pool Example
+# Supports 100 medium tenants per cluster
+apiVersion: psmdb.percona.com/v1
+kind: PerconaServerMongoDB
+metadata:
+  name: medium-tenant-pool-01
+  namespace: mongodb-medium-tier
+  labels:
+    tier: medium
+    pool-id: "01"
+spec:
+  crVersion: "1.21.0"
+  image: percona/percona-server-mongodb:7.0.15-9
+  imagePullPolicy: Always
+
+  secrets:
+    users: medium-pool-01-secrets
+    encryptionKey: medium-pool-01-encryption
+
+  tls:
+    mode: requireTLS
+    certValidityDuration: "8760h"
+
+  replsets:
+    - name: rs0
+      size: 3
+
+      affinity:
+        antiAffinityTopologyKey: "kubernetes.io/hostname"
+
+      podDisruptionBudget:
+        maxUnavailable: 1
+
+      # Resources for 100 medium tenants
+      resources:
+        limits:
+          cpu: "8"
+          memory: "32Gi"
+        requests:
+          cpu: "4"
+          memory: "16Gi"
+
+      volumeSpec:
+        persistentVolumeClaim:
+          storageClassName: "fast-ssd"
+          resources:
+            requests:
+              storage: 1Ti  # ~10GB per tenant average
+
+      configuration: |
+        operationProfiling:
+          mode: slowOp
+          slowOpThresholdMs: 50
+        security:
+          enableEncryption: true
+          encryptionCipherMode: AES256-GCM
+        storage:
+          wiredTiger:
+            engineConfig:
+              cacheSizeRatio: 0.5
+            collectionConfig:
+              blockCompressor: snappy
+        setParameter:
+          # Support ~20 connections per tenant (100 * 20 = 2000)
+          maxIncomingConnections: 2000
+          ShardingTaskExecutorPoolMaxSize: 100
+
+  users:
+    - name: admin
+      db: admin
+      passwordSecretRef:
+        name: medium-pool-01-admin-password
+        key: password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+
+  backup:
+    enabled: true
+
+    storages:
+      s3-medium-tier:
+        type: s3
+        s3:
+          bucket: mongodb-backups-medium-tier
+          credentialsSecret: s3-backup-credentials
+          region: us-east-1
+          prefix: "pool-01"
+
+    pitr:
+      enabled: true
+      compressionType: gzip
+      compressionLevel: 6
+      oplogSpanMin: 120  # 2 hours oplog retention
+
+    tasks:
+      - name: daily-physical
+        enabled: true
+        schedule: "0 2 * * *"
+        storageName: s3-medium-tier
+        type: physical
+        compressionType: gzip
+        keep: 7  # Keep 7 days
+
+      - name: weekly
+        enabled: true
+        schedule: "0 3 * * 0"
+        storageName: s3-medium-tier
+        type: physical
+        keep: 4  # Keep 4 weeks
+
+    resources:
+      limits:
+        cpu: "1"
+        memory: "2Gi"
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+
+  pmm:
+    enabled: true
+    image: percona/pmm-client:2
+    serverHost: pmm-server.monitoring.svc.cluster.local
+    resources:
+      limits:
+        cpu: "500m"
+        memory: "1Gi"
+      requests:
+        cpu: "300m"
+        memory: "512Mi"

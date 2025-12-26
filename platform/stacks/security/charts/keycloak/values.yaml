@@ -4,8 +4,13 @@
 vaultIntegration:
   mount: secret
   adminPath: applications/security/keycloak/admin
-  providerPath: applications/security/keycloak/provider
-  postgresPath: applications/security/keycloak/postgres
+  # Optional override for Keycloak URL used by Crossplane provider credentials.
+  # Default (when empty): http://<helm-release>.<namespace>.svc
+  baseUrl: ""
+  username: admin
+
+  # Must match the bootstrap SecretSpec + PushSecret destination
+  postgresPath: applications/security/keycloak/database
 
 keycloak:
   # Keycloak image - using bitnamilegacy (free)

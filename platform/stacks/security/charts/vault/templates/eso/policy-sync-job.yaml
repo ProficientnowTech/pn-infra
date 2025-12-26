@@ -1,0 +1,54 @@
+{{- $cfg := .Values.eso }}
+{{- if and $cfg $cfg.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "pn-vault.fullname" . }}-eso-policy-sync
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded,HookFailed
+    argocd.argoproj.io/sync-wave: "64"
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: policy-sync
+        image: hashicorp/vault:1.20.3
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -eu
+          export VAULT_ADDR="{{ $cfg.providerUrl | default "http://vault-active.vault.svc:8200" }}"
+          export VAULT_TOKEN="${VAULT_TOKEN}"
+
+          # Wait for Vault to be ready.
+          attempt=0
+          until vault status >/dev/null 2>&1; do
+            attempt=$((attempt+1))
+            if [ "$attempt" -ge 60 ]; then
+              echo "Timed out waiting for Vault to become ready"
+              exit 1
+            fi
+            sleep 5
+          done
+
+          printf '%s\n' \
+            'path "secret/data/applications/*" {' \
+            '  capabilities = ["create", "update", "read", "list"]' \
+            '}' \
+            'path "secret/metadata/applications/*" {' \
+            '  capabilities = ["create", "update", "read", "list"]' \
+            '}' \
+            | vault policy write external-secrets-policy -
+        env:
+        - name: VAULT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: vault-init
+              key: root_token
+{{- end }}
+

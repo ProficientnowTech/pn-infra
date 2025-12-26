@@ -5,7 +5,8 @@ kind: ProviderConfig
 metadata:
   name: {{ $cfg.name }}
   annotations:
-    argocd.argoproj.io/sync-wave: "0"
+    # ProviderConfig CRDs are installed by the provider package.
+    argocd.argoproj.io/sync-wave: "80"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   address: {{ $cfg.address | quote }}

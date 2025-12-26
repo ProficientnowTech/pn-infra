@@ -8,7 +8,10 @@ kind: Provider
 metadata:
   name: {{ $name }}
   annotations:
-    argocd.argoproj.io/sync-wave: "-5"
+    # Crossplane installs its CRDs after the core controller is deployed.
+    # Creating Provider resources too early fails with:
+    #   no matches for kind "Provider" in version "pkg.crossplane.io/v1"
+    argocd.argoproj.io/sync-wave: "10"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   package: {{ $pkg | quote }}

@@ -59,7 +59,10 @@ rook-ceph:
     rbdLivenessMetricsPort: 8080
 
     serviceMonitor:
-      enabled: true
+      # Disable by default: requires Prometheus Operator CRDs (ServiceMonitor).
+      # Without them ArgoCD sync fails with:
+      #   monitoring.coreos.com/ServiceMonitor ... Make sure the "ServiceMonitor" CRD is installed
+      enabled: false
 
     nfs:
       enabled: false
@@ -81,7 +84,8 @@ rook-ceph:
 
   # Monitoring configuration
   monitoring:
-    enabled: true
+    # Disable by default: depends on Prometheus Operator CRDs (ServiceMonitor/PrometheusRule).
+    enabled: false
 
   # Security context
   containerSecurityContext:

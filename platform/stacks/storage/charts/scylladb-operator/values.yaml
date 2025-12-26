@@ -22,7 +22,12 @@ scylla-operator:
 
   # Operator image configuration
   image:
-    repository: scylladb/scylla-operator
+    # The upstream chart renders the image as:
+    #   {{ .Values.image.repository }}/scylla-operator:{{ .Values.image.tag | default .Chart.AppVersion }}
+    # So repository must be the *org/registry prefix* (e.g. "scylladb"), not the full repo.
+    # Setting it to "scylladb/scylla-operator" results in an invalid image like:
+    #   scylladb/scylla-operator/scylla-operator:<tag>
+    repository: scylladb
     pullPolicy: IfNotPresent
 
   # Log level: 0-9 (higher = more detailed)

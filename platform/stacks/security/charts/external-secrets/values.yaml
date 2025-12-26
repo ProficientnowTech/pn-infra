@@ -43,7 +43,9 @@ external-secrets:
     enabled: true
     runAsNonRoot: true
     runAsUser: 1000
-    fsGroup: 1000
+    # NOTE: `fsGroup` is a PodSecurityContext field (not container securityContext).
+    # Setting it here breaks apply with:
+    #   containers[name="external-secrets"].securityContext.fsGroup: field not declared in schema
     seccompProfile:
       type: RuntimeDefault
 

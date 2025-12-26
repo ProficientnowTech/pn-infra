@@ -111,7 +111,9 @@ postgres-operator:
     runAsNonRoot: true
     runAsUser: 1000
     runAsGroup: 1000
-    fsGroup: 1000
+    # NOTE: `fsGroup` is a PodSecurityContext field, not a container securityContext field.
+    # Setting it here breaks apply/diff with:
+    #   containers[name="postgres-operator"].securityContext.fsGroup: field not declared in schema
 
 # CRDs - the operator will manage these
 crds:

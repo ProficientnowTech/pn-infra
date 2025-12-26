@@ -355,7 +355,8 @@ monitoring:
 
 crossplaneProvider:
   enabled: true
-  package: xpkg.upbound.io/upbound/provider-vault:v0.8.0
+  # NOTE: provider-vault uses v2/v3 tags in xpkg (v0.x does not exist and 404s).
+  package: xpkg.upbound.io/upbound/provider-vault:v3.0.3
   providerConfig:
     name: vault-admin
     address: http://vault-active.vault.svc.cluster.local:8200

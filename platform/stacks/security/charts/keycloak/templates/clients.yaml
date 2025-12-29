@@ -17,8 +17,7 @@ spec:
     clientId: {{ $client.clientId }}
     name: {{ $client.displayName | default $client.clientId | quote }}
     description: {{ $client.description | quote }}
-    publicClient: {{ $client.publicClient | default false }}
-    protocol: {{ $client.protocol | default "openid-connect" }}
+    accessType: {{ ternary "PUBLIC" "CONFIDENTIAL" ($client.publicClient | default false) | quote }}
     standardFlowEnabled: {{ $client.standardFlowEnabled | default true }}
     implicitFlowEnabled: {{ $client.implicitFlowEnabled | default false }}
     directAccessGrantsEnabled: {{ $client.directAccessGrantsEnabled | default false }}
@@ -37,23 +36,32 @@ spec:
       - {{ . }}
 {{- end }}
 {{- end }}
-{{- if $client.defaultClientScopes }}
-    defaultClientScopes:
-{{- range $client.defaultClientScopes }}
-      - {{ . }}
-{{- end }}
-{{- end }}
-{{- if $client.optionalClientScopes }}
-    optionalClientScopes:
-{{- range $client.optionalClientScopes }}
-      - {{ . }}
-{{- end }}
-{{- end }}
-{{- if and (not $client.publicClient) $client.secretRef }}
+{{- if and (not ($client.publicClient | default false)) $client.secretRef }}
     clientSecretSecretRef:
       namespace: {{ $root.Release.Namespace }}
       name: {{ $client.secretRef.name | default (printf "pcp-%s-client-secret" $client.name) }}
       key: {{ $client.secretRef.key | default "client-secret" }}
 {{- end }}
 ---
+{{- if $client.defaultClientScopes }}
+apiVersion: openidclient.keycloak.crossplane.io/v1alpha1
+kind: ClientDefaultScopes
+metadata:
+  name: {{ printf "%s-%s-default-scopes" (include "pn-keycloak.fullname" $root) $client.name | trunc 63 | trimSuffix "-" }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "21"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  providerConfigRef:
+    name: {{ printf "%s-crossplane" (include "pn-keycloak.fullname" $root) }}
+  forProvider:
+    realmId: {{ $realm.name }}
+    clientIdRef:
+      name: {{ printf "%s-%s" (include "pn-keycloak.fullname" $root) $client.name | trunc 63 | trimSuffix "-" }}
+    defaultScopes:
+{{- range $client.defaultClientScopes }}
+      - {{ . }}
+{{- end }}
+---
+{{- end }}
 {{- end }}

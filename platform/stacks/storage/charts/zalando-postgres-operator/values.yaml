@@ -19,8 +19,15 @@ postgres-operator:
 
   # Operator image
   image:
-    repository: registry.opensource.zalan.do/acid/postgres-operator
-    tag: v1.14.0
+    # Use the upstream public image coordinates expected by the chart:
+    # image = <registry>/<repository>:<tag>
+    # Avoid setting repository to a full registry URL, otherwise the default
+    # `image.registry: ghcr.io` produces an invalid image like:
+    #   ghcr.io/registry.opensource.zalan.do/acid/postgres-operator:...
+    # which fails with 403 when fetching an anonymous token from GHCR.
+    registry: ghcr.io
+    repository: zalando/postgres-operator
+    tag: v1.15.0
     pullPolicy: IfNotPresent
 
   # AWS/GCP Configuration

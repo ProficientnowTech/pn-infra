@@ -14,6 +14,9 @@ redis-operator:
       # The address the metrics endpoint binds to
       bindAddress: ":8080"
 
+    # Enable webhook since we use cert-manager below for automatic certificates.
+    webhook: true
+
   resources:
     limits:
       cpu: 500m

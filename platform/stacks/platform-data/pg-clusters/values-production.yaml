@@ -3,11 +3,12 @@
 
 # Global TLS Configuration
 tls:
-  # Don't create issuer - use existing letsencrypt-production
-  createIssuer: false
-  # Use Let's Encrypt for public TLS certificates
-  issuerName: letsencrypt-production
-  issuerType: acme
+  # Create an internal ClusterIssuer for PostgreSQL TLS.
+  # ACME (Let's Encrypt) cannot issue certs for internal service DNS names like
+  # `*.svc.cluster.local`, which are included in the SANs for each cluster.
+  createIssuer: true
+  issuerName: platform-postgres-ca
+  issuerType: selfSigned
 
 # Global External Access Configuration
 # SHARED IPs for all databases (different ports per database)

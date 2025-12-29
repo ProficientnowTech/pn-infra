@@ -47,15 +47,16 @@ stacks:
   dependencies:
   - platform-security
 
-# - name: platform-data-streaming
-#   description: "Kafka/Strimzi and related streaming services"
-#   project: data-streaming
-#   syncWave: "10"
-#   chart:
-#     path: platform/stacks/data-streaming/target-chart
-#     valuesFile: platform/stacks/data-streaming/target-chart/values-production.yaml
-#   dependencies:
-#     - platform-monitoring
+- name: platform-data-streaming
+  description: "Kafka/Strimzi and related streaming services"
+  project: data-streaming
+  syncWave: "10"
+  chart:
+    path: platform/stacks/data-streaming/target-chart
+    valuesFile: platform/stacks/data-streaming/target-chart/values-production.yaml
+  dependencies:
+  - platform-monitoring
+
 # - name: platform-developer-platform
 #   description: "Harbor, Backstage, Verdaccio, KubeVirt, ClusterAPI"
 #   project: developer-platform

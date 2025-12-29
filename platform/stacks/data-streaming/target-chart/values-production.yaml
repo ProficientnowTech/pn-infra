@@ -1,1 +1,13 @@
-applications: []
+applications:
+- name: strimzi-kafka-operator
+  project: data-streaming
+  sources:
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/data-streaming/charts/kafka
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: strimzi-kafka-operator
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true

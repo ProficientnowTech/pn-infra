@@ -34,6 +34,10 @@ spec:
   # High Availability Configuration
   numberOfInstances: {{ .numberOfInstances | default 3 }}
 
+  # Spilo security context
+  # Ensures Postgres can read TLS Secret volume files (mounted with mode 0640).
+  spiloFSGroup: {{ .spiloFSGroup | default 103 }}
+
   # Enable load balancers
   enableMasterLoadBalancer: {{ $lbMaster.enabled | default true }}
   enableReplicaLoadBalancer: {{ $lbReplica.enabled | default true }}

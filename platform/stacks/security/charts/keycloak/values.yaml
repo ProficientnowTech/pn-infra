@@ -4,6 +4,14 @@
 vaultIntegration:
   mount: secret
   adminPath: applications/security/keycloak/admin
+  # If true, Keycloak chart will create ExternalSecrets for:
+  # - `keycloak-admin-secret`
+  # - `keycloak-postgresql-secret`
+  #
+  # Keep this `false` when using the bootstrap SecretSpec pipeline
+  # (`platform/bootstrap/secrets/specs/*`) because it already creates these
+  # Secrets via SealedSecrets, and ESO will fail with "failed to take ownership".
+  manageKeycloakSecrets: false
   # Optional override for Keycloak URL used by Crossplane provider credentials.
   # Default (when empty): http://<helm-release>.<namespace>.svc
   baseUrl: ""

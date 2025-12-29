@@ -4,7 +4,7 @@ default:
   repoURL: https://github.com/ProficientnowTech/pn-infra.git
   targetRevision: v2
 global:
-  project: platform-data
+  project: databases
   syncPolicy:
     automated:
       prune: true

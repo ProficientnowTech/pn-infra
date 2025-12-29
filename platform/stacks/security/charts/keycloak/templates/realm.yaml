@@ -41,10 +41,14 @@ spec:
     ssoSessionMaxLifespan: {{ printf "%ds" (int $realm.ssoSessionMaxLifespan) | quote }}
     offlineSessionIdleTimeout: {{ printf "%ds" (int $realm.offlineSessionIdleTimeout) | quote }}
     loginTheme: {{ $realm.loginTheme }}
+    {{- if $realm.attributes }}
     attributes:
-{{- range $key, $val := $realm.attributes }}
-      {{ $key }}: {{ index $val 0 | quote }}
-{{- end }}
+    {{- range $key, $val := $realm.attributes }}
+      {{ $key }}: {{ $val | quote }}
+    {{- end }}
+    {{- else }}
+    attributes: {}
+    {{- end }}
     internationalization:
       - defaultLocale: {{ $realm.defaultLocale | default "en" }}
         supportedLocales:

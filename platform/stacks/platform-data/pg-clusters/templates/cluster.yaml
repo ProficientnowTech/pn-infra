@@ -267,17 +267,6 @@ spec:
       value: "/etc/postgres-exporter/queries.yaml"
     {{- end }}
 
-  # Pod Anti-Affinity for HA - spread pods across nodes
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-    - weight: 100
-      podAffinityTerm:
-        labelSelector:
-          matchLabels:
-            app.kubernetes.io/name: {{ .name }}
-            app.kubernetes.io/component: database
-        topologyKey: kubernetes.io/hostname
-
   # Node affinity for dedicated PostgreSQL nodes (if specified)
   {{- if .nodeAffinity }}
   nodeAffinity:
@@ -289,10 +278,6 @@ spec:
   tolerations:
   {{- toYaml .tolerations | nindent 2 }}
   {{- end }}
-
-  # Pod Disruption Budget for HA
-  podDisruptionBudget:
-    minAvailable: {{ .pdb.minAvailable | default 1 }}
 
   # Maintenance windows (if specified)
   {{- if .maintenanceWindows }}

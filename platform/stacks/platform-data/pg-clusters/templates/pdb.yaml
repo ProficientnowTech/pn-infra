@@ -1,0 +1,30 @@
+{{- range .Values.pgClusters }}
+{{- $pdb := .pdb | default dict }}
+{{- if or $pdb.minAvailable $pdb.maxUnavailable }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .name }}-pdb
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: database
+    app.kubernetes.io/managed-by: postgres-operator
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $pdb.syncWave | default "2" | quote }}
+spec:
+  selector:
+    matchLabels:
+      application: spilo
+      cluster-name: {{ .name | quote }}
+  {{- if $pdb.maxUnavailable }}
+  maxUnavailable: {{ $pdb.maxUnavailable }}
+  {{- else }}
+  minAvailable: {{ $pdb.minAvailable | default 1 }}
+  {{- end }}
+{{- end }}
+{{- end }}

@@ -27,6 +27,14 @@ stacks:
   dependencies:
   - platform-infrastructure
   - platform-storage
+- name: platform-data
+  description: "PostgreSQL clusters, Redis KV, other data services"
+  project: databases
+  syncWave: "20"
+  chart:
+    path: platform/stacks/platform-data/target-chart
+    valuesFile: platform/stacks/platform-data/target-chart/values-production.yaml
+  dependencies: []
 
 # - name: platform-monitoring
 #   description: "Prometheus, Loki, Tempo, Grafana, Uptime, Kubecost"
@@ -46,15 +54,6 @@ stacks:
 #     valuesFile: platform/stacks/data-streaming/target-chart/values-production.yaml
 #   dependencies:
 #     - platform-monitoring
-# - name: platform-data
-#   description: "PostgreSQL clusters, Redis KV, other data services"
-#   project: databases
-#   syncWave: "20"
-#   chart:
-#     path: platform/stacks/platform-data/target-chart
-#     valuesFile: platform/stacks/platform-data/target-chart/values-production.yaml
-#   dependencies:
-#     - platform-data-streaming
 # - name: platform-developer-platform
 #   description: "Harbor, Backstage, Verdaccio, KubeVirt, ClusterAPI"
 #   project: developer-platform

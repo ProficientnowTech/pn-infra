@@ -46,9 +46,9 @@ metadata:
     external-dns.alpha.kubernetes.io/ttl: "300"
 
     # MetalLB configuration - SHARED IP for all write endpoints
-    metallb.universe.tf/address-pool: public-pool
-    metallb.universe.tf/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.write }}
-    metallb.universe.tf/allow-shared-ip: pn-pg-write
+    metallb.io/address-pool: public-pool
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.write }}
+    metallb.io/allow-shared-ip: pn-pg-write
 
     # Description
     service.kubernetes.io/description: "PostgreSQL {{ .name }} - Write endpoint (pooled) on shared IP port {{ .externalAccess.port }}"
@@ -58,7 +58,6 @@ metadata:
     {{- end }}
 spec:
   type: LoadBalancer
-  loadBalancerIP: {{ $.Values.externalAccess.sharedIPs.write }}
 
   # Security: Restrict access to specific source IPs
   {{- if .externalAccess.write.allowedSourceRanges }}
@@ -121,9 +120,9 @@ metadata:
     external-dns.alpha.kubernetes.io/ttl: "300"
 
     # MetalLB configuration - SHARED IP for all read endpoints
-    metallb.universe.tf/address-pool: public-pool
-    metallb.universe.tf/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.read }}
-    metallb.universe.tf/allow-shared-ip: pn-pg-read
+    metallb.io/address-pool: public-pool
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.read }}
+    metallb.io/allow-shared-ip: pn-pg-read
 
     # Description
     service.kubernetes.io/description: "PostgreSQL {{ .name }} - Read endpoint (pooled) on shared IP port {{ .externalAccess.port }}"
@@ -133,7 +132,6 @@ metadata:
     {{- end }}
 spec:
   type: LoadBalancer
-  loadBalancerIP: {{ $.Values.externalAccess.sharedIPs.read }}
 
   # Security: Restrict access to specific source IPs
   {{- if .externalAccess.read.allowedSourceRanges }}
@@ -191,9 +189,9 @@ metadata:
     external-dns.alpha.kubernetes.io/ttl: "300"
 
     # MetalLB configuration - SHARED IP for all admin endpoints
-    metallb.universe.tf/address-pool: public-pool
-    metallb.universe.tf/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.admin }}
-    metallb.universe.tf/allow-shared-ip: pn-pg-admin
+    metallb.io/address-pool: public-pool
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.admin }}
+    metallb.io/allow-shared-ip: pn-pg-admin
 
     # Description
     service.kubernetes.io/description: "PostgreSQL {{ .name }} - Admin endpoint (direct, no pooling) on shared IP port {{ .externalAccess.port }}"
@@ -203,7 +201,6 @@ metadata:
     {{- end }}
 spec:
   type: LoadBalancer
-  loadBalancerIP: {{ $.Values.externalAccess.sharedIPs.admin }}
 
   # Security: STRICTLY restrict admin access
   {{- if .externalAccess.admin.allowedSourceRanges }}

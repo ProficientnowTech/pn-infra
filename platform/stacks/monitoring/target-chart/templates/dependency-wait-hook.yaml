@@ -71,8 +71,8 @@ data:
     for dep in $(echo "${DEPENDENCIES}" | tr ',' ' '); do
       echo "Checking dependency ${dep}..."
       while true; do
-        syncStatus=$(kubectl get application "${dep}" -n "${ARGOCD_NAMESPACE}" -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
-        healthStatus=$(kubectl get application "${dep}" -n "${ARGOCD_NAMESPACE}" -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
+        syncStatus=$(kubectl get applications.argoproj.io "${dep}" -n "${ARGOCD_NAMESPACE}" -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "Unknown")
+        healthStatus=$(kubectl get applications.argoproj.io "${dep}" -n "${ARGOCD_NAMESPACE}" -o jsonpath='{.status.health.status}' 2>/dev/null || echo "Unknown")
 
         if [ "${syncStatus}" = "Synced" ] && [ "${healthStatus}" = "Healthy" ]; then
           echo "Dependency ${dep} is Synced/Healthy."
@@ -93,7 +93,7 @@ metadata:
   namespace: {{ $namespace }}
   annotations:
     argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded,HookFailed
     argocd.argoproj.io/hook-weight: "0"
 spec:
   backoffLimit: 0

@@ -1,0 +1,48 @@
+{{- /*
+Create the Zalando operator's pod-environment ConfigMap in every namespace where
+we deploy Postgres clusters, so the operator can generate Spilo env vars for
+backups without requiring cross-namespace references.
+*/ -}}
+{{- $namespaces := dict }}
+{{- range .Values.pgClusters }}
+{{- $ns := (.namespace | default "") }}
+{{- if $ns }}
+{{- $_ := set $namespaces $ns true }}
+{{- end }}
+{{- end }}
+{{- range $ns, $_ := $namespaces }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-backup-config
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/name: postgres-operator
+    app.kubernetes.io/component: backup-config
+    platform.pnats.cloud/managed-by: platform-data-pg-clusters
+  annotations:
+    argocd.argoproj.io/sync-wave: "-25"
+data:
+  AWS_REGION: "ap-south-2"
+  AWS_ENDPOINT: ""
+  AWS_S3_FORCE_PATH_STYLE: "false"
+  AWS_EC2_METADATA_DISABLED: "true"
+  WALG_S3_PREFIX: "s3://pn-platform-db-backups/wal"
+  WALG_S3_SSE: "AES256"
+  WALG_S3_STORAGE_CLASS: "STANDARD"
+  WALG_DISABLE_S3_SSE: "false"
+  WALG_COMPRESSION_METHOD: "lz4"
+  WALG_UPLOAD_CONCURRENCY: "2"
+  WALG_DOWNLOAD_CONCURRENCY: "2"
+  WALG_BACKUP_COMPRESSION_METHOD: "lz4"
+  WALG_DELTA_MAX_STEPS: "6"
+  WALG_LOG_LEVEL: "NORMAL"
+  WALG_S3_LOG_LEVEL: "NORMAL"
+  USE_WALG_BACKUP: "true"
+  USE_WALG_RESTORE: "true"
+  CLONE_USE_WALG_RESTORE: "true"
+  BACKUP_SCHEDULE: "0 1 * * *"
+  BACKUP_NUM_TO_RETAIN: "7"
+{{- end }}
+

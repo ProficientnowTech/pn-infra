@@ -37,15 +37,16 @@ stacks:
     valuesFile: platform/stacks/platform-data/target-chart/values-production.yaml
   dependencies: []
 
-# - name: platform-monitoring
-#   description: "Prometheus, Loki, Tempo, Grafana, Uptime, Kubecost"
-#   project: monitoring
-#   syncWave: "0"
-#   chart:
-#     path: platform/stacks/monitoring/target-chart
-#     valuesFile: platform/stacks/monitoring/target-chart/values-production.yaml
-#   dependencies:
-#     - platform-security
+- name: platform-monitoring
+  description: "Prometheus, Loki, Tempo, Grafana, Uptime, Kubecost"
+  project: monitoring
+  syncWave: "0"
+  chart:
+    path: platform/stacks/monitoring/target-chart
+    valuesFile: platform/stacks/monitoring/target-chart/values-production.yaml
+  dependencies:
+  - platform-security
+
 # - name: platform-data-streaming
 #   description: "Kafka/Strimzi and related streaming services"
 #   project: data-streaming

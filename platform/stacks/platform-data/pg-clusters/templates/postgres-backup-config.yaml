@@ -40,9 +40,12 @@ data:
   WALG_LOG_LEVEL: "NORMAL"
   WALG_S3_LOG_LEVEL: "NORMAL"
   USE_WALG_BACKUP: "true"
-  USE_WALG_RESTORE: "true"
-  CLONE_USE_WALG_RESTORE: "true"
+  # IMPORTANT: keep `restore` disabled so new replicas bootstrap from the
+  # in-cluster primary (basebackup) instead of trying a WAL-G restore from S3.
+  # This avoids replica startup getting stuck on `wale_restore.sh` when there is
+  # no base backup available yet.
+  USE_WALG_RESTORE: "false"
+  CLONE_USE_WALG_RESTORE: "false"
   BACKUP_SCHEDULE: "0 1 * * *"
   BACKUP_NUM_TO_RETAIN: "7"
 {{- end }}
-

@@ -15,7 +15,7 @@ kube-prometheus-stack:
       storageSpec:
         volumeClaimTemplate:
           spec:
-            storageClassName: bulk-ec
+            storageClassName: infra-blk-hdd-ec
             accessModes: [ "ReadWriteOnce" ]
             resources:
               requests:
@@ -35,11 +35,21 @@ kube-prometheus-stack:
       storage:
         volumeClaimTemplate:
           spec:
-            storageClassName: bulk-ec
+            storageClassName: infra-blk-hdd-ec
             accessModes: [ "ReadWriteOnce" ]
             resources:
               requests:
                 storage: 10Gi
+
+  # Avoid BestEffort pods getting evicted first on memory pressure nodes.
+  prometheus-node-exporter:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
 
   grafana:
     enabled: false # We'll deploy Grafana separately

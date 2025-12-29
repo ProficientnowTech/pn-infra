@@ -34,7 +34,7 @@ cost-analyzer:
 
   persistentVolume:
     enabled: true
-    storageClass: bulk-ec
+    storageClass: infra-blk-hdd-ec
     size: 50Gi
 
   resources:

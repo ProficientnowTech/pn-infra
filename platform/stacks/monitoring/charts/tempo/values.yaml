@@ -7,7 +7,7 @@ tempo:
 
   persistence:
     enabled: true
-    storageClassName: bulk-ec
+    storageClassName: infra-blk-hdd-ec
     size: 50Gi
 
   resources:

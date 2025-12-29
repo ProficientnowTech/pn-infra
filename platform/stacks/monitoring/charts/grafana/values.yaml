@@ -25,7 +25,7 @@ grafana:
     passwordKey: admin-password
   persistence:
     enabled: true
-    storageClassName: bulk-ec
+    storageClassName: infra-blk-hdd-ec
     size: 10Gi
 
   ingress:

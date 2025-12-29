@@ -27,6 +27,7 @@ stacks:
   dependencies:
   - platform-infrastructure
   - platform-storage
+
 - name: platform-data
   description: "PostgreSQL clusters, Redis KV, other data services"
   project: databases

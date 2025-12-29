@@ -1,5 +1,6 @@
 applications:
 - name: pg-clusters
+  project: platform-data
   sources:
   - repoURL: https://github.com/ProficientnowTech/pn-infra.git
     targetRevision: v2

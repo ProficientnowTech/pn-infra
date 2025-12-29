@@ -4,6 +4,8 @@
 {{- $poolerReplica := $pooler.replica | default dict }}
 {{- if $tls.enabled }}
 {{- $privateKey := $tls.privateKey | default dict }}
+{{- $defaultIssuerName := ($.Values.tls.issuerName | default "platform-internal-ca") }}
+{{- $defaultIssuerKind := ($.Values.tls.issuerKind | default "ClusterIssuer") }}
 ---
 # TLS Certificate for PostgreSQL Cluster: {{ .name }}
 # Automatically provisions certificates via cert-manager
@@ -86,9 +88,9 @@ spec:
     group: {{ $tls.issuerRef.group }}
     {{- end }}
     {{- else }}
-    # Default to platform-internal CA issuer
-    name: {{ $tls.issuer | default "platform-internal-ca" }}
-    kind: {{ $tls.issuerKind | default "ClusterIssuer" }}
+    # Default to cluster-wide issuer from `.Values.tls.*`
+    name: {{ $tls.issuer | default $defaultIssuerName }}
+    kind: {{ $tls.issuerKind | default $defaultIssuerKind }}
     {{- end }}
 
   # Secret template - format for PostgreSQL compatibility

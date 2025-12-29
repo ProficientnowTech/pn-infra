@@ -92,6 +92,7 @@ applications:
   syncOptions:
   - CreateNamespace=true
   - ServerSideApply=true
+  - Replace=true
 
 commonLabels:
   platform.pnats.cloud/environment: 'production'

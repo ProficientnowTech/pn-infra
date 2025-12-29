@@ -1,6 +1,7 @@
 {{- $root := . }}
 {{- $realm := .Values.realm }}
 {{- range $group := .Values.groups }}
+{{- if ($group.enabled | default true) }}
 apiVersion: group.keycloak.crossplane.io/v1alpha1
 kind: Group
 metadata:
@@ -15,12 +16,16 @@ spec:
   forProvider:
     realmId: {{ $realm.name }}
     name: {{ $group.name }}
-    path: {{ $group.path | quote }}
 {{- if $group.attributes }}
     attributes:
 {{- range $key, $vals := $group.attributes }}
-      {{ $key }}: {{ index $vals 0 | quote }}
+      {{- if kindIs "slice" $vals }}
+      {{ $key }}: {{ join "##" $vals | quote }}
+      {{- else }}
+      {{ $key }}: {{ $vals | quote }}
+      {{- end }}
 {{- end }}
 {{- end }}
 ---
+{{- end }}
 {{- end }}

@@ -31,7 +31,7 @@ loki:
     replicas: 3
     persistence:
       enabled: true
-      storageClass: infra-blk-hdd-ec
+      storageClass: plt-blk-hdd-repl
       size: 50Gi
     resources:
       requests:

@@ -15,7 +15,7 @@ kube-prometheus-stack:
       storageSpec:
         volumeClaimTemplate:
           spec:
-            storageClassName: infra-blk-hdd-ec
+            storageClassName: plt-blk-hdd-repl
             accessModes: [ "ReadWriteOnce" ]
             resources:
               requests:
@@ -35,7 +35,7 @@ kube-prometheus-stack:
       storage:
         volumeClaimTemplate:
           spec:
-            storageClassName: infra-blk-hdd-ec
+            storageClassName: plt-blk-hdd-repl
             accessModes: [ "ReadWriteOnce" ]
             resources:
               requests:

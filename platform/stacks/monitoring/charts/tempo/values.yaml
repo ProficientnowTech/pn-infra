@@ -7,7 +7,7 @@ tempo:
 
   persistence:
     enabled: true
-    storageClassName: infra-blk-hdd-ec
+    storageClassName: plt-blk-hdd-repl
     size: 50Gi
 
   resources:

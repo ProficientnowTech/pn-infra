@@ -590,7 +590,11 @@ identityProviders:
 
 # Azure AD OIDC Provider
 - alias: azuread
-  enabled: true
+  # Disabled: provider-keycloak v0.5.0 (installed via Crossplane) does not ship
+  # IdentityProvider CRDs (e.g. `oidc.keycloak.crossplane.io/v1alpha1`), so Argo
+  # sync fails with "no matches for kind IdentityProvider". Enable only after
+  # we add a supported mechanism/provider for IdPs.
+  enabled: false
   providerId: oidc
   displayName: "Microsoft / Azure AD"
 

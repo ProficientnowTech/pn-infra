@@ -48,6 +48,7 @@ metadata:
     # MetalLB configuration - SHARED IP for all write endpoints
     metallb.universe.tf/address-pool: public-pool
     metallb.universe.tf/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.write }}
+    metallb.universe.tf/allow-shared-ip: pn-pg-write
 
     # Description
     service.kubernetes.io/description: "PostgreSQL {{ .name }} - Write endpoint (pooled) on shared IP port {{ .externalAccess.port }}"
@@ -122,6 +123,7 @@ metadata:
     # MetalLB configuration - SHARED IP for all read endpoints
     metallb.universe.tf/address-pool: public-pool
     metallb.universe.tf/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.read }}
+    metallb.universe.tf/allow-shared-ip: pn-pg-read
 
     # Description
     service.kubernetes.io/description: "PostgreSQL {{ .name }} - Read endpoint (pooled) on shared IP port {{ .externalAccess.port }}"
@@ -191,6 +193,7 @@ metadata:
     # MetalLB configuration - SHARED IP for all admin endpoints
     metallb.universe.tf/address-pool: public-pool
     metallb.universe.tf/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.admin }}
+    metallb.universe.tf/allow-shared-ip: pn-pg-admin
 
     # Description
     service.kubernetes.io/description: "PostgreSQL {{ .name }} - Admin endpoint (direct, no pooling) on shared IP port {{ .externalAccess.port }}"

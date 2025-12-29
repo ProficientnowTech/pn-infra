@@ -38,9 +38,12 @@ spec:
   # Ensures Postgres can read TLS Secret volume files (mounted with mode 0640).
   spiloFSGroup: {{ .spiloFSGroup | default 103 }}
 
-  # Enable load balancers
-  enableMasterLoadBalancer: {{ $lbMaster.enabled | default true }}
-  enableReplicaLoadBalancer: {{ $lbReplica.enabled | default true }}
+  # LoadBalancer Services
+  # Default off: we expose DBs externally via `external-services.yaml` using
+  # shared MetalLB IPs (different ports). Enabling per-cluster LoadBalancers
+  # here consumes additional IPs from the pool and can block shared-IP services.
+  enableMasterLoadBalancer: {{ $lbMaster.enabled | default false }}
+  enableReplicaLoadBalancer: {{ $lbReplica.enabled | default false }}
 
   {{- if $lb.allowedSourceRanges }}
   # Network security - restrict access to specific IP ranges
@@ -53,8 +56,8 @@ spec:
   # Enable Connection Pooling
   enableConnectionPooler: {{ $pooler.enabled | default true }}
   enableReplicaConnectionPooler: {{ $poolerReplica.enabled | default true }}
-  enableMasterPoolerLoadBalancer: {{ $poolerLbMaster.enabled | default true }}
-  enableReplicaPoolerLoadBalancer: {{ $poolerLbReplica.enabled | default true }}
+  enableMasterPoolerLoadBalancer: {{ $poolerLbMaster.enabled | default false }}
+  enableReplicaPoolerLoadBalancer: {{ $poolerLbReplica.enabled | default false }}
 
   # Storage configuration
   volume:

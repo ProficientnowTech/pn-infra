@@ -40,9 +40,9 @@ pgClusters:
     # Load Balancer with network restrictions
     lb:
       master:
-        enabled: true
+        enabled: false
       replica:
-        enabled: true
+        enabled: false
       # Restrict access to internal network only
       allowedSourceRanges:
         - 10.0.0.0/8
@@ -56,9 +56,9 @@ pgClusters:
         enabled: true
       lb:
         master:
-          enabled: true
+          enabled: false
         replica:
-          enabled: true
+          enabled: false
       resources:
         requests:
           cpu: 200m
@@ -202,9 +202,9 @@ pgClusters:
     # Load Balancer
     lb:
       master:
-        enabled: true
+        enabled: false
       replica:
-        enabled: true
+        enabled: false
       allowedSourceRanges:
         - 10.0.0.0/8
 
@@ -217,9 +217,9 @@ pgClusters:
         enabled: true
       lb:
         master:
-          enabled: true
+          enabled: false
         replica:
-          enabled: true
+          enabled: false
       resources:
         requests:
           cpu: 200m
@@ -355,9 +355,9 @@ pgClusters:
     # Load Balancer
     lb:
       master:
-        enabled: true
+        enabled: false
       replica:
-        enabled: true
+        enabled: false
       allowedSourceRanges:
         - 10.0.0.0/8
 
@@ -370,9 +370,9 @@ pgClusters:
         enabled: true
       lb:
         master:
-          enabled: true
+          enabled: false
         replica:
-          enabled: true
+          enabled: false
       resources:
         requests:
           cpu: 250m

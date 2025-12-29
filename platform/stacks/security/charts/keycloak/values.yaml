@@ -7,6 +7,9 @@ vaultIntegration:
   # Optional override for Keycloak URL used by Crossplane provider credentials.
   # Default (when empty): http://<helm-release>.<namespace>.svc
   baseUrl: ""
+  # Crossplane provider-keycloak expects `client_id` in ProviderConfig credentials.
+  # `admin-cli` works with username/password by default in Keycloak.
+  clientId: admin-cli
   username: admin
 
   # Must match the bootstrap SecretSpec + PushSecret destination

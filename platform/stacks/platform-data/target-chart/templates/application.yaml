@@ -33,9 +33,15 @@ spec:
   sources:
     {{- range .sources }}
     - repoURL: {{ .repoURL }}
+      targetRevision: {{ .targetRevision | default "main" }}
       {{- if .chart }}
       chart: {{ .chart }}
-      targetRevision: {{ .targetRevision }}
+      {{- end }}
+      {{- if .path }}
+      path: {{ .path }}
+      {{- else if .ref }}
+      ref: {{ .ref }}
+      {{- end }}
       {{- if .helm }}
       helm:
         {{- if .helm.releaseName }}
@@ -55,14 +61,6 @@ spec:
           {{- end }}
         {{- end }}
       {{- end }}
-      {{- else }}
-      targetRevision: {{ .targetRevision | default "main" }}
-      {{- if .path }}
-      path: {{ .path }}
-      {{- else if .ref }}
-      ref: {{ .ref }}
-      {{- end }}
-      {{- end }}
     {{- end }}
   {{- else }}
   source:
@@ -70,6 +68,9 @@ spec:
     targetRevision: {{ .targetRevision | default $.Values.default.targetRevision | default "main" }}
     {{- if .chart }}
     chart: {{ .chart }}
+    {{- else }}
+    path: {{ .path | default (printf "platform/stacks/platform-data/charts/%s" .name) }}
+    {{- end }}
     {{- if .helm }}
     helm:
       {{- if .helm.releaseName }}
@@ -89,17 +90,10 @@ spec:
         {{- end }}
       {{- end }}
     {{- end }}
-    {{- else }}
-    path: {{ .path | default (printf "platform/stacks/platform-data/charts/%s" .name) }}
-    {{- end }}
   {{- end }}
   destination:
     server: {{ .destinationServer | default "https://kubernetes.default.svc" }}
-    {{- if .destinationNamespaceOverwrite }}
-    namespace: {{ .destinationNamespaceOverwrite }}
-    {{- else }}
-    namespace: {{ .namespace | default .name }}
-    {{- end }}
+    namespace: {{ .destinationNamespaceOverwrite | default (.namespace | default .name) }}
   syncPolicy:
     {{- if .syncPolicy }}
     {{- toYaml .syncPolicy | nindent 4 }}

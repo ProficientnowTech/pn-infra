@@ -5,6 +5,9 @@ applications:
   - repoURL: https://github.com/ProficientnowTech/pn-infra.git
     targetRevision: v2
     path: platform/stacks/platform-data/pg-clusters
+    helm:
+      valueFiles:
+      - values-production.yaml
   destinationNamespaceOverwrite: 'platform-pg-clusters'
   syncOptions:
   - ServerSideApply=true

@@ -1,4 +1,20 @@
 {{- range .Values.pgClusters }}
+{{- $lb := .lb | default dict }}
+{{- $lbMaster := $lb.master | default dict }}
+{{- $lbReplica := $lb.replica | default dict }}
+{{- $pooler := .pooler | default dict }}
+{{- $poolerReplica := $pooler.replica | default dict }}
+{{- $poolerLb := $pooler.lb | default dict }}
+{{- $poolerLbMaster := $poolerLb.master | default dict }}
+{{- $poolerLbReplica := $poolerLb.replica | default dict }}
+{{- $resources := .resources | default dict }}
+{{- $resourcesRequests := $resources.requests | default dict }}
+{{- $resourcesLimits := $resources.limits | default dict }}
+{{- $patroni := .patroni | default dict }}
+{{- $monitoring := .monitoring | default dict }}
+{{- $monitoringResources := $monitoring.resources | default dict }}
+{{- $monitoringRequests := $monitoringResources.requests | default dict }}
+{{- $monitoringLimits := $monitoringResources.limits | default dict }}
 ---
 apiVersion: "acid.zalan.do/v1"
 kind: postgresql
@@ -19,22 +35,22 @@ spec:
   numberOfInstances: {{ .numberOfInstances | default 3 }}
 
   # Enable load balancers
-  enableMasterLoadBalancer: {{ .lb.master.enabled | default true }}
-  enableReplicaLoadBalancer: {{ .lb.replica.enabled | default true }}
+  enableMasterLoadBalancer: {{ $lbMaster.enabled | default true }}
+  enableReplicaLoadBalancer: {{ $lbReplica.enabled | default true }}
 
-  {{- if .lb.allowedSourceRanges }}
+  {{- if $lb.allowedSourceRanges }}
   # Network security - restrict access to specific IP ranges
   allowedSourceRanges:
-  {{- range .lb.allowedSourceRanges }}
+  {{- range $lb.allowedSourceRanges }}
   - {{ . | quote }}
   {{- end }}
   {{- end }}
 
   # Enable Connection Pooling
-  enableConnectionPooler: {{ .pooler.enabled | default true }}
-  enableReplicaConnectionPooler: {{ .pooler.replica.enabled | default true }}
-  enableMasterPoolerLoadBalancer: {{ .pooler.lb.master.enabled | default true }}
-  enableReplicaPoolerLoadBalancer: {{ .pooler.lb.replica.enabled | default true }}
+  enableConnectionPooler: {{ $pooler.enabled | default true }}
+  enableReplicaConnectionPooler: {{ $poolerReplica.enabled | default true }}
+  enableMasterPoolerLoadBalancer: {{ $poolerLbMaster.enabled | default true }}
+  enableReplicaPoolerLoadBalancer: {{ $poolerLbReplica.enabled | default true }}
 
   # Storage configuration
   volume:
@@ -94,11 +110,11 @@ spec:
   # Resource allocation
   resources:
     requests:
-      cpu: {{ .resources.requests.cpu | default "500m" }}
-      memory: {{ .resources.requests.memory | default "1Gi" }}
+      cpu: {{ $resourcesRequests.cpu | default "500m" }}
+      memory: {{ $resourcesRequests.memory | default "1Gi" }}
     limits:
-      cpu: {{ .resources.limits.cpu | default "2000m" }}
-      memory: {{ .resources.limits.memory | default "4Gi" }}
+      cpu: {{ $resourcesLimits.cpu | default "2000m" }}
+      memory: {{ $resourcesLimits.memory | default "4Gi" }}
 
   # Users and their permissions
   # Always include platform_admin (from Keycloak) and postgres_exporter (for monitoring)
@@ -141,17 +157,17 @@ spec:
 
   # Connection pooler configuration
   connectionPooler:
-    numberOfInstances: {{ .pooler.instances | default 2 }}
-    mode: {{ .pooler.mode | default "transaction" }}
-    schema: {{ .pooler.schema | default "pooler" }}
-    user: {{ .pooler.user | default "pooler" }}
+    numberOfInstances: {{ $pooler.instances | default 2 }}
+    mode: {{ $pooler.mode | default "transaction" }}
+    schema: {{ $pooler.schema | default "pooler" }}
+    user: {{ $pooler.user | default "pooler" }}
     resources:
       requests:
-        cpu: {{ .pooler.resources.requests.cpu | default "100m" }}
-        memory: {{ .pooler.resources.requests.memory | default "128Mi" }}
+        cpu: {{ (($pooler.resources | default dict).requests | default dict).cpu | default "100m" }}
+        memory: {{ (($pooler.resources | default dict).requests | default dict).memory | default "128Mi" }}
       limits:
-        cpu: {{ .pooler.resources.limits.cpu | default "500m" }}
-        memory: {{ .pooler.resources.limits.memory | default "256Mi" }}
+        cpu: {{ (($pooler.resources | default dict).limits | default dict).cpu | default "500m" }}
+        memory: {{ (($pooler.resources | default dict).limits | default dict).memory | default "256Mi" }}
 
   # Patroni configuration for HA (hardcoded for consistency)
   patroni:
@@ -179,10 +195,10 @@ spec:
     maximum_lag_on_failover: 33554432  # 32MB
 
     # Synchronous replication (disabled by default for performance)
-    synchronous_mode: {{ .patroni.synchronousMode | default false }}
-    synchronous_mode_strict: {{ .patroni.synchronousModeStrict | default false }}
-    {{- if .patroni.synchronousNodeCount }}
-    synchronous_node_count: {{ .patroni.synchronousNodeCount }}
+    synchronous_mode: {{ $patroni.synchronousMode | default false }}
+    synchronous_mode_strict: {{ $patroni.synchronousModeStrict | default false }}
+    {{- if $patroni.synchronousNodeCount }}
+    synchronous_node_count: {{ $patroni.synchronousNodeCount }}
     {{- end }}
 
     # Slots for logical replication
@@ -223,18 +239,18 @@ spec:
   # Sidecars - Prometheus exporter for monitoring
   sidecars:
   - name: exporter
-    image: {{ .monitoring.exporterImage | default "quay.io/prometheuscommunity/postgres-exporter:v0.15.0" }}
+    image: {{ $monitoring.exporterImage | default "quay.io/prometheuscommunity/postgres-exporter:v0.15.0" }}
     ports:
     - name: exporter
       containerPort: 9187
       protocol: TCP
     resources:
       requests:
-        cpu: {{ .monitoring.resources.requests.cpu | default "50m" }}
-        memory: {{ .monitoring.resources.requests.memory | default "64Mi" }}
+        cpu: {{ $monitoringRequests.cpu | default "50m" }}
+        memory: {{ $monitoringRequests.memory | default "64Mi" }}
       limits:
-        cpu: {{ .monitoring.resources.limits.cpu | default "200m" }}
-        memory: {{ .monitoring.resources.limits.memory | default "128Mi" }}
+        cpu: {{ $monitoringLimits.cpu | default "200m" }}
+        memory: {{ $monitoringLimits.memory | default "128Mi" }}
     env:
     - name: DATA_SOURCE_URI
       value: "localhost:5432/postgres?sslmode=disable"

@@ -1,6 +1,9 @@
 {{- range .Values.pgClusters }}
-{{- if .tls }}
-{{- if .tls.enabled }}
+{{- $tls := .tls | default dict }}
+{{- $pooler := .pooler | default dict }}
+{{- $poolerReplica := $pooler.replica | default dict }}
+{{- if $tls.enabled }}
+{{- $privateKey := $tls.privateKey | default dict }}
 ---
 # TLS Certificate for PostgreSQL Cluster: {{ .name }}
 # Automatically provisions certificates via cert-manager
@@ -47,45 +50,45 @@ spec:
   - {{ .name }}-repl.{{ .namespace }}.svc
   - {{ .name }}-repl.{{ .namespace }}
 
-  {{- if .pooler.enabled }}
+  {{- if ($pooler.enabled | default false) }}
   # Connection pooler services
   - {{ .name }}-pooler.{{ .namespace }}.svc.cluster.local
   - {{ .name }}-pooler.{{ .namespace }}.svc
   - {{ .name }}-pooler.{{ .namespace }}
-  {{- if .pooler.replica.enabled }}
+  {{- if ($poolerReplica.enabled | default false) }}
   - {{ .name }}-pooler-repl.{{ .namespace }}.svc.cluster.local
   - {{ .name }}-pooler-repl.{{ .namespace }}.svc
   - {{ .name }}-pooler-repl.{{ .namespace }}
   {{- end }}
   {{- end }}
 
-  {{- if .tls.additionalDNSNames }}
+  {{- if $tls.additionalDNSNames }}
   # Additional DNS names (e.g., external load balancer)
-  {{- range .tls.additionalDNSNames }}
+  {{- range $tls.additionalDNSNames }}
   - {{ . }}
   {{- end }}
   {{- end }}
 
   # IP addresses (if needed for direct IP access)
-  {{- if .tls.ipAddresses }}
+  {{- if $tls.ipAddresses }}
   ipAddresses:
-  {{- range .tls.ipAddresses }}
+  {{- range $tls.ipAddresses }}
   - {{ . }}
   {{- end }}
   {{- end }}
 
   # Issuer reference
   issuerRef:
-    {{- if .tls.issuerRef }}
-    name: {{ .tls.issuerRef.name }}
-    kind: {{ .tls.issuerRef.kind | default "ClusterIssuer" }}
-    {{- if .tls.issuerRef.group }}
-    group: {{ .tls.issuerRef.group }}
+    {{- if $tls.issuerRef }}
+    name: {{ $tls.issuerRef.name }}
+    kind: {{ $tls.issuerRef.kind | default "ClusterIssuer" }}
+    {{- if $tls.issuerRef.group }}
+    group: {{ $tls.issuerRef.group }}
     {{- end }}
     {{- else }}
     # Default to platform-internal CA issuer
-    name: {{ .tls.issuer | default "platform-internal-ca" }}
-    kind: {{ .tls.issuerKind | default "ClusterIssuer" }}
+    name: {{ $tls.issuer | default "platform-internal-ca" }}
+    kind: {{ $tls.issuerKind | default "ClusterIssuer" }}
     {{- end }}
 
   # Secret template - format for PostgreSQL compatibility
@@ -100,14 +103,14 @@ spec:
 
   # Key settings
   privateKey:
-    algorithm: {{ .tls.privateKey.algorithm | default "RSA" }}
-    {{- if eq (.tls.privateKey.algorithm | default "RSA") "RSA" }}
-    size: {{ .tls.privateKey.size | default 2048 }}
-    {{- else if eq (.tls.privateKey.algorithm | default "RSA") "ECDSA" }}
-    size: {{ .tls.privateKey.size | default 256 }}
+    algorithm: {{ $privateKey.algorithm | default "RSA" }}
+    {{- if eq ($privateKey.algorithm | default "RSA") "RSA" }}
+    size: {{ $privateKey.size | default 2048 }}
+    {{- else if eq ($privateKey.algorithm | default "RSA") "ECDSA" }}
+    size: {{ $privateKey.size | default 256 }}
     {{- end }}
-    encoding: {{ .tls.privateKey.encoding | default "PKCS1" }}
-    rotationPolicy: {{ .tls.privateKey.rotationPolicy | default "Always" }}
+    encoding: {{ $privateKey.encoding | default "PKCS1" }}
+    rotationPolicy: {{ $privateKey.rotationPolicy | default "Always" }}
 
   # Key usages
   usages:
@@ -116,11 +119,10 @@ spec:
   - digital signature
   - key encipherment
 
-  {{- if .tls.isCA }}
+  {{- if $tls.isCA }}
   # If this is a CA certificate
   isCA: true
   {{- end }}
 
-{{- end }}
 {{- end }}
 {{- end }}

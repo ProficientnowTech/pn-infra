@@ -1,6 +1,8 @@
 {{- range .Values.pgClusters }}
 {{- if .externalAccess }}
 {{- if .externalAccess.enabled }}
+{{- $pooler := .pooler | default dict }}
+{{- $poolerEnabled := $pooler.enabled | default true }}
 ---
 # ==============================================================================
 # External LoadBalancer Services for {{ .name }}
@@ -86,7 +88,7 @@ spec:
   ports:
   - name: postgresql
     port: {{ .externalAccess.port }}
-    targetPort: {{ .pooler.enabled | ternary "pgbouncer" "postgresql" }}
+    targetPort: {{ $poolerEnabled | ternary "pgbouncer" "postgresql" }}
     protocol: TCP
 {{- end }}
 {{- end }}
@@ -155,7 +157,7 @@ spec:
   ports:
   - name: postgresql
     port: {{ .externalAccess.port }}
-    targetPort: {{ .pooler.enabled | ternary "pgbouncer" "postgresql" }}
+    targetPort: {{ $poolerEnabled | ternary "pgbouncer" "postgresql" }}
     protocol: TCP
 {{- end }}
 {{- end }}

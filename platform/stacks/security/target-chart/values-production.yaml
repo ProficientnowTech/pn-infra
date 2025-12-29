@@ -42,26 +42,26 @@ applications:
   - CreateNamespace=true
   - ServerSideApply=true
 
-# - name: kyverno
-#   annotations:
-#     argocd.argoproj.io/sync-wave: '20'
-#   destinationNamespaceOverwrite: kyverno
-#   syncOptions:
-#   - CreateNamespace=true
+- name: kyverno
+  annotations:
+    argocd.argoproj.io/sync-wave: '20'
+  destinationNamespaceOverwrite: kyverno
+  syncOptions:
+  - CreateNamespace=true
 
-# - name: falco
-#   annotations:
-#     argocd.argoproj.io/sync-wave: '40'
-#   destinationNamespaceOverwrite: falco
-#   syncOptions:
-#   - CreateNamespace=true
+- name: falco
+  annotations:
+    argocd.argoproj.io/sync-wave: '40'
+  destinationNamespaceOverwrite: falco
+  syncOptions:
+  - CreateNamespace=true
 
-# - name: falco-talon
-#   annotations:
-#     argocd.argoproj.io/sync-wave: '45'
-#   destinationNamespaceOverwrite: falco-talon
-#   syncOptions:
-#   - CreateNamespace=true
+- name: falco-talon
+  annotations:
+    argocd.argoproj.io/sync-wave: '45'
+  destinationNamespaceOverwrite: falco-talon
+  syncOptions:
+  - CreateNamespace=true
 
 # - name: netobserv
 #   annotations:

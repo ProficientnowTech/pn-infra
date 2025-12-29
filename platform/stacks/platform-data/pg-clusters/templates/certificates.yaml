@@ -98,8 +98,8 @@ spec:
       app.kubernetes.io/component: database-tls
       postgres-cluster: {{ .name }}
     annotations:
-      cert-manager.io/certificate-name: {{ .name }}-tls
-      cert-manager.io/common-name: {{ .name }}.{{ .namespace }}.svc.cluster.local
+      platform.pnats.cloud/certificate-name: {{ .name }}-tls
+      platform.pnats.cloud/common-name: {{ .name }}.{{ .namespace }}.svc.cluster.local
 
   # Key settings
   privateKey:

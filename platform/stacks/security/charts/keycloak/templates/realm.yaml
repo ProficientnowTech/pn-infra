@@ -23,20 +23,23 @@ spec:
     rememberMe: {{ $realm.rememberMe }}
     verifyEmail: {{ $realm.verifyEmail }}
     sslRequired: {{ $realm.sslRequired }}
-    bruteForceProtected: {{ $realm.bruteForceProtected }}
-    permanentLockout: {{ $realm.permanentLockout }}
-    maxFailureWaitSeconds: {{ $realm.maxFailureWaitSeconds }}
-    minimumQuickLoginWaitSeconds: {{ $realm.minimumQuickLoginWaitSeconds }}
-    waitIncrementSeconds: {{ $realm.waitIncrementSeconds }}
-    quickLoginCheckMilliSeconds: {{ $realm.quickLoginCheckMilliSeconds }}
-    maxDeltaTimeSeconds: {{ $realm.maxDeltaTimeSeconds }}
-    failureFactor: {{ $realm.failureFactor }}
+    {{- if $realm.bruteForceProtected }}
+    securityDefenses:
+      - bruteForceDetection:
+          - failureResetTimeSeconds: {{ $realm.maxDeltaTimeSeconds }}
+            maxFailureWaitSeconds: {{ $realm.maxFailureWaitSeconds }}
+            maxLoginFailures: {{ $realm.failureFactor }}
+            minimumQuickLoginWaitSeconds: {{ $realm.minimumQuickLoginWaitSeconds }}
+            permanentLockout: {{ $realm.permanentLockout }}
+            quickLoginCheckMilliSeconds: {{ $realm.quickLoginCheckMilliSeconds }}
+            waitIncrementSeconds: {{ $realm.waitIncrementSeconds }}
+    {{- end }}
     passwordPolicy: {{ $realm.passwordPolicy | quote }}
-    accessTokenLifespan: "{{ $realm.accessTokenLifespan }}s"
-    accessTokenLifespanForImplicitFlow: "{{ $realm.accessTokenLifespanForImplicitFlow }}s"
-    ssoSessionIdleTimeout: "{{ $realm.ssoSessionIdleTimeout }}s"
-    ssoSessionMaxLifespan: "{{ $realm.ssoSessionMaxLifespan }}s"
-    offlineSessionIdleTimeout: "{{ $realm.offlineSessionIdleTimeout }}s"
+    accessTokenLifespan: {{ printf "%ds" (int $realm.accessTokenLifespan) | quote }}
+    accessTokenLifespanForImplicitFlow: {{ printf "%ds" (int $realm.accessTokenLifespanForImplicitFlow) | quote }}
+    ssoSessionIdleTimeout: {{ printf "%ds" (int $realm.ssoSessionIdleTimeout) | quote }}
+    ssoSessionMaxLifespan: {{ printf "%ds" (int $realm.ssoSessionMaxLifespan) | quote }}
+    offlineSessionIdleTimeout: {{ printf "%ds" (int $realm.offlineSessionIdleTimeout) | quote }}
     loginTheme: {{ $realm.loginTheme }}
     attributes:
 {{- range $key, $val := $realm.attributes }}

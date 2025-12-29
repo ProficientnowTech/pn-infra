@@ -37,7 +37,11 @@ postgres-operator:
 
   # Kubernetes Configuration
   configKubernetes:
-    cluster_domain: cluster.local
+    # Must match the Kubernetes cluster DNS domain (see kubeadm/kubespray `dns_domain`).
+    # If this is wrong, the operator can't resolve service names like
+    # `<cluster>.<namespace>.svc.<cluster_domain>` and will keep Postgres CRs in
+    # UpdateFailed due to failed role/db sync.
+    cluster_domain: prod-ap-south-2a.local
     storage_resize_mode: pvc
     pod_terminate_grace_period: 5m
     watched_namespace: "*"

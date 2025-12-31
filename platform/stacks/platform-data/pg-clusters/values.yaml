@@ -57,6 +57,14 @@ tls:
   #       mountPath: /v1/auth/kubernetes
 
 # ==============================================================================
+# External Access Configuration
+# ==============================================================================
+# Single shared IP for all external PostgreSQL services
+# Services are differentiated by port (write: 5432, read: 5433, admin: 5434)
+externalAccess:
+  sharedIP: ""  # Set in environment-specific values (e.g., 103.110.174.19)
+
+# ==============================================================================
 # PostgreSQL Clusters
 # ==============================================================================
 # List of PostgreSQL clusters to deploy

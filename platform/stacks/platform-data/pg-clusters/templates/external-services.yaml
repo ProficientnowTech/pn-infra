@@ -7,12 +7,11 @@
 # ==============================================================================
 # External LoadBalancer Services for {{ .name }}
 # ==============================================================================
-# Provides external access to PostgreSQL via SHARED public IPs (different ports)
-# All databases share 3 IPs total:
-#   - Write: {{ $.Values.externalAccess.sharedIPs.write }} (all write endpoints, different ports)
-#   - Read:  {{ $.Values.externalAccess.sharedIPs.read }} (all read endpoints, different ports)
-#   - Admin: {{ $.Values.externalAccess.sharedIPs.admin }} (all admin endpoints, different ports)
-# This database uses port: {{ .externalAccess.port }}
+# Provides external access to PostgreSQL via SHARED public IP (different ports)
+# All services share: {{ $.Values.externalAccess.sharedIP }}
+#   - Write: port {{ .externalAccess.write.port | default 5432 }}
+#   - Read:  port {{ .externalAccess.read.port | default 5433 }}
+#   - Admin: port {{ .externalAccess.admin.port | default 5434 }}
 # Three service types per cluster:
 #   1. Write (master + pooler): For transactional writes
 #   2. Read (replica + pooler): For transactional reads (load balanced)
@@ -24,7 +23,7 @@
 ---
 # Write Service - Master with Connection Pooler (Transaction Mode)
 # Use this for: Application writes, transactional operations
-# Connection: {{ .externalAccess.write.hostname | default (printf "%s-write.pnats.cloud" .name) }}:{{ .externalAccess.port }}
+# Connection: {{ .externalAccess.write.hostname | default (printf "%s-write.pnats.cloud" .name) }}:{{ .externalAccess.write.port | default 5432 }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -45,13 +44,13 @@ metadata:
     external-dns.alpha.kubernetes.io/hostname: {{ .externalAccess.write.hostname | default (printf "%s-write.pnats.cloud" .name) }}
     external-dns.alpha.kubernetes.io/ttl: "300"
 
-    # MetalLB configuration - SHARED IP for all write endpoints
+    # MetalLB configuration - SHARED IP for all endpoints
     metallb.io/address-pool: public-pool
-    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.write }}
-    metallb.io/allow-shared-ip: pn-pg-write
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.sharedIP }}
+    metallb.io/allow-shared-ip: pn-pg-shared
 
     # Description
-    service.kubernetes.io/description: "PostgreSQL {{ .name }} - Write endpoint (pooled) on shared IP port {{ .externalAccess.port }}"
+    service.kubernetes.io/description: "PostgreSQL {{ .name }} - Write endpoint (pooled) on port {{ .externalAccess.write.port | default 5432 }}"
 
     {{- if .externalAccess.write.annotations }}
     {{- toYaml .externalAccess.write.annotations | nindent 4 }}
@@ -87,7 +86,7 @@ spec:
 
   ports:
   - name: postgresql
-    port: {{ .externalAccess.port }}
+    port: {{ .externalAccess.write.port | default 5432 }}
     targetPort: {{ $poolerEnabled | ternary "pgbouncer" "postgresql" }}
     protocol: TCP
 {{- end }}
@@ -98,7 +97,7 @@ spec:
 ---
 # Read Service - Replicas with Connection Pooler (Transaction Mode)
 # Use this for: Application reads, analytics, reporting
-# Connection: {{ .externalAccess.read.hostname | default (printf "%s-read.pnats.cloud" .name) }}:{{ .externalAccess.port }}
+# Connection: {{ .externalAccess.read.hostname | default (printf "%s-read.pnats.cloud" .name) }}:{{ .externalAccess.read.port | default 5433 }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -119,13 +118,13 @@ metadata:
     external-dns.alpha.kubernetes.io/hostname: {{ .externalAccess.read.hostname | default (printf "%s-read.pnats.cloud" .name) }}
     external-dns.alpha.kubernetes.io/ttl: "300"
 
-    # MetalLB configuration - SHARED IP for all read endpoints
+    # MetalLB configuration - SHARED IP for all endpoints
     metallb.io/address-pool: public-pool
-    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.read }}
-    metallb.io/allow-shared-ip: pn-pg-read
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.sharedIP }}
+    metallb.io/allow-shared-ip: pn-pg-shared
 
     # Description
-    service.kubernetes.io/description: "PostgreSQL {{ .name }} - Read endpoint (pooled) on shared IP port {{ .externalAccess.port }}"
+    service.kubernetes.io/description: "PostgreSQL {{ .name }} - Read endpoint (pooled) on port {{ .externalAccess.read.port | default 5433 }}"
 
     {{- if .externalAccess.read.annotations }}
     {{- toYaml .externalAccess.read.annotations | nindent 4 }}
@@ -156,7 +155,7 @@ spec:
 
   ports:
   - name: postgresql
-    port: {{ .externalAccess.port }}
+    port: {{ .externalAccess.read.port | default 5433 }}
     targetPort: {{ $poolerEnabled | ternary "pgbouncer" "postgresql" }}
     protocol: TCP
 {{- end }}
@@ -167,7 +166,7 @@ spec:
 ---
 # Admin Service - Master Direct Connection (Session/Raw Mode)
 # Use this for: Migrations, schema changes, pg_dump/restore, VACUUM, etc.
-# Connection: {{ .externalAccess.admin.hostname | default (printf "%s-admin.pnats.cloud" .name) }}:{{ .externalAccess.port }}
+# Connection: {{ .externalAccess.admin.hostname | default (printf "%s-admin.pnats.cloud" .name) }}:{{ .externalAccess.admin.port | default 5434 }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -188,13 +187,13 @@ metadata:
     external-dns.alpha.kubernetes.io/hostname: {{ .externalAccess.admin.hostname | default (printf "%s-admin.pnats.cloud" .name) }}
     external-dns.alpha.kubernetes.io/ttl: "300"
 
-    # MetalLB configuration - SHARED IP for all admin endpoints
+    # MetalLB configuration - SHARED IP for all endpoints
     metallb.io/address-pool: public-pool
-    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.sharedIPs.admin }}
-    metallb.io/allow-shared-ip: pn-pg-admin
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.sharedIP }}
+    metallb.io/allow-shared-ip: pn-pg-shared
 
     # Description
-    service.kubernetes.io/description: "PostgreSQL {{ .name }} - Admin endpoint (direct, no pooling) on shared IP port {{ .externalAccess.port }}"
+    service.kubernetes.io/description: "PostgreSQL {{ .name }} - Admin endpoint (direct, no pooling) on port {{ .externalAccess.admin.port | default 5434 }}"
 
     {{- if .externalAccess.admin.annotations }}
     {{- toYaml .externalAccess.admin.annotations | nindent 4 }}
@@ -234,7 +233,7 @@ spec:
 
   ports:
   - name: postgresql
-    port: {{ .externalAccess.port }}
+    port: {{ .externalAccess.admin.port | default 5434 }}
     targetPort: postgresql  # Direct PostgreSQL port, bypassing pooler
     protocol: TCP
 {{- end }}

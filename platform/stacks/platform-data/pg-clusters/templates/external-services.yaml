@@ -78,14 +78,19 @@ spec:
   {{- end }}
 
   selector:
+    {{- if $poolerEnabled }}
+    application: db-connection-pooler
+    connection-pooler: {{ .name }}-pooler
+    {{- else }}
     application: spilo
+    {{- end }}
     cluster-name: {{ .name }}
     spilo-role: master
 
   ports:
   - name: postgresql
     port: {{ .externalAccess.write.port | default 5432 }}
-    targetPort: {{ $poolerEnabled | ternary "pgbouncer" "postgresql" }}
+    targetPort: {{ $poolerEnabled | ternary 5432 5432 }}
     protocol: TCP
 {{- end }}
 {{- end }}
@@ -146,14 +151,19 @@ spec:
   sessionAffinity: {{ .externalAccess.read.sessionAffinity | default "None" }}
 
   selector:
+    {{- if $poolerEnabled }}
+    application: db-connection-pooler
+    connection-pooler: {{ .name }}-pooler-repl
+    {{- else }}
     application: spilo
+    {{- end }}
     cluster-name: {{ .name }}
     spilo-role: replica
 
   ports:
   - name: postgresql
     port: {{ .externalAccess.read.port | default 5433 }}
-    targetPort: {{ $poolerEnabled | ternary "pgbouncer" "postgresql" }}
+    targetPort: {{ $poolerEnabled | ternary 5432 5432 }}
     protocol: TCP
 {{- end }}
 {{- end }}
@@ -230,7 +240,7 @@ spec:
   ports:
   - name: postgresql
     port: {{ .externalAccess.admin.port | default 5434 }}
-    targetPort: postgresql  # Direct PostgreSQL port, bypassing pooler
+    targetPort: 5432  # Direct PostgreSQL port, bypassing pooler
     protocol: TCP
 {{- end }}
 {{- end }}

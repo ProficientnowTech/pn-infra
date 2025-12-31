@@ -8,6 +8,12 @@
 # Global TLS Configuration
 # ==============================================================================
 # Controls automatic TLS certificate provisioning via cert-manager
+
+# Kubernetes cluster DNS domain (Kubelet `--cluster-domain`).
+# This must match your cluster DNS suffix (e.g. `prod-ap-south-2a.local`), or
+# the issued TLS cert SANs won’t match internal Service FQDNs.
+clusterDomain: cluster.local
+
 tls:
   # Create a ClusterIssuer for PostgreSQL certificates
   # Set to false if you already have an issuer configured

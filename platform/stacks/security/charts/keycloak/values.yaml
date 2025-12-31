@@ -111,7 +111,7 @@ keycloak:
   httpEnabled: false
 
   # Proxy headers from ingress
-  proxyHeaders: ""
+  proxyHeaders: "xforwarded"
 
   # Cache
   cache:

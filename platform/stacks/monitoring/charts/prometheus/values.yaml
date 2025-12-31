@@ -12,6 +12,20 @@ kube-prometheus-stack:
     enabled: true
     prometheusSpec:
       retention: 30d
+
+      # Enable WAL compression to reduce disk usage and replay time
+      walCompression: true
+
+      # Increase startup probe timeout for WAL replay
+      # With 30d retention and 50Gi storage, WAL replay can take 20-30 minutes
+      # 120 failures × 15s period = 30 minutes max startup time
+      startupProbe:
+        enabled: true
+        initialDelaySeconds: 30
+        periodSeconds: 15
+        timeoutSeconds: 10
+        failureThreshold: 120
+
       storageSpec:
         volumeClaimTemplate:
           spec:

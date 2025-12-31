@@ -1,5 +1,11 @@
 ---
 loki:
+  global:
+    # This cluster does not use the default `cluster.local` DNS suffix.
+    # Without this, Loki (and the gateway) will try to resolve `*.svc.cluster.local`
+    # and fail (e.g. memcached SRV lookups, gateway resolver).
+    clusterDomain: prod-ap-south-2a.local
+
   deploymentMode: SingleBinary
 
   loki:
@@ -66,6 +72,11 @@ loki:
 
   gateway:
     enabled: true
+    nginxConfig:
+      # Kubespray names the DNS service `coredns` (not `kube-dns`) in this cluster.
+      # Also avoid hard-coding the cluster domain here; let `/etc/resolv.conf` search
+      # handle it (e.g. `svc.<clusterDomain>`).
+      resolver: coredns.kube-system.svc
 
   # Distributed mode components (unused in SingleBinary)
   backend:

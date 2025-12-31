@@ -1,6 +1,10 @@
 # Production Environment PostgreSQL Clusters
 # Full HA configuration with maximum resources and backups
 
+# Kubernetes cluster DNS domain (Kubelet `--cluster-domain`).
+# This cluster uses a non-default domain (not `cluster.local`).
+clusterDomain: prod-ap-south-2a.local
+
 # Global TLS Configuration
 tls:
   # Create an internal ClusterIssuer for PostgreSQL TLS.

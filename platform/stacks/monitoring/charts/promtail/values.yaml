@@ -2,12 +2,30 @@
 promtail:
   config:
     clients:
-      - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+      # Avoid `*.svc.cluster.local` (this cluster uses a different domain).
+      - url: http://loki.monitoring.svc:3100/loki/api/v1/push
 
+  # Increase resources - promtail needs more memory for buffering logs
+  # from many pods, especially on nodes with high pod density
   resources:
     requests:
-      cpu: 50m
-      memory: 64Mi
-    limits:
-      cpu: 200m
+      cpu: 100m
       memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+  # Container security context - drop all capabilities
+  containerSecurityContext:
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    allowPrivilegeEscalation: false
+
+  # Tolerate master node taints to collect logs from all nodes
+  tolerations:
+    - effect: NoSchedule
+      operator: Exists
+    - effect: NoExecute
+      operator: Exists

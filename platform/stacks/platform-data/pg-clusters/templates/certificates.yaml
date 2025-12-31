@@ -3,6 +3,7 @@
 {{- $pooler := .pooler | default dict }}
 {{- $poolerReplica := $pooler.replica | default dict }}
 {{- if $tls.enabled }}
+{{- $clusterDomain := ($.Values.clusterDomain | default "cluster.local") }}
 {{- $privateKey := $tls.privateKey | default dict }}
 {{- $defaultIssuerName := ($.Values.tls.issuerName | default "platform-internal-ca") }}
 {{- $defaultIssuerKind := ($.Values.tls.issuerKind | default "ClusterIssuer") }}
@@ -37,28 +38,28 @@ spec:
     - {{ .tls.organization | default "ProficientNow Cloud Platform" }}
 
   # Common name (primary DNS name)
-  commonName: {{ .name }}.{{ .namespace }}.svc.cluster.local
+  commonName: {{ .name }}.{{ .namespace }}.svc.{{ $clusterDomain }}
 
   # DNS names covered by this certificate
   dnsNames:
   # Master service
-  - {{ .name }}.{{ .namespace }}.svc.cluster.local
+  - {{ .name }}.{{ .namespace }}.svc.{{ $clusterDomain }}
   - {{ .name }}.{{ .namespace }}.svc
   - {{ .name }}.{{ .namespace }}
   - {{ .name }}
 
   # Replica service
-  - {{ .name }}-repl.{{ .namespace }}.svc.cluster.local
+  - {{ .name }}-repl.{{ .namespace }}.svc.{{ $clusterDomain }}
   - {{ .name }}-repl.{{ .namespace }}.svc
   - {{ .name }}-repl.{{ .namespace }}
 
   {{- if ($pooler.enabled | default false) }}
   # Connection pooler services
-  - {{ .name }}-pooler.{{ .namespace }}.svc.cluster.local
+  - {{ .name }}-pooler.{{ .namespace }}.svc.{{ $clusterDomain }}
   - {{ .name }}-pooler.{{ .namespace }}.svc
   - {{ .name }}-pooler.{{ .namespace }}
   {{- if ($poolerReplica.enabled | default false) }}
-  - {{ .name }}-pooler-repl.{{ .namespace }}.svc.cluster.local
+  - {{ .name }}-pooler-repl.{{ .namespace }}.svc.{{ $clusterDomain }}
   - {{ .name }}-pooler-repl.{{ .namespace }}.svc
   - {{ .name }}-pooler-repl.{{ .namespace }}
   {{- end }}
@@ -101,7 +102,7 @@ spec:
       postgres-cluster: {{ .name }}
     annotations:
       platform.pnats.cloud/certificate-name: {{ .name }}-tls
-      platform.pnats.cloud/common-name: {{ .name }}.{{ .namespace }}.svc.cluster.local
+      platform.pnats.cloud/common-name: {{ .name }}.{{ .namespace }}.svc.{{ $clusterDomain }}
 
   # Key settings
   privateKey:

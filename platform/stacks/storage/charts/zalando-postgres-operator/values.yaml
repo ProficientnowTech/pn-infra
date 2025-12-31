@@ -45,12 +45,9 @@ postgres-operator:
     storage_resize_mode: pvc
     pod_terminate_grace_period: 5m
     watched_namespace: "*"
-    # Pod environment variables for WAL-G (PITR)
-    # NOTE: These are names (no namespace). The operator reads them from the
-    # Postgres cluster namespace; including `namespace/name` breaks reconciliation
-    # with: `invalid resource name ... may not contain '/'`.
-    pod_environment_configmap: postgres-backup-config
-    pod_environment_secret: postgres-backup-credentials
+    # Pod environment variables for WAL-G (PITR) - disabled for now
+    # pod_environment_configmap: postgres-backup-config
+    # pod_environment_secret: postgres-backup-credentials
     enable_pod_antiaffinity: false
     enable_persistent_volume_claim_deletion: true
     enable_secrets_deletion: true
@@ -78,19 +75,19 @@ postgres-operator:
     min_cpu_limit: 250m
     min_memory_limit: 250Mi
 
-  # Logical Backup Configuration (Snapshots)
-  configLogicalBackup:
-    logical_backup_docker_image: "ghcr.io/zalando/postgres-operator/logical-backup:v1.13.0"
-    logical_backup_provider: "s3"
-    logical_backup_schedule: "0 2 * * *" # Daily at 2 AM
-    logical_backup_s3_bucket: "pn-platform-db-backups"
-    logical_backup_s3_region: "ap-south-2"
-    logical_backup_s3_endpoint: "" # Use default AWS S3 endpoint
-    logical_backup_s3_bucket_prefix: "spilo"
-    logical_backup_s3_sse: "AES256"
-    logical_backup_s3_access_key_id: "" # Will use pod_environment_secret
-    logical_backup_s3_secret_access_key: "" # Will use pod_environment_secret
-    logical_backup_cronjob_environment_secret: "postgres-backup-credentials"
+  # Logical Backup Configuration (Snapshots) - disabled for now
+  # configLogicalBackup:
+  #   logical_backup_docker_image: "ghcr.io/zalando/postgres-operator/logical-backup:v1.13.0"
+  #   logical_backup_provider: "s3"
+  #   logical_backup_schedule: "0 2 * * *" # Daily at 2 AM
+  #   logical_backup_s3_bucket: "pn-platform-db-backups"
+  #   logical_backup_s3_region: "ap-south-2"
+  #   logical_backup_s3_endpoint: "" # Use default AWS S3 endpoint
+  #   logical_backup_s3_bucket_prefix: "spilo"
+  #   logical_backup_s3_sse: "AES256"
+  #   logical_backup_s3_access_key_id: "" # Will use pod_environment_secret
+  #   logical_backup_s3_secret_access_key: "" # Will use pod_environment_secret
+  #   logical_backup_cronjob_environment_secret: "postgres-backup-credentials"
 
   # General Configuration
   configGeneral:

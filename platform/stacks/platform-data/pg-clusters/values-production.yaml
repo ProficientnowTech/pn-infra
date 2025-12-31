@@ -15,10 +15,11 @@ tls:
   issuerType: selfSigned
 
 # Global External Access Configuration
-# Two IPs: one for pooled connections (write+read), one for admin (direct)
+# Three separate IPs: one per service type
 externalAccess:
-  pooledIP: 103.110.174.19   # Write + Read (via pgbouncer)
-  adminIP: 103.110.174.20    # Admin (direct PostgreSQL)
+  writeIP: 103.110.174.19   # Write (master via pgbouncer)
+  readIP: 103.110.174.20    # Read (replicas via pgbouncer)
+  adminIP: 103.110.174.21   # Admin (direct PostgreSQL, no pooler)
 
 pgClusters:
   # Consolidated platform database cluster

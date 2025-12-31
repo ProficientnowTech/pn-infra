@@ -7,13 +7,14 @@
 # ==============================================================================
 # External LoadBalancer Services for {{ .name }}
 # ==============================================================================
-# Two IPs for external access:
-#   - Pooled IP ({{ $.Values.externalAccess.pooledIP }}): Write + Read via pgbouncer
-#   - Admin IP  ({{ $.Values.externalAccess.adminIP }}): Direct PostgreSQL connection
-# Service ports:
-#   - Write: port {{ .externalAccess.write.port | default 5432 }} (pooled)
-#   - Read:  port {{ .externalAccess.read.port | default 5433 }} (pooled)
-#   - Admin: port {{ .externalAccess.admin.port | default 5434 }} (direct)
+# Three separate IPs for external access (no sharing):
+#   - Write IP ({{ $.Values.externalAccess.writeIP }}): Master via pgbouncer
+#   - Read IP  ({{ $.Values.externalAccess.readIP }}): Replicas via pgbouncer
+#   - Admin IP ({{ $.Values.externalAccess.adminIP }}): Direct PostgreSQL connection
+# Service ports (all on 5432 since each has dedicated IP):
+#   - Write: {{ $.Values.externalAccess.writeIP }}:5432
+#   - Read:  {{ $.Values.externalAccess.readIP }}:5432
+#   - Admin: {{ $.Values.externalAccess.adminIP }}:5432
 # ==============================================================================
 
 {{- if .externalAccess.write }}
@@ -42,10 +43,9 @@ metadata:
     external-dns.alpha.kubernetes.io/hostname: {{ .externalAccess.write.hostname | default (printf "%s-write.pnats.cloud" .name) }}
     external-dns.alpha.kubernetes.io/ttl: "300"
 
-    # MetalLB configuration - Pooled IP shared with Read service
+    # MetalLB configuration - Dedicated Write IP
     metallb.io/address-pool: public-pool
-    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.pooledIP }}
-    metallb.io/allow-shared-ip: pn-pg-pooled
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.writeIP }}
 
     # Description
     service.kubernetes.io/description: "PostgreSQL {{ .name }} - Write endpoint (pooled) on port {{ .externalAccess.write.port | default 5432 }}"
@@ -116,10 +116,9 @@ metadata:
     external-dns.alpha.kubernetes.io/hostname: {{ .externalAccess.read.hostname | default (printf "%s-read.pnats.cloud" .name) }}
     external-dns.alpha.kubernetes.io/ttl: "300"
 
-    # MetalLB configuration - Pooled IP shared with Write service
+    # MetalLB configuration - Dedicated Read IP
     metallb.io/address-pool: public-pool
-    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.pooledIP }}
-    metallb.io/allow-shared-ip: pn-pg-pooled
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.readIP }}
 
     # Description
     service.kubernetes.io/description: "PostgreSQL {{ .name }} - Read endpoint (pooled) on port {{ .externalAccess.read.port | default 5433 }}"

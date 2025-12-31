@@ -193,11 +193,6 @@ pgClusters:
         allowedSourceRanges:
           - 0.0.0.0/0  # TODO: Restrict to office/VPN IPs before production deployment!
 
-    # Logical backups to S3
-    logicalBackup:
-      enabled: true
-      schedule: "30 02 * * *"  # Daily at 02:30 AM
-
     # Maintenance windows - weekends only
     maintenanceWindows:
       - "Sat:02:00-06:00"

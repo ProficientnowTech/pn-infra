@@ -54,8 +54,7 @@ stacks:
   chart:
     path: platform/stacks/data-streaming/target-chart
     valuesFile: platform/stacks/data-streaming/target-chart/values-production.yaml
-  dependencies:
-  - platform-monitoring
+  dependencies: []
 
 - name: platform-developer-platform
   description: "Harbor, Backstage, Verdaccio, KubeVirt, ClusterAPI"
@@ -64,8 +63,7 @@ stacks:
   chart:
     path: platform/stacks/developer-platform/target-chart
     valuesFile: platform/stacks/developer-platform/target-chart/values-production.yaml
-  dependencies:
-  - platform-data
+  dependencies: []
 - name: platform-development-workloads
   description: "Kargo, Tekton, Argo Rollouts, CI/CD toolchain"
   project: development-workloads
@@ -73,8 +71,7 @@ stacks:
   chart:
     path: platform/stacks/development-workloads/target-chart
     valuesFile: platform/stacks/development-workloads/target-chart/values-production.yaml
-  dependencies:
-  - platform-developer-platform
+  dependencies: []
 - name: platform-application-infra
   description: "Temporal and supporting runtime infra"
   project: application-infra
@@ -82,8 +79,7 @@ stacks:
   chart:
     path: platform/stacks/application-infra/target-chart
     valuesFile: platform/stacks/application-infra/target-chart/values-production.yaml
-  dependencies:
-  - platform-development-workloads
+  dependencies: []
 
 # - name: platform-backup-dr
 #   description: "Backup and DR tooling (Velero, etc.)"

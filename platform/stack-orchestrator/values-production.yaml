@@ -57,33 +57,34 @@ stacks:
   dependencies:
   - platform-monitoring
 
-# - name: platform-developer-platform
-#   description: "Harbor, Backstage, Verdaccio, KubeVirt, ClusterAPI"
-#   project: developer-platform
-#   syncWave: "30"
-#   chart:
-#     path: platform/stacks/developer-platform/target-chart
-#     valuesFile: platform/stacks/developer-platform/target-chart/values-production.yaml
-#   dependencies:
-#     - platform-data
-# - name: platform-development-workloads
-#   description: "Kargo, Tekton, Argo Rollouts, CI/CD toolchain"
-#   project: development-workloads
-#   syncWave: "40"
-#   chart:
-#     path: platform/stacks/development-workloads/target-chart
-#     valuesFile: platform/stacks/development-workloads/target-chart/values-production.yaml
-#   dependencies:
-#     - platform-developer-platform
-# - name: platform-application-infra
-#   description: "Temporal and supporting runtime infra"
-#   project: application-infra
-#   syncWave: "50"
-#   chart:
-#     path: platform/stacks/application-infra/target-chart
-#     valuesFile: platform/stacks/application-infra/target-chart/values-production.yaml
-#   dependencies:
-#     - platform-development-workloads
+- name: platform-developer-platform
+  description: "Harbor, Backstage, Verdaccio, KubeVirt, ClusterAPI"
+  project: developer-platform
+  syncWave: "30"
+  chart:
+    path: platform/stacks/developer-platform/target-chart
+    valuesFile: platform/stacks/developer-platform/target-chart/values-production.yaml
+  dependencies:
+  - platform-data
+- name: platform-development-workloads
+  description: "Kargo, Tekton, Argo Rollouts, CI/CD toolchain"
+  project: development-workloads
+  syncWave: "40"
+  chart:
+    path: platform/stacks/development-workloads/target-chart
+    valuesFile: platform/stacks/development-workloads/target-chart/values-production.yaml
+  dependencies:
+  - platform-developer-platform
+- name: platform-application-infra
+  description: "Temporal and supporting runtime infra"
+  project: application-infra
+  syncWave: "50"
+  chart:
+    path: platform/stacks/application-infra/target-chart
+    valuesFile: platform/stacks/application-infra/target-chart/values-production.yaml
+  dependencies:
+  - platform-development-workloads
+
 # - name: platform-backup-dr
 #   description: "Backup and DR tooling (Velero, etc.)"
 #   project: backup-disaster-recovery

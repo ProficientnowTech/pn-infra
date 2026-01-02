@@ -3,4 +3,9 @@ name: pn-harbor
 description: Harbor for container image registry
 type: application
 version: 0.1.0
-appVersion: "2.0"
+appVersion: "2.14.1"
+
+dependencies:
+- name: harbor
+  version: 1.18.1
+  repository: https://helm.goharbor.io

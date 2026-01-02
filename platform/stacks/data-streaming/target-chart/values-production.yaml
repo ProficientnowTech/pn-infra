@@ -16,4 +16,11 @@ applications:
     kind: CustomResourceDefinition
     jsonPointers:
     - /status
-    - /spec/conversion/webhook/clientConfig/caBundle
+    - /metadata/annotations
+    - /metadata/creationTimestamp
+    - /metadata/generation
+    - /metadata/resourceVersion
+    - /metadata/uid
+    - /metadata/managedFields
+    - /spec/conversion
+    - /spec/versions

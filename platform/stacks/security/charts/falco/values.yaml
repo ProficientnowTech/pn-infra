@@ -45,12 +45,13 @@ falco:
       loki:
         hostport: http://loki.monitoring:3100
 
+  # Resources optimized based on actual usage (~65Mi typical, ~90Mi peak)
   resources:
     requests:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 100m
+      memory: 100Mi
     limits:
       cpu: 500m
-      memory: 512Mi
+      memory: 256Mi
 
 additionalRuleFiles: []

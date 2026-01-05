@@ -76,6 +76,56 @@ rook-ceph:
     # GRPC timeout for CSI operations
     grpcTimeoutInSeconds: 150
 
+    # CSI RBD Plugin resources - optimized based on actual usage (~30Mi)
+    # Default was 512Mi request, reduced to 64Mi
+    csiRBDPluginResource: |
+      - name : driver-registrar
+        resource:
+          requests:
+            memory: 32Mi
+            cpu: 25m
+          limits:
+            memory: 128Mi
+      - name : csi-rbdplugin
+        resource:
+          requests:
+            memory: 64Mi
+            cpu: 50m
+          limits:
+            memory: 256Mi
+      - name : liveness-prometheus
+        resource:
+          requests:
+            memory: 32Mi
+            cpu: 25m
+          limits:
+            memory: 128Mi
+
+    # CSI CephFS Plugin resources - optimized based on actual usage (~22Mi)
+    # Default was 512Mi request, reduced to 64Mi
+    csiCephFSPluginResource: |
+      - name : driver-registrar
+        resource:
+          requests:
+            memory: 32Mi
+            cpu: 25m
+          limits:
+            memory: 128Mi
+      - name : csi-cephfsplugin
+        resource:
+          requests:
+            memory: 64Mi
+            cpu: 50m
+          limits:
+            memory: 256Mi
+      - name : liveness-prometheus
+        resource:
+          requests:
+            memory: 32Mi
+            cpu: 25m
+          limits:
+            memory: 128Mi
+
   # Discovery daemon configuration
   enableDiscoveryDaemon: true
 

@@ -56,15 +56,18 @@ loki:
       - -c
       - |
         echo "Checking for corrupted index directories..."
-        # Remove the specific corrupted index
-        if [ -d "/var/loki/data/tsdb-shipper-active/index_20406" ]; then
-          echo "Removing corrupted index_20406..."
-          rm -rf /var/loki/data/tsdb-shipper-active/index_20406
-        fi
-        if [ -d "/var/loki/data/tsdb-shipper-cache/index_20406" ]; then
-          echo "Removing cached index_20406..."
-          rm -rf /var/loki/data/tsdb-shipper-cache/index_20406
-        fi
+        # Remove any corrupted index directories (index_NNNNN pattern)
+        # Common locations: tsdb-shipper-active, tsdb-shipper-cache, tsdb-index
+        for dir in /var/loki/data/tsdb-shipper-active /var/loki/data/tsdb-shipper-cache /var/loki/data/tsdb-index; do
+          if [ -d "$dir" ]; then
+            for idx in "$dir"/index_*; do
+              if [ -d "$idx" ]; then
+                echo "Removing potentially corrupted index: $idx"
+                rm -rf "$idx"
+              fi
+            done
+          fi
+        done
         echo "Cleanup complete"
       volumeMounts:
       - name: storage

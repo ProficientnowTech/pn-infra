@@ -1,0 +1,35 @@
+apiVersion: v2
+name: pn-clickhouse-operator
+description: Altinity ClickHouse Operator for managing ClickHouse clusters on Kubernetes
+type: application
+version: 1.0.0
+appVersion: "0.25.6"
+
+keywords:
+- clickhouse
+- clickhouse-operator
+- altinity
+- olap
+- analytics
+- database-operator
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: storage
+  platform.pnats.cloud/component: clickhouse-operator
+  platform.pnats.cloud/docs: 'https://github.com/Altinity/clickhouse-operator/blob/master/docs/README.md'
+  platform.pnats.cloud/deploys: 'clickhouse-operator'
+  platform.pnats.cloud/resource-type: CRDs
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: clickhouse-operator
+  platform.pnats.cloud/component-category: 'storage/database'
+
+dependencies:
+- name: altinity-clickhouse-operator
+  version: 0.25.6
+  repository: https://docs.altinity.com/clickhouse-operator/

@@ -84,6 +84,11 @@ everest:
   compatibility:
     openshift: false
 
+  # Upgrade configuration - disable preflight checks for fresh installs
+  # This prevents orphaned hook resources from causing sync failures
+  upgrade:
+    preflightChecks: false
+
   # Hooks configuration
   hooks:
     image: "percona/everest-helmtools:0.0.1"

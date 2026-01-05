@@ -143,3 +143,63 @@ podLabels:
 podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/port: "8080"
+
+# Postgres Operator UI Configuration
+# Provides a web interface to manage PostgreSQL clusters
+postgres-operator-ui:
+  enabled: true
+
+  # UI image
+  image:
+    registry: ghcr.io
+    repository: zalando/postgres-operator-ui
+    tag: v1.15.1
+    pullPolicy: IfNotPresent
+
+  # RBAC and ServiceAccount
+  rbac:
+    create: true
+  serviceAccount:
+    create: true
+
+  # UI pod resources
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  # UI environment configuration
+  envs:
+    # Operator API URL - points to the operator service in the same namespace
+    operatorApiUrl: "http://zalando-postgres-operator:8080"
+    operatorClusterNameLabel: "cluster-name"
+    resourcesVisible: "True"
+    # Allow viewing/creation of clusters in all namespaces
+    targetNamespace: "*"
+    teams:
+      - "platform"
+      - "acid"
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: "80"
+
+  # Ingress configuration for external access
+  ingress:
+    enabled: true
+    ingressClassName: "nginx"
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt-production"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    hosts:
+      - host: postgres-ui.pnats.cloud
+        paths:
+          - /
+    tls:
+      - secretName: postgres-ui-tls
+        hosts:
+          - postgres-ui.pnats.cloud

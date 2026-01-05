@@ -85,6 +85,15 @@ applications:
   - CreateNamespace=true
   - ServerSideApply=true
   - Replace=true
+  - SkipDryRunOnMissingResource=true
+  - RespectIgnoreDifferences=true
+  ignoreDifferences:
+  # Everest operator updates LoadBalancerConfig status
+  - group: everest.percona.com
+    kind: LoadBalancerConfig
+    jqPathExpressions:
+    - .status
+    - .metadata.finalizers
 
 - name: redis-operator
   annotations:

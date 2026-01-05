@@ -48,7 +48,7 @@ loki:
       limits:
         cpu: 500m
         memory: 512Mi
-    extraInitContainers:
+    initContainers:
     - name: cleanup-corrupted-indexes
       image: busybox:latest
       command:

@@ -94,5 +94,14 @@ applications:
   - ServerSideApply=true
   - Replace=true
 
+- name: clickhouse-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: '0'
+  destinationNamespaceOverwrite: clickhouse-operator
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+  - Replace=true
+
 commonLabels:
   platform.pnats.cloud/environment: 'production'

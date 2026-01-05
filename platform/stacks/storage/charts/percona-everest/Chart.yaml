@@ -1,0 +1,38 @@
+apiVersion: v2
+name: percona-everest
+description: Percona Everest - Cloud-native database platform with web UI for managing MongoDB, PostgreSQL, and MySQL clusters
+type: application
+version: 1.0.0
+appVersion: "1.10.0"
+
+keywords:
+- percona
+- everest
+- database
+- dbaas
+- mongodb
+- postgresql
+- mysql
+- web-ui
+- management
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: storage
+  platform.pnats.cloud/component: percona-everest
+  platform.pnats.cloud/docs: 'https://docs.percona.com/everest/'
+  platform.pnats.cloud/deploys: 'percona-everest'
+  platform.pnats.cloud/resource-type: Application
+  platform.pnats.cloud/dependencies: '["percona-mongodb-operator", "percona-postgres-operator"]'
+
+labels:
+  platform.pnats.cloud/component: percona-everest
+  platform.pnats.cloud/component-category: 'storage/management-ui'
+
+dependencies:
+- name: everest
+  version: 1.10.0
+  repository: https://percona.github.io/percona-helm-charts/

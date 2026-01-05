@@ -77,11 +77,12 @@ applications:
   - ServerSideApply=true
   - Replace=true
 
-- name: percona-mongodb-operator
+- name: percona-everest
   annotations:
     argocd.argoproj.io/sync-wave: '0'
-  destinationNamespaceOverwrite: percona-mongodb-operator
+  destinationNamespaceOverwrite: everest-system
   syncOptions:
+  - CreateNamespace=true
   - ServerSideApply=true
   - Replace=true
 

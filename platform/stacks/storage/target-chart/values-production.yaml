@@ -101,7 +101,14 @@ applications:
   syncOptions:
   - CreateNamespace=true
   - ServerSideApply=true
-  - Replace=true
+  - RespectIgnoreDifferences=true
+  ignoreDifferences:
+  # Kubernetes auto-populates apiVersion in fieldRef env vars, causing OutOfSync
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/template/spec/containers/0/env
+    - /spec/template/spec/containers/1/env
 
 commonLabels:
   platform.pnats.cloud/environment: 'production'

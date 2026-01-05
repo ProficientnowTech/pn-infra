@@ -47,6 +47,7 @@ altinity-clickhouse-operator:
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: true
       runAsNonRoot: true
+      runAsUser: 65534  # nobody user
       capabilities:
         drop:
           - ALL
@@ -72,6 +73,7 @@ altinity-clickhouse-operator:
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: true
       runAsNonRoot: true
+      runAsUser: 65534  # nobody user
       capabilities:
         drop:
           - ALL
@@ -79,6 +81,8 @@ altinity-clickhouse-operator:
   # Pod-level security context
   podSecurityContext:
     runAsNonRoot: true
+    runAsUser: 65534  # nobody user
+    fsGroup: 65534
     seccompProfile:
       type: RuntimeDefault
 
@@ -111,20 +115,10 @@ altinity-clickhouse-operator:
     password: ""
 
   # ServiceMonitor for Prometheus Operator
+  # Disabled: clickhouse-operator deploys before monitoring stack
+  # Prometheus scrapes via pod annotations instead (prometheus.io/scrape: 'true')
   serviceMonitor:
-    enabled: true
-    additionalLabels:
-      release: prometheus
-    clickhouseMetrics:
-      interval: 30s
-      scrapeTimeout: 10s
-      relabelings: []
-      metricRelabelings: []
-    operatorMetrics:
-      interval: 30s
-      scrapeTimeout: 10s
-      relabelings: []
-      metricRelabelings: []
+    enabled: false
 
   # Grafana dashboards
   dashboards:

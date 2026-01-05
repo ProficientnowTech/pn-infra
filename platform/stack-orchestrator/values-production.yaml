@@ -17,6 +17,16 @@ stacks:
     valuesFile: platform/stacks/storage/target-chart/values-production.yaml
   dependencies:
   - platform-infrastructure
+
+- name: platform-monitoring
+  description: "Prometheus, Loki, Tempo, Grafana, Uptime, Kubecost"
+  project: monitoring
+  syncWave: "-15"
+  chart:
+    path: platform/stacks/monitoring/target-chart
+    valuesFile: platform/stacks/monitoring/target-chart/values-production.yaml
+  dependencies: []
+
 - name: platform-security
   description: "Crossplane, Vault, External Secrets, Keycloak, ArgoCD self-management"
   project: security
@@ -35,15 +45,6 @@ stacks:
   chart:
     path: platform/stacks/platform-data/target-chart
     valuesFile: platform/stacks/platform-data/target-chart/values-production.yaml
-  dependencies: []
-
-- name: platform-monitoring
-  description: "Prometheus, Loki, Tempo, Grafana, Uptime, Kubecost"
-  project: monitoring
-  syncWave: "0"
-  chart:
-    path: platform/stacks/monitoring/target-chart
-    valuesFile: platform/stacks/monitoring/target-chart/values-production.yaml
   dependencies: []
 
 - name: platform-data-streaming

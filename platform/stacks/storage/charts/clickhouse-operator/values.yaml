@@ -20,20 +20,11 @@ altinity-clickhouse-operator:
     strategy:
       type: Recreate
 
-  # CRD Hook - auto-install CRDs via Helm hooks
+  # CRD Hook - disabled for ArgoCD compatibility
+  # ArgoCD handles CRDs from the chart's crds/ directory automatically
+  # Helm hooks can conflict with ArgoCD's sync phases
   crdHook:
-    enabled: true
-    image:
-      repository: bitnami/kubectl
-      tag: "1.32"
-      pullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: 100m
-        memory: 128Mi
+    enabled: false
 
   # Operator configuration
   operator:

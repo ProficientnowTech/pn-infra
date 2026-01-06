@@ -23,6 +23,10 @@ everest:
   server:
     image: percona/everest
 
+    # Initial admin password (only applied during fresh install)
+    # After install, use everestctl or API to change password
+    initialAdminPassword: "Everest@Pn2026!"
+
     # Resource limits
     resources:
       requests:

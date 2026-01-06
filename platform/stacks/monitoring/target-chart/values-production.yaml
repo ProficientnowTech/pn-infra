@@ -42,6 +42,15 @@ applications:
   syncOptions:
   - ServerSideApply=true
 
+- name: signoz
+  annotations:
+    argocd.argoproj.io/sync-wave: '50'
+  destinationNamespaceOverwrite: signoz
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+  - SkipDryRunOnMissingResource=true
+
 # - name: gatus
 #   annotations:
 #     argocd.argoproj.io/sync-wave: '50'

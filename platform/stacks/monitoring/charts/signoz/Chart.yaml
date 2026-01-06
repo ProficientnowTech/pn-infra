@@ -1,0 +1,37 @@
+apiVersion: v2
+name: pn-signoz
+description: SigNoz APM - Open-source Application Performance Monitoring and Observability platform
+type: application
+version: 1.0.0
+appVersion: "0.105.1"
+
+keywords:
+- signoz
+- apm
+- application-performance-monitoring
+- distributed-tracing
+- observability
+- opentelemetry
+- metrics
+- logs
+
+maintainers:
+- name: Platform Team
+  email: snoorullah@proficientnowtech.com
+
+annotations:
+  platform.pnats.cloud/category: monitoring
+  platform.pnats.cloud/component: signoz
+  platform.pnats.cloud/docs: 'https://signoz.io/docs/'
+  platform.pnats.cloud/deploys: 'signoz'
+  platform.pnats.cloud/resource-type: Application
+  platform.pnats.cloud/dependencies: '[]'
+
+labels:
+  platform.pnats.cloud/component: signoz
+  platform.pnats.cloud/component-category: monitoring/apm
+
+dependencies:
+- name: signoz
+  version: 0.105.2
+  repository: https://charts.signoz.io

@@ -1,0 +1,131 @@
+---
+# SigNoz APM Configuration
+# Based on: https://signoz.io/docs/
+
+signoz:
+  # Global configuration
+  global:
+    storageClass: ceph-block
+    cloud: other
+
+  # SigNoz main application (query service + frontend)
+  signoz:
+    # Ingress configuration for SigNoz UI
+    ingress:
+      enabled: true
+      className: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-production
+        nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      hosts:
+        - host: signoz.pnats.cloud
+          paths:
+            - path: /
+              pathType: Prefix
+              port: 8080
+      tls:
+        - secretName: signoz-tls
+          hosts:
+            - signoz.pnats.cloud
+
+    # Resources for SigNoz
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    # Persistence for SQLite
+    persistence:
+      enabled: true
+      storageClass: ceph-block
+      size: 5Gi
+
+  # ClickHouse configuration (required for SigNoz)
+  clickhouse:
+    enabled: true
+    cluster: cluster
+    database: signoz_metrics
+    traceDatabase: signoz_traces
+    logDatabase: signoz_logs
+    meterDatabase: signoz_meter
+    user: admin
+    # Default password from chart
+    password: 27ff0399-0d3a-4bd8-919d-17c2181e6fb9
+
+    image:
+      registry: docker.io
+      repository: clickhouse/clickhouse-server
+      tag: "24.1.8-alpine"
+
+    # Persistence
+    persistence:
+      enabled: true
+      storageClass: ceph-block
+      size: 50Gi
+
+    # Resources
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+    # Zookeeper configuration
+    zookeeper:
+      enabled: true
+      replicaCount: 1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+
+  # OpenTelemetry Collector configuration
+  otelCollector:
+    replicaCount: 1
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+    service:
+      type: ClusterIP
+
+  # OTel Collector Metrics configuration
+  otelCollectorMetrics:
+    replicaCount: 1
+
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+  # Schema Migrator
+  schemaMigrator:
+    enabled: true
+
+  # PostgreSQL (disabled - using ClickHouse)
+  postgresql:
+    enabled: false
+
+  # SigNoz OTel Gateway (disabled - enterprise feature)
+  signozOtelGateway:
+    enabled: false
+
+  # Redpanda (disabled - enterprise feature)
+  redpanda:
+    enabled: false

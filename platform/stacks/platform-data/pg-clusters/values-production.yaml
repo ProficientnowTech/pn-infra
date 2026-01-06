@@ -19,7 +19,7 @@ tls:
 externalAccess:
   writeIP: 103.110.174.19   # Write (master via pgbouncer)
   readIP: 103.110.174.20    # Read (replicas via pgbouncer)
-  adminIP: 103.110.174.21   # Admin (direct PostgreSQL, no pooler)
+  adminIP: 103.110.174.22   # Admin (direct PostgreSQL, no pooler)
 
 pgClusters:
   # Consolidated platform database cluster

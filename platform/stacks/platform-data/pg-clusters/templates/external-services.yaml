@@ -224,7 +224,7 @@ spec:
   - 0.0.0.0/32  # Block all by default - must configure allowedSourceRanges
   {{- end }}
 
-  externalTrafficPolicy: {{ .externalAccess.admin.externalTrafficPolicy | default "Local" }}
+  externalTrafficPolicy: {{ .externalAccess.admin.externalTrafficPolicy | default "Cluster" }}
   sessionAffinity: {{ .externalAccess.admin.sessionAffinity | default "ClientIP" }}
   {{- if eq (.externalAccess.admin.sessionAffinity | default "ClientIP") "ClientIP" }}
   sessionAffinityConfig:

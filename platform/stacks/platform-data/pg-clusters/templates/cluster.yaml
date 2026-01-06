@@ -192,6 +192,8 @@ spec:
     - hostssl all             postgres_exporter 10.0.0.0/8          scram-sha-256
     - hostssl all             all             10.0.0.0/8            scram-sha-256
     - host    all             all             10.0.0.0/8            scram-sha-256
+    - hostssl all             all             172.16.0.0/12         scram-sha-256
+    - host    all             all             172.16.0.0/12         scram-sha-256
     - hostssl replication     standby         10.0.0.0/8            scram-sha-256
     - host    replication     standby         10.0.0.0/8            scram-sha-256
 

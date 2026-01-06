@@ -18,6 +18,6 @@ ingress:
 
 persistence:
   enabled: true
-  storageClass: "ceph-block"
+  storageClass: "plt-blk-hdd-repl"
   accessMode: ReadWriteOnce
   size: 8Gi

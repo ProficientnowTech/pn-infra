@@ -5,7 +5,7 @@
 signoz:
   # Global configuration
   global:
-    storageClass: ceph-block
+    storageClass: app-blk-hdd-repl
     cloud: other
 
   # SigNoz main application (query service + frontend)
@@ -18,15 +18,15 @@ signoz:
         cert-manager.io/cluster-issuer: letsencrypt-production
         nginx.ingress.kubernetes.io/ssl-redirect: "true"
       hosts:
-        - host: signoz.pnats.cloud
-          paths:
-            - path: /
-              pathType: Prefix
-              port: 8080
+      - host: signoz.pnats.cloud
+        paths:
+        - path: /
+          pathType: Prefix
+          port: 8080
       tls:
-        - secretName: signoz-tls
-          hosts:
-            - signoz.pnats.cloud
+      - secretName: signoz-tls
+        hosts:
+        - signoz.pnats.cloud
 
     # Resources for SigNoz
     resources:
@@ -40,7 +40,7 @@ signoz:
     # Persistence for SQLite
     persistence:
       enabled: true
-      storageClass: ceph-block
+      storageClass: app-blk-hdd-repl
       size: 5Gi
 
   # ClickHouse configuration (required for SigNoz)
@@ -63,7 +63,7 @@ signoz:
     # Persistence
     persistence:
       enabled: true
-      storageClass: ceph-block
+      storageClass: app-blk-hdd-repl
       size: 50Gi
 
     # Resources

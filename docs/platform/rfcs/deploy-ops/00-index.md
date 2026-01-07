@@ -114,11 +114,14 @@ when, and only when, they appear in all capitals, as shown here.
 
 3. [System Architecture](./03-architecture.md)
    - 3.1 Architectural Overview
-   - 3.2 Phase Model Overview
+   - 3.2 Phase Model Overview (with concrete prerequisites)
    - 3.3 Authority Domains
    - 3.4 Trust Boundaries
    - 3.5 High-Level Control Flow
    - 3.6 Failure Domains and Recovery
+   - 3.7 Runtime Dependency Failure Semantics
+   - 3.8 Bootstrap Timing Analysis
+   - 3.9 Environment Scope (Production Only)
 
 4. [System Components](./04-components.md)
    - 4.1 Component Taxonomy
@@ -144,6 +147,9 @@ when, and only when, they appear in all capitals, as shown here.
 6. [Lifecycle Management](./06-lifecycle-management.md)
    - 6.1 Phase 0: Pre-Bootstrap
    - 6.2 Phase 1: Bootstrap (Day 0-1)
+     - 6.2.1 Ansible Bootstrap Standards (Helm-only, 6-phase task structure)
+     - 6.2.2 Bootstrap Actions
+     - 6.2.3 Outputs
    - 6.3 Phase 2: Orchestration (DAG Execution)
    - 6.4 Phase 3: Steady-State (Day 2+)
    - 6.5 Phase 4: Teardown

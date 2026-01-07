@@ -258,6 +258,14 @@ This RFC prohibits using PreSync hooks for dependency orchestration.
 
 ---
 
+#### Six-Phase Task Structure
+
+The mandatory structure for Ansible bootstrap tasks: pre-check, apply, test,
+validate, rollback, result. Each phase has defined responsibilities ensuring
+tasks are reproducible, deterministic, and revertable.
+
+---
+
 #### Sensor
 
 An Argo Events resource that evaluates events and triggers workflows when
@@ -299,6 +307,38 @@ where they are defined.
 - **Decision**: Separate bootstrap, orchestration, deployment, and promotion layers
 - **Rationale**: Clear boundaries prevent authority conflicts
 - **Defined In**: [Section 3](./03-architecture.md)
+
+---
+
+### ADR-009 — Deployment-Time Only Dependency Enforcement
+
+- **Decision**: Dependencies are enforced at deployment time, not runtime
+- **Rationale**: Cascading deletions are dangerous; applications should be resilient
+- **Defined In**: [Section 3.7](./03-architecture.md#37-runtime-dependency-failure-semantics)
+
+---
+
+### ADR-010 — Helm-Only Installation Method
+
+- **Decision**: All bootstrap installations MUST use Helm charts exclusively
+- **Rationale**: Consistent templating, upgrade/rollback capability, release tracking
+- **Defined In**: [Section 6.2.1](./06-lifecycle-management.md#621-ansible-bootstrap-standards)
+
+---
+
+### ADR-011 — Six-Phase Task Structure
+
+- **Decision**: Every Ansible task MUST implement pre-check, apply, test, validate, rollback, result phases
+- **Rationale**: Ensures reproducibility, determinism, and recoverability
+- **Defined In**: [Section 6.2.1](./06-lifecycle-management.md#621-ansible-bootstrap-standards)
+
+---
+
+### ADR-012 — Single Production Environment Scope
+
+- **Decision**: This RFC addresses single-cluster, production-only deployment
+- **Rationale**: Multi-environment platform promotion is deferred to future evolution
+- **Defined In**: [Section 3.9](./03-architecture.md#39-environment-scope)
 
 ---
 

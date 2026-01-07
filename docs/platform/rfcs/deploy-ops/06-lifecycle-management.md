@@ -93,7 +93,286 @@ self-managing platform applications.
 
 ---
 
-### Actions
+### 6.2.1 Ansible Bootstrap Standards
+
+The bootstrap system MUST be implemented using Ansible playbooks following
+strict standardization requirements.
+
+---
+
+#### Installation Method Constraint
+
+**Helm is the ONLY permitted installation method.**
+
+All Kubernetes resources installed during bootstrap MUST be deployed via
+Helm charts. This ensures:
+
+- Consistent templating across all components
+- Upgrade and rollback capability
+- Release tracking and history
+- Value-based configuration
+
+Direct manifest application (kubectl apply -f) is PROHIBITED except for:
+- Helm repository configuration
+- Initial namespace creation (if not handled by Helm)
+
+---
+
+#### Playbook Structure
+
+The bootstrap system MUST be organized as Ansible playbooks with multiple
+roles. The directory structure MUST follow:
+
+```
+bootstrap/
+├── ansible.cfg                    # Ansible configuration
+├── requirements.yml               # Collection dependencies
+├── site.yml                       # Master orchestration playbook
+├── inventories/
+│   └── production/
+│       ├── hosts.yml
+│       └── group_vars/
+│           └── all.yml
+├── playbooks/
+│   ├── argocd.yml                # ArgoCD bootstrap
+│   ├── argo-workflows.yml        # Argo Workflows bootstrap
+│   ├── argo-events.yml           # Argo Events bootstrap
+│   ├── sealed-secrets.yml        # Sealed Secrets bootstrap
+│   └── gitops-handoff.yml        # Root Application creation
+└── roles/
+    ├── argocd/
+    ├── argo-workflows/
+    ├── argo-events/
+    ├── sealed-secrets/
+    └── gitops-handoff/
+```
+
+---
+
+#### Role Requirements
+
+Each role MUST be:
+
+| Property | Requirement |
+|----------|-------------|
+| **Single-purpose** | One logical unit of work |
+| **Validatable** | Success/failure can be programmatically verified |
+| **Reproducible** | Same inputs produce same outputs |
+| **Deterministic** | No random or time-dependent behavior |
+| **Revertable** | Can be rolled back to previous state |
+
+---
+
+#### Task Phase Structure
+
+Every task within a role MUST implement the following six phases:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           TASK EXECUTION PHASES                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  1. PRE-CHECK     Verify prerequisites are met before attempting changes   │
+│  2. APPLY         Execute the actual change (Helm install/upgrade)         │
+│  3. TEST          Verify the change was applied correctly                  │
+│  4. VALIDATE      Confirm the component is functioning as expected         │
+│  5. ROLLBACK      Revert to previous state if validation fails             │
+│  6. RESULT        Record outcome for downstream tasks and reporting        │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### Phase 1: Pre-Check
+
+**Purpose**: Verify all prerequisites before attempting changes.
+
+**Requirements**:
+- Check that required Helm repositories are configured
+- Verify namespace exists or can be created
+- Confirm previous release state (if upgrade)
+- Validate required secrets/configmaps exist
+- Check cluster resource availability
+
+**Behavior**:
+- MUST fail the task if prerequisites are not met
+- MUST NOT modify any state
+- MUST produce diagnostic output on failure
+
+---
+
+#### Phase 2: Apply
+
+**Purpose**: Execute the actual change using Helm.
+
+**Requirements**:
+- Use `kubernetes.core.helm` module exclusively
+- Specify explicit chart version (no `latest`)
+- Pass all values through a values file or inline values
+- Set appropriate timeouts
+- Enable atomic operations where supported
+
+**Behavior**:
+- MUST use `--atomic` flag for new installations
+- MUST capture Helm release status
+- MUST NOT proceed if Helm command fails
+
+---
+
+#### Phase 3: Test
+
+**Purpose**: Verify the change was applied correctly.
+
+**Requirements**:
+- Query Helm release status
+- Verify expected resources exist
+- Check resource counts match expectations
+- Validate CRDs were installed (if applicable)
+
+**Behavior**:
+- MUST run after apply phase
+- MUST NOT modify any state
+- MUST fail if expected state not achieved
+
+---
+
+#### Phase 4: Validate
+
+**Purpose**: Confirm the component is functioning as expected.
+
+**Requirements**:
+- Wait for pods to reach Ready state
+- Verify service endpoints are reachable
+- Execute component-specific health checks
+- Confirm API responsiveness (if applicable)
+
+**Behavior**:
+- MUST use configurable timeout
+- MUST use configurable retry count
+- MUST fail if health is not achieved within timeout
+
+---
+
+#### Phase 5: Rollback
+
+**Purpose**: Revert to previous state if validation fails.
+
+**Requirements**:
+- Execute `helm rollback` to previous revision
+- Wait for rollback to complete
+- Re-validate after rollback
+
+**Behavior**:
+- MUST only execute if validation failed
+- MUST restore previous working state
+- MUST report rollback status
+
+---
+
+#### Phase 6: Result
+
+**Purpose**: Record outcome for downstream tasks and reporting.
+
+**Requirements**:
+- Set Ansible facts for task status
+- Record timing information
+- Capture relevant metadata (versions, revisions)
+- Enable conditional execution of downstream tasks
+
+**Behavior**:
+- MUST always execute (even on failure)
+- MUST set `<role>_status` fact (success, failed, rolled_back)
+- MUST capture error details on failure
+
+---
+
+#### Role Dependency Chain
+
+Roles MUST declare explicit dependencies:
+
+| Role | Depends On | Status Fact Required |
+|------|------------|---------------------|
+| argocd | (none) | - |
+| argo-workflows | argocd | `argocd_status == "success"` |
+| argo-events | argo-workflows | `argo_workflows_status == "success"` |
+| sealed-secrets | (none) | - |
+| gitops-handoff | argocd, sealed-secrets | Both status == "success" |
+
+---
+
+#### Example Role Task Structure
+
+```
+roles/argocd/tasks/main.yml:
+
+# Phase 1: Pre-Check
+- name: Pre-check | Verify Helm repository
+  ...
+
+- name: Pre-check | Verify cluster connectivity
+  ...
+
+- name: Pre-check | Check for existing release
+  ...
+
+# Phase 2: Apply
+- name: Apply | Install ArgoCD via Helm
+  kubernetes.core.helm:
+    name: argocd
+    chart_ref: argo/argo-cd
+    release_namespace: argocd
+    create_namespace: true
+    atomic: true
+    wait: true
+    wait_timeout: 600s
+    values: "{{ argocd_values }}"
+  register: argocd_helm_result
+
+# Phase 3: Test
+- name: Test | Verify Helm release status
+  ...
+
+- name: Test | Verify expected resources exist
+  ...
+
+# Phase 4: Validate
+- name: Validate | Wait for ArgoCD pods ready
+  ...
+
+- name: Validate | Verify API server responding
+  ...
+
+# Phase 5: Rollback (conditional)
+- name: Rollback | Revert ArgoCD to previous version
+  when: argocd_validation_failed | default(false)
+  ...
+
+# Phase 6: Result
+- name: Result | Set ArgoCD status fact
+  ansible.builtin.set_fact:
+    argocd_status: "{{ 'success' if not argocd_validation_failed else 'failed' }}"
+    argocd_version: "{{ argocd_helm_result.status.app_version }}"
+    argocd_revision: "{{ argocd_helm_result.status.revision }}"
+```
+
+---
+
+#### Prohibited Practices
+
+The following practices are PROHIBITED in bootstrap playbooks:
+
+| Prohibited | Reason |
+|------------|--------|
+| Shell commands for Helm | Use kubernetes.core.helm module |
+| kubectl apply -f | Use Helm for all installations |
+| Hardcoded secrets | Use Ansible Vault or external secrets |
+| Sleep for timing | Use proper wait conditions |
+| Ignoring errors | All errors MUST be handled explicitly |
+| Unversioned charts | All charts MUST specify version |
+| Direct API calls | Use Ansible modules |
+
+---
+
+### 6.2.2 Bootstrap Actions
 
 **Step 1: Namespace Preparation**
 
@@ -159,7 +438,7 @@ Submit the platform-bootstrap workflow:
 
 ---
 
-### Outputs
+### 6.2.3 Outputs
 
 - Operational ArgoCD instance
 - Operational Argo Workflows controller

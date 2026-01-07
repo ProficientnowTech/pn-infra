@@ -9,268 +9,216 @@ Category: Standards Track                                 Introduction
 
 ---
 
-## 1.1 Background and Context
+## 1.1 The Deployment Orchestration Problem
 
-Platform deployment at scale is deceptively complex.
+Deploying a platform with 40+ interdependent applications requires solving a
+constraint satisfaction problem: applications must deploy in an order that
+respects their dependencies, and each application must be healthy before its
+dependents can start.
 
-What begins as straightforward application installation evolves into an
-intricate web of dependencies, ordering constraints, and health verification
-requirements. The platform described in this RFC comprises 11 logical stacks
-containing over 40 interdependent applications, ranging from storage
-infrastructure to application runtimes.
+This platform comprises 11 stacks:
 
-The dependency relationships between these applications form a directed acyclic
-graph (DAG) where:
+- Infrastructure (MetalLB, ingress-nginx, cert-manager, external-dns, sealed-secrets)
+- Storage (Ceph operator, Ceph cluster, Zalando PostgreSQL operator, Redis operator)
+- Monitoring (Prometheus, Grafana, Loki, Tempo)
+- Security (Vault, External Secrets, Keycloak, Kyverno, Falco)
+- Platform Data (PostgreSQL clusters, Redis clusters)
+- Data Streaming (Strimzi Kafka)
+- Developer Platform (Harbor, Backstage, Tekton, KubeVirt)
+- Development Workloads (Argo Rollouts, Kargo)
+- Application Infrastructure (Temporal)
 
-- Temporal workflow orchestration requires PostgreSQL databases, which require
-  the Zalando PostgreSQL operator, which requires storage classes, which require
-  the Ceph cluster, which requires the Ceph operator.
+The dependency chain is deep. Temporal requires PostgreSQL databases. PostgreSQL
+requires the Zalando operator. The operator requires storage classes. Storage
+classes require Ceph. Ceph requires the Ceph operator. The operator requires
+MetalLB for service exposure. This single chain spans six layers.
 
-- Ingress controllers require LoadBalancer IP allocation from MetalLB, while
-  applications requiring external access depend on both ingress and DNS
-  configuration.
-
-- Secret management systems must be operational before applications can retrieve
-  credentials, yet those systems themselves require bootstrap secrets.
-
-This RFC exists because the original deployment system reached a point where:
-
-- incremental fixes no longer produced reliable outcomes,
-- operational risk increased faster than platform capabilities,
-- and deployment orchestration became a persistent source of incidents requiring
-  human intervention.
-
-> **Deployment orchestration at this scale cannot be retrofitted onto existing
-> tools.** ArgoCD sync waves, PreSync hooks, and bash scripts each solve part
-> of the problem, but none provide the DAG-based dependency resolution required
-> for deterministic multi-stack deployment.
+Multiply this across all stacks, and the result is a directed acyclic graph
+with dozens of nodes and complex cross-stack relationships.
 
 ---
 
-## 1.2 The Initial System (Pre-Architecture State)
+## 1.2 Current Deployment Mechanisms
 
-The original deployment approach evolved organically alongside the platform.
+### 1.2.1 Bootstrap Scripts
 
-At a high level, it consisted of:
+Platform deployment currently relies on bash scripts that:
 
-- **Bash scripts** for bootstrap, deployment, and teardown:
-  - reading environment configuration,
-  - installing Helm charts in sequence,
-  - waiting for pod readiness,
-  - applying post-installation configuration.
+- Install ArgoCD via Helm
+- Wait for ArgoCD pods to become ready
+- Apply the Root Application manifest
+- Poll ArgoCD for Application health status
 
-- **ArgoCD sync waves** for resource ordering:
-  - integers ranging from -30 to +50 across different stacks,
-  - intended to sequence resources within Applications,
-  - misapplied to express cross-Application dependencies.
+These scripts handle the chicken-and-egg problem: ArgoCD cannot manage its own
+installation. However, the scripts have grown to include workarounds, reset
+mechanisms, and conditional logic accumulated over time.
 
-- **PreSync and PostSync hooks** for dependency validation:
-  - Kubernetes Jobs running before Application sync,
-  - checking if prerequisite resources exist and are healthy,
-  - intended to gate deployment until dependencies are satisfied.
+### 1.2.2 ArgoCD Sync Waves
 
-- **App-of-Apps pattern** for hierarchical deployment:
-  - root Application generating stack Applications,
-  - stack Applications generating individual component Applications,
-  - nested structure intended to create deployment cascades.
+Resources within Applications use sync waves ranging from -30 to +50. The
+original intent was to sequence operators before instances (wave -10 for
+operator, wave 0 for instance).
 
-This system worked — until the platform grew beyond a threshold where its
-assumptions no longer held.
+Over time, sync waves were stretched to attempt cross-Application ordering.
+Foundational stacks received large negative waves (-30), while dependent
+stacks received positive waves (+40, +50). This approach assumes ArgoCD
+processes Applications in sync wave order, which it does not guarantee.
 
----
+### 1.2.3 PreSync Validation Jobs
 
-## 1.3 Operational Shortcomings
+To enforce cross-Application dependencies, PreSync hooks were added. Each
+stack deploys a Kubernetes Job before sync that checks:
 
-As the platform expanded, several structural problems became apparent.
+- Do required CRDs exist?
+- Are prerequisite Deployments ready?
+- Are required Services reachable?
 
-### 1.3.1 Bash Scripts Became Hidden Control Planes
+The Job blocks Application sync until all checks pass.
 
-Deployment scripts accumulated responsibilities beyond their original intent:
+### 1.2.4 App-of-Apps Structure
 
-- validation logic,
-- conditional execution paths,
-- secret rendering and encryption,
-- orchestration and ordering,
-- error recovery and retry logic.
+The platform uses a hierarchical Application structure:
 
-This introduced systemic problems:
+```
+platform-root
+├── stack-orchestrator
+│   ├── infrastructure-stack
+│   │   ├── metallb
+│   │   ├── ingress-nginx
+│   │   └── ...
+│   ├── storage-stack
+│   │   ├── ceph-operator
+│   │   ├── ceph-cluster
+│   │   └── ...
+│   └── ...
+```
 
-- **Implicit state**
-  Script behavior depended on local files, cached outputs, and environment
-  variables that were not versioned or observable.
-
-- **Non-reproducibility**
-  Running the same script on two machines could yield different results.
-
-- **Opaque failure modes**
-  Partial failures were common and difficult to diagnose. A script could fail
-  silently or succeed partially, leaving the platform in an indeterminate state.
-
-- **Human coupling**
-  Correct operation depended on tribal knowledge rather than enforced guarantees.
-  New engineers could not safely execute deployments without extensive guidance.
-
-The scripts did not merely automate work — they became an undocumented,
-unversioned control plane.
+Each stack is an Application that generates child Applications through a
+target-chart pattern.
 
 ---
 
-### 1.3.2 PreSync Hooks Exhibited Race Conditions
+## 1.3 Why the Current System Fails
 
-PreSync hooks were introduced to solve the dependency problem: ensure
-prerequisites exist before deploying dependent applications.
+### 1.3.1 PreSync Jobs Get Stuck
 
-In practice, they introduced new failure modes:
+The most acute problem is stuck PreSync Jobs. The failure pattern:
 
-- **ttlSecondsAfterFinished race conditions**
-  Jobs configured with short TTL values could be garbage-collected before
-  ArgoCD marked the hook as complete, causing the sync to hang indefinitely.
+1. Job runs and completes successfully
+2. Kubernetes garbage-collects the Job pod (ttlSecondsAfterFinished)
+3. ArgoCD queries Job status but finds no pod
+4. ArgoCD cannot determine hook completion
+5. Sync hangs indefinitely
 
-- **BeforeHookCreation deletion policy races**
-  When a new sync triggered, the previous hook Job was deleted before the new
-  one started, creating temporal gaps where no validation occurred.
+The workaround is manual deletion of the Job resource, which triggers ArgoCD
+to recreate it. This requires human intervention on nearly every deployment.
 
-- **Jobs modifying their own state**
-  Some hooks attempted to create or modify resources, causing ArgoCD to detect
-  drift and trigger additional reconciliation cycles.
+A related issue: Jobs configured with `hook-delete-policy: BeforeHookCreation`
+are deleted when a new sync starts. If the new Job fails to create immediately,
+there is a window where no Job exists, and ArgoCD may proceed incorrectly.
 
-- **Resource exhaustion**
-  Hooks executed on every ArgoCD reconciliation — not just initial deployment.
-  A platform with 40+ Applications reconciling every 3 minutes generated
-  thousands of Job executions daily.
+### 1.3.2 Jobs Execute on Every Reconciliation
 
-The hooks became a significant source of operational incidents. Engineers
-regularly needed to manually delete stuck Job pods to unblock deployments.
+ArgoCD reconciles Applications every 3 minutes by default. PreSync hooks
+execute on every reconciliation, not just initial deployment.
 
----
+With 40+ Applications, each with PreSync Jobs, the cluster runs thousands of
+validation Jobs daily. These Jobs:
 
-### 1.3.3 Sync Waves Could Not Express Cross-Application Dependencies
+- Consume CPU and memory
+- Generate logs requiring storage
+- Create pod churn affecting scheduler
+- Produce noise in monitoring systems
 
-ArgoCD sync waves order resources **within a single Application**.
+The Jobs serve no purpose during steady-state operation—dependencies do not
+change between reconciliations.
 
-The platform attempted to use sync waves to order **across Applications** by:
+### 1.3.3 Sync Waves Cannot Express the Dependency Graph
 
-- assigning large negative waves to foundational stacks,
-- assigning large positive waves to dependent stacks,
-- expecting ArgoCD to process lower waves first.
+The platform dependency graph is not linear. Consider:
 
-This approach failed because:
+- Vault depends on storage classes AND ingress
+- Keycloak depends on PostgreSQL cluster AND ingress
+- Harbor depends on PostgreSQL AND Redis AND storage
 
-- ArgoCD does not guarantee cross-Application ordering based on sync waves,
-- the App-of-Apps pattern creates separate reconciliation contexts,
-- and health status of one Application does not block sync of another.
+Sync waves are integers. They express total ordering, not partial ordering.
+There is no sync wave value that correctly expresses "after both PostgreSQL
+and Redis but before Temporal."
 
-This limitation is documented in ArgoCD issue #7437, which has accumulated
-significant community support requesting native cross-Application dependency
-support.
+ArgoCD issue #7437 documents this limitation. The community has requested
+cross-Application dependency support since 2020. The issue has 280+ reactions.
 
----
+### 1.3.4 Failure Recovery Requires Deep Knowledge
 
-### 1.3.4 Manual Intervention Became Routine
+When deployment fails partway:
 
-The combination of these issues meant that:
+- Which Applications succeeded?
+- Which failed?
+- What is the correct order to resume?
+- Which Jobs need manual cleanup?
 
-- Full platform deployments rarely succeeded without intervention.
-- Engineers needed to monitor deployment progress and manually restart stuck
-  components.
-- Teardown was even less reliable, often leaving orphaned resources.
-- Recovery from partial failures required deep platform knowledge.
+Answering these questions requires understanding the entire dependency graph,
+the current cluster state, and the specific failure mode. New engineers cannot
+safely recover deployments without guidance from experienced team members.
 
-The system was not deterministic. Given the same inputs, it could produce
-different outcomes depending on timing, network conditions, and resource
-availability.
+### 1.3.5 Teardown Is Worse Than Deployment
 
----
+Teardown must happen in reverse dependency order. Deleting storage before
+deleting databases causes data loss. Deleting operators before instances
+leaves orphaned resources.
 
-## 1.4 The Cost of Hook-Driven Orchestration
+The current scripts attempt reverse ordering but frequently leave:
 
-Hook-based dependency management imposed costs across multiple dimensions:
+- Finalizers blocking namespace deletion
+- PersistentVolumes without claims
+- CRDs without controllers
+- Services with stale endpoints
 
-**Operational cost**
-- Engineers spent significant time debugging stuck deployments.
-- On-call incidents frequently traced to hook failures.
-- Deployment windows extended due to unpredictable behavior.
-
-**Resource cost**
-- Thousands of Job executions consumed cluster resources.
-- Each hook required its own container image, RBAC, and configuration.
-- Failed Jobs persisted until manual cleanup.
-
-**Cognitive cost**
-- New engineers struggled to understand the deployment sequence.
-- Documentation lagged behind workarounds.
-- Tribal knowledge became a single point of failure.
-
-**Reliability cost**
-- Deployment success rate was below acceptable thresholds.
-- Platform availability depended on human intervention.
-- Disaster recovery could not be automated.
+Manual cleanup after teardown is routine.
 
 ---
 
-## 1.5 Why Incremental Fixes Failed
+## 1.4 Constraints on Solutions
 
-Multiple attempts were made to improve the system incrementally:
+Any solution must work within these constraints:
 
-- **Longer TTL values**: Reduced garbage collection races but increased resource
-  consumption.
+**ArgoCD remains the deployment layer.** The platform has significant
+investment in ArgoCD Applications, ApplicationSets, and the App-of-Apps
+pattern. Replacing ArgoCD is not feasible.
 
-- **Better validation scripts**: Made hooks more robust but did not address
-  fundamental timing issues.
+**GitOps principles apply.** Deployment intent must be declared in Git.
+Runtime systems should reconcile toward declared state. Human operators
+should not directly manipulate cluster resources.
 
-- **Documentation improvements**: Helped new engineers but did not eliminate
-  human-in-the-loop requirements.
+**Bootstrap must handle the chicken-and-egg.** Before ArgoCD exists, something
+must install it. This cannot be ArgoCD itself.
 
-- **Monitoring and alerting**: Made failures visible faster but did not prevent
-  them.
-
-- **Sync wave reorganization**: Consolidated wave ranges but could not express
-  cross-Application dependencies.
-
-These efforts reduced symptoms but never addressed the root problem.
-
-The underlying issue was architectural:
-
-> **Dependencies were treated as validation checks rather than structural
-> constraints in the deployment system.**
-
-As long as dependencies were enforced through hooks rather than modeled in the
-orchestration layer, non-determinism and race conditions were inevitable.
+**The solution must be deterministic.** Given the same inputs, deployment
+must produce the same outcome. Non-determinism from race conditions is
+unacceptable.
 
 ---
 
-## 1.6 Why Dedicated Orchestration Became Necessary
+## 1.5 Why This RFC Exists
 
-At scale, platform deployment requires:
+This RFC proposes replacing ad-hoc orchestration mechanisms with a dedicated
+orchestration layer:
 
-- explicit dependency graphs,
-- deterministic execution ordering,
-- health-gated progression between deployment phases,
-- automated recovery from transient failures,
-- and reproducibility from source control.
+- **Argo Workflows** for DAG-based execution with explicit dependencies
+- **Ansible** (recommended) for idempotent bootstrap operations
+- **Argo Events** for event-driven workflow triggers
+- **A containerized executor** providing deploy/validate/teardown actions
 
-These requirements CANNOT be satisfied by:
+The orchestration layer sits between bootstrap and ArgoCD. It invokes ArgoCD
+syncs in dependency order, waits for health, and proceeds only when safe.
 
-- scripts with implicit ordering,
-- hooks with race conditions,
-- or sync waves that operate only within Applications.
+PreSync Jobs are eliminated entirely. Dependency logic moves from hooks to
+workflow DAGs where it can be:
 
-The system described in subsequent sections represents a **structural
-correction**, not an optimization.
-
-It formalizes deployment orchestration as:
-
-- a platform subsystem,
-- with clearly defined phases,
-- explicit dependency DAGs,
-- and strict separation between bootstrap, orchestration, and steady-state
-  operations.
-
-Only with such a system can the platform:
-
-- eliminate entire classes of human error,
-- scale across environments,
-- and remain operationally sustainable.
+- Explicitly modeled
+- Validated before execution
+- Observed during execution
+- Resumed after failure
 
 ---
 

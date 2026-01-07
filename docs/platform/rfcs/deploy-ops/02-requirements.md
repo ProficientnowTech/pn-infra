@@ -9,346 +9,236 @@ Category: Standards Track                    Requirements and Invariants
 
 ---
 
-This section defines the **constraints and invariants** that shape all
-subsequent architectural and implementation decisions. No design presented
-in later sections MAY violate the principles established here.
+This section defines requirements that any deployment orchestration solution
+MUST satisfy. Designs in subsequent sections are evaluated against these
+requirements.
 
 ---
 
-## 2.1 Core Problem Restatement
+## 2.1 Problem Statement
 
-The platform REQUIRES a deployment orchestration system that:
+The platform requires a system that:
 
-- deploys 40+ interdependent applications in correct dependency order,
-- operates without human intervention for nominal deployments,
-- produces deterministic, reproducible platform states,
-- fails explicitly with actionable diagnostics when errors occur,
-- supports both initial deployment and clean teardown,
-- and integrates with GitOps workflows.
-
-The system MUST work under the assumption that:
-
-- networks MAY experience transient failures,
-- resources MAY take variable time to become healthy,
-- clusters MAY be destroyed and rebuilt,
-- and operators will change over time.
-
-The architecture MUST therefore be **resilient by construction**, not by
-discipline or tribal knowledge.
+1. Deploys 40+ applications in correct dependency order
+2. Verifies each application is healthy before deploying dependents
+3. Operates without human intervention for normal deployments
+4. Supports clean teardown in reverse dependency order
+5. Integrates with ArgoCD as the deployment layer
+6. Can be invoked from a single containerized entry point
 
 ---
 
 ## 2.2 Design Goals
 
-### 2.2.1 Deterministic Deployment Ordering
+### 2.2.1 Dependency-Ordered Deployment
 
-Deployments MUST execute in a deterministic order based on declared dependencies.
+Applications MUST deploy in an order that satisfies their dependencies.
 
-Given:
+If Application B depends on Application A, then:
+- A MUST be deployed before B
+- A MUST report healthy status before B deployment begins
+- If A fails, B MUST NOT attempt deployment
 
-- a dependency graph,
-- a cluster state,
-- and deployment inputs,
+### 2.2.2 Health-Gated Progression
 
-the system MUST produce the same deployment sequence. Non-deterministic
-behaviors such as race conditions or timing-dependent ordering are forbidden.
+Deployment MUST NOT proceed based solely on sync completion.
 
----
+ArgoCD "Synced" status means resources were applied. It does not mean:
+- Pods are running
+- Services are reachable
+- Operators have reconciled their instances
+- Databases are accepting connections
 
-### 2.2.2 Idempotent Operations
+The system MUST verify actual health, not just sync status.
 
-All deployment operations MUST be idempotent.
+### 2.2.3 Elimination of PreSync Hooks for Dependencies
 
-Executing the same deployment action multiple times with identical inputs MUST:
+PreSync hooks MUST NOT be used for cross-Application dependency enforcement.
 
-- produce identical observable platform state,
-- not create duplicate resources,
-- not cause errors on subsequent executions,
-- and be safe to retry after failures.
+Hooks are appropriate for:
+- Database migrations before deployment
+- Schema updates
+- One-time initialization tasks
 
----
+Hooks are NOT appropriate for:
+- Waiting for other Applications
+- Verifying prerequisites exist
+- Blocking on external dependencies
 
-### 2.2.3 Explicit Dependency Modeling
+All cross-Application dependency logic MUST move to the orchestration layer.
 
-Dependencies MUST be modeled as first-class entities, not inferred from
-deployment order or validated through runtime checks.
+### 2.2.4 Deterministic Execution
 
-The system MUST support:
+Given identical inputs:
+- The same applications MUST deploy
+- In the same order
+- With the same health checks
+- Producing the same cluster state
 
-- declaration of dependencies between stacks,
-- declaration of dependencies between applications within stacks,
-- declaration of dependencies on specific resource types,
-- and validation that dependency graphs are acyclic.
+Non-determinism from race conditions, timing, or implicit ordering is
+forbidden.
 
----
+### 2.2.5 Idempotent Operations
 
-### 2.2.4 Health-Gated Progression
+Running deployment multiple times with identical inputs MUST:
+- Produce identical cluster state
+- Not create duplicate resources
+- Not fail due to existing resources
+- Be safe to retry after partial failure
 
-Deployment MUST NOT progress to a subsequent phase until all resources in the
-current phase report healthy status.
+### 2.2.6 Containerized Executor
 
-Health verification MUST:
+A container image MUST exist that:
+- Accepts an action (deploy, validate, teardown)
+- Accepts configuration (environment, scope, credentials)
+- Executes the requested action
+- Exits with status indicating success or failure
 
-- use explicit health checks, not sync completion status,
-- support custom health definitions for CRDs,
-- propagate health status through nested Application hierarchies,
-- and distinguish between healthy, progressing, degraded, and failed states.
-
----
-
-### 2.2.5 Zero Human-In-The-Loop for Nominal Operations
-
-After initial configuration, the system MUST deploy the complete platform
-without requiring humans to:
-
-- monitor deployment progress,
-- restart stuck components,
-- delete failed Jobs,
-- or manually verify health status.
-
-Human involvement is permitted only for:
-
-- initial trust establishment and configuration,
-- policy changes,
-- and exceptional recovery scenarios.
-
----
-
-### 2.2.6 Explicit Failure Semantics
-
-When failures occur, the system MUST:
-
-- halt progression of dependent deployments,
-- report failure state through observable interfaces,
-- provide diagnostic information sufficient for troubleshooting,
-- and support resumption from the failure point.
-
-Failures MUST NOT:
-
-- be masked or ignored,
-- cause cascading failures in unrelated components,
-- or leave the system in an indeterminate state.
-
----
-
-### 2.2.7 GitOps-Native Integration
-
-The deployment system MUST integrate with GitOps workflows:
-
-- deployment intent MUST be declaratively specified in Git,
-- the orchestration system MUST trigger ArgoCD syncs,
-- and steady-state reconciliation MUST be handled by ArgoCD.
-
-The system MUST NOT bypass or replace ArgoCD for application state management.
-
----
-
-### 2.2.8 Containerized Execution
-
-The deployment executor MUST be packaged as a container image that:
-
-- can be pulled from a container registry,
-- accepts configuration through environment variables and mounted files,
-- supports deploy, validate, and teardown actions,
-- and can be executed in any Kubernetes cluster.
+This enables invocation from any context: CI/CD, manual execution, automation
+systems.
 
 ---
 
 ## 2.3 Non-Goals
 
-The following are explicitly **out of scope** for this architecture:
+### 2.3.1 Replacing ArgoCD
 
-### 2.3.1 Application Workload Orchestration
+ArgoCD remains the system that applies manifests to clusters. This RFC does
+not propose replacing ArgoCD with another GitOps tool.
 
-How individual applications deploy their workloads (canary, blue-green,
-rolling updates) is handled by Argo Rollouts and application-specific
-configuration.
+### 2.3.2 Application-Level Deployment Strategies
 
-The deployment orchestration system handles platform infrastructure, not
-application release strategies.
+How individual applications roll out (canary, blue-green) is handled by Argo
+Rollouts at the application level. This RFC addresses platform-level
+orchestration, not application delivery.
 
----
+### 2.3.3 Multi-Cluster Orchestration
 
-### 2.3.2 CI/CD Pipeline Replacement
+Coordinating deployment across multiple clusters is out of scope. This RFC
+addresses single-cluster deployment. Multi-cluster patterns may be addressed
+in future RFCs.
 
-CI/CD systems MAY exist alongside this architecture, but:
+### 2.3.4 CI/CD Pipeline Design
 
-- they MUST NOT be required for platform deployment,
-- they MUST NOT be the source of truth for platform state,
-- and they MUST NOT control deployment ordering.
-
-The platform MUST be deployable without CI/CD systems.
-
----
-
-### 2.3.3 Multi-Cluster Federation
-
-Deployment orchestration across multiple clusters is deferred to
-[Section 9: Evolution](./09-evolution.md).
-
-This architecture focuses on single-cluster deployment. Multi-cluster
-patterns MUST be additive, not changes to the core architecture.
+The executor can be invoked from CI/CD, but designing CI/CD pipelines is not
+part of this RFC.
 
 ---
 
-### 2.3.4 Real-Time Deployment Status UI
+## 2.4 Invariants
 
-The system provides deployment status through standard Kubernetes and Argo
-interfaces. Building custom dashboards or UIs is not part of this architecture.
-
----
-
-### 2.3.5 Automatic Dependency Discovery
-
-Dependencies MUST be explicitly declared. The system does not infer
-dependencies from resource references, network policies, or runtime behavior.
+The following invariants MUST hold. Any design that violates these invariants
+is rejected.
 
 ---
 
-## 2.4 Architectural Invariants
+### INV-1: Dependency Satisfaction
 
-The following rules are **non-negotiable invariants**.
-Violating any of these invalidates the design.
+An application MUST NOT begin deployment until all applications it depends on
+report Healthy status.
 
----
-
-### Invariant 1 — Dependency Satisfaction Before Execution
-
-A deployment node MUST NOT begin execution until **all** predecessor nodes in
-the dependency DAG report Healthy status.
-
-Progressing, degraded, or unknown status MUST be treated as not satisfied.
+"Healthy" means the application is fully operational, not merely synced.
 
 ---
 
-### Invariant 2 — Idempotency of All Operations
+### INV-2: Single Deployment Path
 
-Executing the same deployment action with identical inputs MUST produce
-identical observable platform state.
+All platform deployments MUST flow through the orchestration system.
 
-The system MUST NOT:
-
-- create duplicate resources on repeated execution,
-- fail on subsequent executions of successful operations,
-- or produce different ordering on repeated runs.
+Direct ArgoCD sync operations that bypass orchestration MAY leave the platform
+in inconsistent state and are not supported.
 
 ---
 
-### Invariant 3 — State Explicitness
+### INV-3: No Implicit State
 
-The system MUST NOT rely on implicit state.
+The orchestration system MUST NOT depend on state outside:
+- Kubernetes cluster resources
+- Git repository contents
+- Explicitly provided configuration
 
-All state required for deployment decisions MUST be:
-
-- queryable from Kubernetes resources,
-- stored in Git repositories,
-- or passed explicitly as inputs.
-
-State from local files, environment variables not passed to the executor,
-or external systems not declared as inputs is forbidden.
+Local files, environment variables not passed to the executor, or cached
+state from previous runs MUST NOT affect behavior.
 
 ---
 
-### Invariant 4 — Failure Propagation
+### INV-4: Failure Visibility
 
-A failure in any deployment node MUST:
-
-- prevent all dependent nodes from executing,
-- be distinguishable from in-progress status,
-- and be observable through standard interfaces.
-
-Silent failures or failures masked as success are forbidden.
+If any application fails to deploy or become healthy:
+- The failure MUST be reported
+- Dependent applications MUST NOT attempt deployment
+- The system MUST NOT mask the failure as success
 
 ---
 
-### Invariant 5 — Health Verification Explicitness
+### INV-5: Reverse Order Teardown
 
-Health status MUST be determined through explicit health checks.
+Teardown MUST proceed in reverse dependency order.
 
-Sync completion, resource existence, or pod readiness alone do not constitute
-health. Custom resources MUST have defined health checks that verify actual
-operational status.
+An application MUST NOT be removed while applications depending on it exist.
 
 ---
 
-### Invariant 6 — Teardown Order Enforcement
+### INV-6: Idempotent Execution
 
-Teardown MUST execute in reverse dependency order.
+Running the same action multiple times with identical inputs MUST produce
+identical results.
 
-A resource MUST NOT be removed while resources depending on it still exist.
-
-The system MUST verify absence of dependents before removal.
-
----
-
-### Invariant 7 — Authority Boundary Enforcement
-
-Each layer in the architecture has exclusive authority over its domain:
-
-- Bootstrap layer: cluster prerequisites and orchestration primitives
-- Orchestration layer: cross-application dependency resolution
-- Deployment layer: application state reconciliation
-- Promotion layer: environment progression
-
-No layer MUST bypass or override another's authority.
+This includes:
+- Deploy on already-deployed platform: no changes
+- Teardown on already-removed platform: no errors
+- Validate on healthy platform: reports healthy
 
 ---
 
-### Invariant 8 — Hook Prohibition
+### INV-7: Health Verification Accuracy
 
-PreSync and PostSync hooks MUST NOT be used for dependency validation or
-cross-application ordering.
+Health status MUST reflect actual operational state.
 
-All dependency logic MUST be expressed in the orchestration layer, not through
-ArgoCD hooks or Helm hooks.
-
----
-
-## 2.5 Operational Philosophy
-
-The system is designed around the following operational beliefs:
-
-- **Automation is a correctness requirement** — not a convenience. Manual steps
-  are failure modes.
-
-- **Human memory is not a dependency**. The system MUST operate correctly
-  regardless of operator experience.
-
-- **Failures will happen**; recovery MUST be routine. The system MUST assume
-  failures and provide clear recovery paths.
-
-- **Determinism enables trust**. Engineers MUST be able to predict deployment
-  outcomes.
-
-- **Observability is non-optional**. Every state transition MUST be logged and
-  queryable.
-
-- **Complexity is not excused by scale**. A 40-application platform MUST be
-  as predictable as a 4-application platform.
-
-This philosophy informs every tradeoff made later in the design.
+Custom health checks MUST be defined for:
+- CephCluster (Ceph operator)
+- PostgreSQL clusters (Zalando operator)
+- Vault (sealed vs unsealed)
+- Any CRD where sync completion does not indicate readiness
 
 ---
 
-## 2.6 Success Criteria
+### INV-8: Hook Prohibition
 
-This architecture is considered successful if:
+PreSync and PostSync hooks MUST NOT be used for dependency orchestration.
 
-- Full platform deployment completes without human intervention.
+Existing hooks for this purpose MUST be removed.
 
-- Deployment produces identical results across repeated executions.
+Hooks MAY remain for application-internal tasks (migrations, initialization).
 
-- Failure in any component prevents dependent deployments and reports clearly.
+---
 
-- Platform teardown completes cleanly without orphaned resources.
+## 2.5 Success Criteria
 
-- Engineers not involved in architecture design can operate the system from
-  documentation alone.
+The system is successful if:
 
-- Mean time to recovery from deployment failures decreases by an order of
-  magnitude.
+1. **Full deployment succeeds without intervention**
+   Starting from an empty cluster, the executor deploys all 40+ applications
+   without any manual steps.
 
-- The system remains understandable years after its creation.
+2. **Deployment is reproducible**
+   Multiple deployments to identical clusters produce identical results.
+
+3. **Partial failure is recoverable**
+   If deployment fails at application N, resuming deployment continues from
+   N without re-deploying 1 through N-1.
+
+4. **Teardown leaves clean cluster**
+   After teardown, no platform resources remain (excluding PersistentVolumes
+   if retention is configured).
+
+5. **New engineers can deploy**
+   An engineer unfamiliar with the platform can execute deployment using
+   only documented procedures.
+
+6. **Dependency violations are caught**
+   Attempting to deploy an application before its dependencies fails with
+   a clear error, not silent misbehavior.
 
 ---
 

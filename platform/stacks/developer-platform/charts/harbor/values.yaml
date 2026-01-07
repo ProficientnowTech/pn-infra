@@ -1,142 +1,144 @@
 # values.yaml - Harbor Production Configuration with SealedSecret
-expose:
-  type: ingress
-  tls:
+# Values must be nested under 'harbor:' key since harbor is a dependency chart
+harbor:
+  expose:
+    type: ingress
+    tls:
+      enabled: true
+      certSource: secret
+      secret:
+        secretName: "harbor-tls"
+        notarySecretName: "harbor-tls"
+    ingress:
+      hosts:
+        core: registry.pnats.cloud
+      controller: ingress-nginx
+      className: "nginx"
+      annotations:
+        ingress.kubernetes.io/ssl-redirect: "true"
+        ingress.kubernetes.io/proxy-body-size: "0"
+        nginx.ingress.kubernetes.io/ssl-redirect: "true"
+        nginx.ingress.kubernetes.io/proxy-body-size: "0"
+        # Cert-Manager for TLS certificates
+        cert-manager.io/cluster-issuer: "letsencrypt-production"
+        # ExternalDNS for DNS management - will create records for registry.pnats.cloud
+        external-dns.alpha.kubernetes.io/hostname: "registry.pnats.cloud"
+
+  externalURL: https://registry.pnats.cloud
+
+  persistence:
     enabled: true
-    certSource: secret
-    secret:
-      secretName: "harbor-tls"
-      notarySecretName: "harbor-tls"
-  ingress:
-    hosts:
-      core: registry.pnats.cloud
-    controller: ingress-nginx
-    className: "nginx"
-    annotations:
-      ingress.kubernetes.io/ssl-redirect: "true"
-      ingress.kubernetes.io/proxy-body-size: "0"
-      nginx.ingress.kubernetes.io/ssl-redirect: "true"
-      nginx.ingress.kubernetes.io/proxy-body-size: "0"
-      # Cert-Manager for TLS certificates
-      cert-manager.io/cluster-issuer: "letsencrypt-production"
-      # ExternalDNS for DNS management - will create records for registry.pnats.cloud
-      external-dns.alpha.kubernetes.io/hostname: "registry.pnats.cloud"
-
-externalURL: https://registry.pnats.cloud
-
-persistence:
-  enabled: true
-  resourcePolicy: "keep"
-  persistentVolumeClaim:
-    jobservice:
-      jobLog:
+    resourcePolicy: "keep"
+    persistentVolumeClaim:
+      jobservice:
+        jobLog:
+          storageClass: "plt-blk-hdd-repl"
+          accessMode: ReadWriteOnce
+          size: 1Gi
+      database:
         storageClass: "plt-blk-hdd-repl"
         accessMode: ReadWriteOnce
         size: 1Gi
-    database:
-      storageClass: "plt-blk-hdd-repl"
-      accessMode: ReadWriteOnce
-      size: 1Gi
-    redis:
-      storageClass: "plt-blk-hdd-repl"
-      accessMode: ReadWriteOnce
-      size: 1Gi
-    trivy:
-      storageClass: "plt-blk-hdd-repl"
-      accessMode: ReadWriteOnce
-      size: 5Gi
-  imageChartStorage:
-    type: s3
-    disableredirect: false
-    s3:
-      region: ap-south-2
-      bucket: harbor
-      regionendpoint: https://s3.pnats.cloud
-      encrypt: false
-      secure: true
-      # Reference to SealedSecret for S3 credentials
-      existingSecret: "harbor-s3-credentials"
-      existingSecretAccessKey: "REGISTRY_STORAGE_S3_ACCESSKEY"
-      existingSecretSecretKey: "REGISTRY_STORAGE_S3_SECRETKEY"
-      v4auth: true
-      forcepathstyle: true
+      redis:
+        storageClass: "plt-blk-hdd-repl"
+        accessMode: ReadWriteOnce
+        size: 1Gi
+      trivy:
+        storageClass: "plt-blk-hdd-repl"
+        accessMode: ReadWriteOnce
+        size: 5Gi
+    imageChartStorage:
+      type: s3
+      disableredirect: false
+      s3:
+        region: ap-south-2
+        bucket: harbor
+        regionendpoint: https://s3.pnats.cloud
+        encrypt: false
+        secure: true
+        # Reference to SealedSecret for S3 credentials
+        existingSecret: "harbor-s3-credentials"
+        existingSecretAccessKey: "REGISTRY_STORAGE_S3_ACCESSKEY"
+        existingSecretSecretKey: "REGISTRY_STORAGE_S3_SECRETKEY"
+        v4auth: true
+        forcepathstyle: true
 
-# Admin password from SealedSecret
-existingSecretAdminPassword: "harbor-core-secrets"
-existingSecretAdminPasswordKey: "admin-password"
+  # Admin password from SealedSecret
+  existingSecretAdminPassword: "harbor-core-secrets"
+  existingSecretAdminPasswordKey: "admin-password"
 
-# Disable IPv6
-ipFamily:
-  ipv6:
+  # Disable IPv6
+  ipFamily:
+    ipv6:
+      enabled: false
+    ipv4:
+      enabled: true
+
+  # Security configuration
+  internalTLS:
     enabled: false
-  ipv4:
-    enabled: true
 
-# Security configuration
-internalTLS:
-  enabled: false
+  # General settings
+  imagePullPolicy: IfNotPresent
+  updateStrategy:
+    type: Recreate
 
-# General settings
-imagePullPolicy: IfNotPresent
-updateStrategy:
-  type: Recreate
+  # Encryption key from SealedSecret
+  existingSecretSecretKey: "harbor-core-secrets"
+  existingSecretSecretKeyKey: "secretKey"
 
-# Encryption key from SealedSecret
-existingSecretSecretKey: "harbor-core-secrets"
-existingSecretSecretKeyKey: "secretKey"
-
-# Component configurations
-portal:
-  image:
-    repository: docker.io/goharbor/harbor-portal
-    tag: v2.14.0
-  replicas: 2
-
-core:
-  image:
-    repository: docker.io/goharbor/harbor-core
-    tag: v2.14.0
-  replicas: 2
-  # Registry password from SealedSecret
-  existingSecret: "harbor-core-secrets"
-  existingSecretKey: "secret"
-  extraEnvVars:
-  - name: TOKEN_SERVICE_URL
-    value: https://registry.pnats.cloud/service/token
-
-jobservice:
-  image:
-    repository: docker.io/goharbor/harbor-jobservice
-    tag: v2.14.0
-  replicas: 1
-  # Jobservice secret from SealedSecret
-  existingSecret: "harbor-core-secrets"
-  existingSecretKey: "jobservice-secret"
-
-registry:
-  registry:
+  # Component configurations
+  portal:
     image:
-      repository: docker.io/goharbor/registry-photon
+      repository: docker.io/goharbor/harbor-portal
       tag: v2.14.0
-  controller:
-    image:
-      repository: docker.io/goharbor/harbor-registryctl
-      tag: v2.14.0
-  replicas: 1
-  # Registry HTTP secret from SealedSecret
-  existingSecret: "harbor-core-secrets"
-  existingSecretKey: "registry-http-secret"
-  credentials:
-    username: "admin"
-    password: "Harbor12345"
-    htpasswdString: "admin:$2y$05$QuYqMD3DYgN0YDiaj15.A.SmR0C5w2MmLOE76hKLCAIPPX2Ep6Z6i"
+    replicas: 2
 
-database:
-  type: internal
-  internal:
+  core:
     image:
-      repository: docker.io/goharbor/harbor-db
+      repository: docker.io/goharbor/harbor-core
       tag: v2.14.0
-    # Database password from SealedSecret
+    replicas: 2
+    # Registry password from SealedSecret
     existingSecret: "harbor-core-secrets"
-    existingSecretPasswordKey: "database-password"
+    existingSecretKey: "secret"
+    extraEnvVars:
+    - name: TOKEN_SERVICE_URL
+      value: https://registry.pnats.cloud/service/token
+
+  jobservice:
+    image:
+      repository: docker.io/goharbor/harbor-jobservice
+      tag: v2.14.0
+    replicas: 1
+    # Jobservice secret from SealedSecret
+    existingSecret: "harbor-core-secrets"
+    existingSecretKey: "jobservice-secret"
+
+  registry:
+    registry:
+      image:
+        repository: docker.io/goharbor/registry-photon
+        tag: v2.14.0
+    controller:
+      image:
+        repository: docker.io/goharbor/harbor-registryctl
+        tag: v2.14.0
+    replicas: 1
+    # Registry HTTP secret from SealedSecret
+    existingSecret: "harbor-core-secrets"
+    existingSecretKey: "registry-http-secret"
+    credentials:
+      username: "admin"
+      password: "Harbor12345"
+      htpasswdString: "admin:$2y$05$QuYqMD3DYgN0YDiaj15.A.SmR0C5w2MmLOE76hKLCAIPPX2Ep6Z6i"
+
+  database:
+    type: internal
+    internal:
+      image:
+        repository: docker.io/goharbor/harbor-db
+        tag: v2.14.0
+      # Database password from SealedSecret
+      existingSecret: "harbor-core-secrets"
+      existingSecretPasswordKey: "database-password"

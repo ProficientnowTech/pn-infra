@@ -5,9 +5,9 @@ harbor:
     type: ingress
     tls:
       enabled: true
-      certSource: auto
-      auto:
-        commonName: "registry.pnats.cloud"
+      certSource: secret
+      secret:
+        secretName: "harbor-tls"
     ingress:
       hosts:
         core: registry.pnats.cloud
@@ -24,6 +24,9 @@ harbor:
         external-dns.alpha.kubernetes.io/hostname: "registry.pnats.cloud"
 
   externalURL: https://registry.pnats.cloud
+
+  # CA Secret - use the same TLS secret for CA (Let's Encrypt CA is in the chain)
+  caSecretName: "harbor-tls"
 
   persistence:
     enabled: true

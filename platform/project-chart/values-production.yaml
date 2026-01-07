@@ -176,7 +176,7 @@ projects:
     server: https://kubernetes.default.svc
   clusterResources:
   - group: '*'
-    kind: '*'''
+    kind: '*'
   namespaceResources:
   - group: '*'
     kind: '*'

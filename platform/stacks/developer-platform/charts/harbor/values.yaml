@@ -79,7 +79,7 @@ internalTLS:
 # General settings
 imagePullPolicy: IfNotPresent
 updateStrategy:
-  type: RollingUpdate
+  type: Recreate
 
 # Encryption key from SealedSecret
 existingSecretSecretKey: "harbor-core-secrets"

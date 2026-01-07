@@ -40,9 +40,10 @@ This RFC exists because the original deployment system reached a point where:
 - and deployment orchestration became a persistent source of incidents requiring
   human intervention.
 
-> **The architecture proposed in this RFC was *not* designed or implemented
-> from the beginning.** It emerged as a necessity, driven by accumulated
-> operational failures, non-deterministic behaviors, and maintenance burden.
+> **Deployment orchestration at this scale cannot be retrofitted onto existing
+> tools.** ArgoCD sync waves, PreSync hooks, and bash scripts each solve part
+> of the problem, but none provide the DAG-based dependency resolution required
+> for deterministic multi-stack deployment.
 
 ---
 

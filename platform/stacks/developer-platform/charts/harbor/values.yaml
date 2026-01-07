@@ -5,10 +5,9 @@ harbor:
     type: ingress
     tls:
       enabled: true
-      certSource: secret
-      secret:
-        secretName: "harbor-tls"
-        notarySecretName: "harbor-tls"
+      certSource: auto
+      auto:
+        commonName: "registry.pnats.cloud"
     ingress:
       hosts:
         core: registry.pnats.cloud
@@ -32,19 +31,19 @@ harbor:
     persistentVolumeClaim:
       jobservice:
         jobLog:
-          storageClass: "plt-blk-hdd-repl"
+          storageClass: "app-blk-hdd-repl"
           accessMode: ReadWriteOnce
           size: 1Gi
       database:
-        storageClass: "plt-blk-hdd-repl"
+        storageClass: "app-blk-hdd-repl"
         accessMode: ReadWriteOnce
         size: 1Gi
       redis:
-        storageClass: "plt-blk-hdd-repl"
+        storageClass: "app-blk-hdd-repl"
         accessMode: ReadWriteOnce
         size: 1Gi
       trivy:
-        storageClass: "plt-blk-hdd-repl"
+        storageClass: "app-blk-hdd-repl"
         accessMode: ReadWriteOnce
         size: 5Gi
     imageChartStorage:
@@ -80,8 +79,6 @@ harbor:
 
   # General settings
   imagePullPolicy: IfNotPresent
-  updateStrategy:
-    type: Recreate
 
   # Encryption key from SealedSecret
   existingSecretSecretKey: "harbor-core-secrets"

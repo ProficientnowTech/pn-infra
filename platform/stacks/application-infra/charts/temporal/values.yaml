@@ -1,5 +1,5 @@
 ---
-# Temporal HA Deployment with PostgreSQL
+# Temporal HA Deployment with Internal PostgreSQL
 # Chart dependency - using upstream Temporal chart
 temporal:
   # Server configuration
@@ -18,30 +18,26 @@ temporal:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "platform-postgres-pooler.platform-data.svc"
+            host: "temporal-postgresql"
             port: 5432
             database: "temporal"
             user: "temporal"
-            existingSecret: "temporal-postgres-secret"
+            existingSecret: "temporal-default-store"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
-            connectAttributes:
-              sslmode: require
         visibility:
           driver: "sql"
           sql:
             driver: "postgres12"
-            host: "platform-postgres-pooler.platform-data.svc"
+            host: "temporal-postgresql"
             port: 5432
             database: "temporal_visibility"
             user: "temporal"
-            existingSecret: "temporal-postgres-secret"
+            existingSecret: "temporal-visibility-store"
             maxConns: 20
             maxIdleConns: 20
             maxConnLifetime: "1h"
-            connectAttributes:
-              sslmode: require
       namespaces:
         create: true
         namespace:
@@ -198,9 +194,25 @@ temporal:
     update:
       enabled: true
       backoffLimit: 100
-  # PostgreSQL - Using Zalando postgres-operator cluster
+  # PostgreSQL - Enable internal PostgreSQL
   postgresql:
-    enabled: false
+    enabled: true
+    auth:
+      username: "temporal"
+      database: "temporal"
+      # Password will be auto-generated and stored in secret
+    primary:
+      persistence:
+        enabled: true
+        storageClass: "plt-blk-hdd-repl"
+        size: 20Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 512Mi
+        limits:
+          cpu: 1000m
+          memory: 2Gi
   # Disable Cassandra (using PostgreSQL)
   cassandra:
     enabled: false

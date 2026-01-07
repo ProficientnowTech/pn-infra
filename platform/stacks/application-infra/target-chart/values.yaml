@@ -44,8 +44,3 @@ commonAnnotations:
 
 # Applications list - override in values-{environment}.yaml
 applications: []
-dependencies: []
-dependencyCheck:
-  enabled: true
-  pollIntervalSeconds: 10
-  image: bitnamilegacy/kubectl:1.30.3

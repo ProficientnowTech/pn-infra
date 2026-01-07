@@ -8,6 +8,7 @@ stacks:
     path: platform/stacks/infrastructure/target-chart
     valuesFile: platform/stacks/infrastructure/target-chart/values-production.yaml
   dependencies: []
+
 - name: platform-storage
   description: "Rook, PostgreSQL operator, Redis"
   project: storage
@@ -64,6 +65,7 @@ stacks:
     path: platform/stacks/developer-platform/target-chart
     valuesFile: platform/stacks/developer-platform/target-chart/values-production.yaml
   dependencies: []
+
 - name: platform-development-workloads
   description: "Kargo, Tekton, Argo Rollouts, CI/CD toolchain"
   project: development-workloads
@@ -72,6 +74,7 @@ stacks:
     path: platform/stacks/development-workloads/target-chart
     valuesFile: platform/stacks/development-workloads/target-chart/values-production.yaml
   dependencies: []
+
 - name: platform-application-infra
   description: "Temporal and supporting runtime infra"
   project: application-infra

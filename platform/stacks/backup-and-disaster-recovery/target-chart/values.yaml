@@ -26,8 +26,3 @@ commonAnnotations:
   platform.pnats.cloud/managed-by: platform-core
   platform.pnats.cloud/generated-by: platform-core-chart
 applications: []
-dependencies: []
-dependencyCheck:
-  enabled: true
-  pollIntervalSeconds: 10
-  image: bitnamilegacy/kubectl:1.30.3

@@ -13,35 +13,35 @@ temporal:
     # IMMUTABLE: Do not change after initial deployment
     config:
       numHistoryShards: 512
-      persistence:
-        default:
-          driver: "sql"
-          sql:
-            driver: "postgres12"
-            host: "platform-postgres-pooler.platform-data.svc"
-            port: 5432
-            database: "temporal"
-            user: "temporal"
-            existingSecret: "temporal-postgres-secret"
-            maxConns: 20
-            maxIdleConns: 20
-            maxConnLifetime: "1h"
-            connectAttributes:
-              sslmode: require
-        visibility:
-          driver: "sql"
-          sql:
-            driver: "postgres12"
-            host: "platform-postgres-pooler.platform-data.svc"
-            port: 5432
-            database: "temporal_visibility"
-            user: "temporal"
-            existingSecret: "temporal-postgres-secret"
-            maxConns: 20
-            maxIdleConns: 20
-            maxConnLifetime: "1h"
-            connectAttributes:
-              sslmode: require
+      # persistence:
+      #   default:
+      #     driver: "sql"
+      #     sql:
+      #       driver: "postgres12"
+      #       host: "platform-postgres-pooler.platform-data.svc"
+      #       port: 5432
+      #       database: "temporal"
+      #       user: "temporal"
+      #       existingSecret: "temporal-postgres-secret"
+      #       maxConns: 20
+      #       maxIdleConns: 20
+      #       maxConnLifetime: "1h"
+      #       connectAttributes:
+      #         sslmode: require
+      #   visibility:
+      #     driver: "sql"
+      #     sql:
+      #       driver: "postgres12"
+      #       host: "platform-postgres-pooler.platform-data.svc"
+      #       port: 5432
+      #       database: "temporal_visibility"
+      #       user: "temporal"
+      #       existingSecret: "temporal-postgres-secret"
+      #       maxConns: 20
+      #       maxIdleConns: 20
+      #       maxConnLifetime: "1h"
+      #       connectAttributes:
+      #         sslmode: require
       namespaces:
         create: true
         namespace:
@@ -164,11 +164,11 @@ temporal:
         cert-manager.io/cluster-issuer: letsencrypt-production
         external-dns.alpha.kubernetes.io/ttl: "60"
       hosts:
-      - "temporal-ui.pnats.cloud"
+      - "temporal.pnats.cloud"
       tls:
       - secretName: temporal-ui-tls
         hosts:
-        - temporal-ui.pnats.cloud
+        - temporal.pnats.cloud
     resources:
       requests:
         cpu: 100m
@@ -179,7 +179,7 @@ temporal:
     # Web UI configuration to connect to Temporal cluster
     additionalEnv:
     - name: TEMPORAL_CORS_ORIGINS
-      value: "https://temporal-ui.pnats.cloud"
+      value: "https://temporal.pnats.cloud"
   # Admin tools
   admintools:
     enabled: true
@@ -200,7 +200,7 @@ temporal:
       backoffLimit: 100
   # PostgreSQL - Using external Zalando postgres-operator cluster
   postgresql:
-    enabled: false
+    enabled: true
   # Disable Cassandra (using PostgreSQL)
   cassandra:
     enabled: false

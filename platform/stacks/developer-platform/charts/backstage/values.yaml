@@ -1,5 +1,6 @@
 ---
 # Backstage Developer Portal Configuration for PN Platform
+# Values must be nested under 'backstage:' key since backstage is a dependency chart
 
 secrets:
   externalSecret:
@@ -163,43 +164,43 @@ backstage:
       port: 7007
       scheme: HTTP
 
-# Ingress
-ingress:
-  enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-production
-    external-dns.alpha.kubernetes.io/ttl: "60"
-    nginx.ingress.kubernetes.io/proxy-body-size: "0"
-    nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
-  host: developers.pnats.cloud
-  path: "/"
-  tls:
+  # Ingress - must be under backstage key
+  ingress:
     enabled: true
-    secretName: backstage-tls
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      external-dns.alpha.kubernetes.io/ttl: "60"
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
+      nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+    host: developers.pnats.cloud
+    path: "/"
+    tls:
+      enabled: true
+      secretName: backstage-tls
 
-# Service
-service:
-  type: ClusterIP
-  ports:
-    backend: 7007
-    name: http-backend
-    targetPort: backend
+  # Service
+  service:
+    type: ClusterIP
+    ports:
+      backend: 7007
+      name: http-backend
+      targetPort: backend
 
-# Service account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
+  # Service account
+  serviceAccount:
+    create: true
+    automountServiceAccountToken: true
 
-# PostgreSQL
-postgresql:
-  enabled: false
+  # PostgreSQL
+  postgresql:
+    enabled: false
 
-# Network policy
-networkPolicy:
-  enabled: false
+  # Network policy
+  networkPolicy:
+    enabled: false
 
-# Metrics
-metrics:
-  serviceMonitor:
-    enabled: true
+  # Metrics
+  metrics:
+    serviceMonitor:
+      enabled: true

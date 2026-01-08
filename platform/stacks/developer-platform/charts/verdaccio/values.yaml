@@ -1,23 +1,24 @@
-# Minimal configuration - only PVC and Ingress
-
-ingress:
-  enabled: true
-  className: "nginx"
-  paths:
-  - /
-  hosts:
-  - npm.pnats.cloud
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-production
-    external-dns.alpha.kubernetes.io/ttl: "60"
-    external-dns.alpha.kubernetes.io/hostname: "npm.pnats.cloud"
-  tls:
-  - secretName: verdaccio-tls
+# Verdaccio private npm registry configuration
+# Values must be nested under 'verdaccio:' key since verdaccio is a dependency chart
+verdaccio:
+  ingress:
+    enabled: true
+    className: "nginx"
+    paths:
+    - /
     hosts:
     - npm.pnats.cloud
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      external-dns.alpha.kubernetes.io/ttl: "60"
+      external-dns.alpha.kubernetes.io/hostname: "npm.pnats.cloud"
+    tls:
+    - secretName: verdaccio-tls
+      hosts:
+      - npm.pnats.cloud
 
-persistence:
-  enabled: true
-  storageClass: "plt-blk-hdd-repl"
-  accessMode: ReadWriteOnce
-  size: 8Gi
+  persistence:
+    enabled: true
+    storageClass: "plt-blk-hdd-repl"
+    accessMode: ReadWriteOnce
+    size: 8Gi

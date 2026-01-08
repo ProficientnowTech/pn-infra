@@ -1,6 +1,74 @@
 ---
 # Temporal HA Deployment with External PostgreSQL
 # Chart dependency - using upstream Temporal chart
+
+# ==============================================================================
+# Secrets Configuration (Vault-Owned via ExternalSecret)
+# ==============================================================================
+# Flow:
+# 1. Zalando operator creates secret in platform-data namespace
+# 2. PushSecret (in pg-clusters) syncs password to Vault
+# 3. ExternalSecret (below) syncs from Vault to temporal namespace
+#
+# This gives Vault ownership for audit, rotation, and cross-namespace access
+# ==============================================================================
+secrets:
+  postgres:
+    # Sync from Vault via ExternalSecret
+    # Password is pushed to Vault by PushSecret in platform-data namespace
+    # Vault path: platform-data/postgres/temporal
+    externalSecret:
+      enabled: true
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault-backend
+        kind: ClusterSecretStore
+      target:
+        name: temporal-postgres-secret
+        creationPolicy: Owner
+      data:
+      - secretKey: password
+        remoteRef:
+          key: platform-data/postgres/temporal
+          property: password
+
+# ==============================================================================
+# Configuration (Vault-Owned via ExternalSecret)
+# ==============================================================================
+# Flow:
+# 1. pg-clusters creates config Secret with endpoint values
+# 2. PushSecret (in pg-clusters) syncs config to Vault
+# 3. ExternalSecret (below) syncs from Vault to temporal namespace
+#
+# Simple architecture: single endpoint, Temporal handles its own connection pooling
+# ==============================================================================
+config:
+  postgres:
+    # Sync postgres endpoint from Vault via ExternalSecret
+    # Config is pushed to Vault by PushSecret in platform-data namespace
+    # Vault path: platform-config/postgres/platform-postgres
+    externalSecret:
+      enabled: true
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault-backend
+        kind: ClusterSecretStore
+      target:
+        name: temporal-postgres-config
+        creationPolicy: Owner
+      data:
+      - secretKey: host
+        remoteRef:
+          key: platform-config/postgres/platform-postgres
+          property: host
+      - secretKey: port
+        remoteRef:
+          key: platform-config/postgres/platform-postgres
+          property: port
+
+# ==============================================================================
+# Temporal Chart Configuration
+# ==============================================================================
 temporal:
   # Server configuration
   server:
@@ -13,35 +81,42 @@ temporal:
     # IMMUTABLE: Do not change after initial deployment
     config:
       numHistoryShards: 512
-      # persistence:
-      #   default:
-      #     driver: "sql"
-      #     sql:
-      #       driver: "postgres12"
-      #       host: "platform-postgres-pooler.platform-data.svc"
-      #       port: 5432
-      #       database: "temporal"
-      #       user: "temporal"
-      #       existingSecret: "temporal-postgres-secret"
-      #       maxConns: 20
-      #       maxIdleConns: 20
-      #       maxConnLifetime: "1h"
-      #       connectAttributes:
-      #         sslmode: require
-      #   visibility:
-      #     driver: "sql"
-      #     sql:
-      #       driver: "postgres12"
-      #       host: "platform-postgres-pooler.platform-data.svc"
-      #       port: 5432
-      #       database: "temporal_visibility"
-      #       user: "temporal"
-      #       existingSecret: "temporal-postgres-secret"
-      #       maxConns: 20
-      #       maxIdleConns: 20
-      #       maxConnLifetime: "1h"
-      #       connectAttributes:
-      #         sslmode: require
+      persistence:
+        default:
+          driver: "sql"
+          sql:
+            driver: "postgres12"
+            # NOTE: Temporal chart only supports existingSecret for password.
+            # Host/port must be hardcoded here. The temporal-postgres-config
+            # secret (from Vault) is created for reference and future use.
+            # Direct endpoint - Temporal handles its own connection pooling.
+            host: "platform-postgres.platform-data.svc"
+            port: 5432
+            database: "temporal"
+            user: "temporal"
+            # Password synced from Vault via ExternalSecret
+            existingSecret: "temporal-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+            connectAttributes:
+              sslmode: require
+        visibility:
+          driver: "sql"
+          sql:
+            driver: "postgres12"
+            # NOTE: Same as above - direct endpoint, password from Vault
+            host: "platform-postgres.platform-data.svc"
+            port: 5432
+            database: "temporal_visibility"
+            user: "temporal"
+            # Password synced from Vault via ExternalSecret
+            existingSecret: "temporal-postgres-secret"
+            maxConns: 20
+            maxIdleConns: 20
+            maxConnLifetime: "1h"
+            connectAttributes:
+              sslmode: require
       namespaces:
         create: true
         namespace:
@@ -58,27 +133,23 @@ temporal:
     # Service configuration
     frontend:
       service:
-        type: LoadBalancer
+        type: ClusterIP
         port: 7233
-        annotations:
-          external-dns.alpha.kubernetes.io/hostname: temporal.pnats.cloud
-          external-dns.alpha.kubernetes.io/ttl: "60"
-          metallb.universe.tf/ip-allocated-from-pool: public-pool
-      # Add ingress for frontend service
       ingress:
-        enabled: false
+        enabled: true
         className: "nginx"
         annotations:
           cert-manager.io/cluster-issuer: letsencrypt-production
+          external-dns.alpha.kubernetes.io/hostname: temporal-sdk.pnats.cloud
           external-dns.alpha.kubernetes.io/ttl: "60"
           nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
-          nginx.ingress.kubernetes.io/grpc-backend: "true"
+          nginx.ingress.kubernetes.io/ssl-redirect: "true"
         hosts:
-        - temporal-api.pnats.cloud
+        - temporal-sdk.pnats.cloud
         tls:
-        - secretName: temporal-api-tls
+        - secretName: temporal-sdk-tls
           hosts:
-          - temporal-api.pnats.cloud
+          - temporal-sdk.pnats.cloud
     # Resource allocation per pod
     resources:
       requests:
@@ -162,6 +233,7 @@ temporal:
       className: "nginx"
       annotations:
         cert-manager.io/cluster-issuer: letsencrypt-production
+        external-dns.alpha.kubernetes.io/hostname: temporal.pnats.cloud
         external-dns.alpha.kubernetes.io/ttl: "60"
       hosts:
       - "temporal.pnats.cloud"
@@ -200,7 +272,7 @@ temporal:
       backoffLimit: 100
   # PostgreSQL - Using external Zalando postgres-operator cluster
   postgresql:
-    enabled: true
+    enabled: false
   # Disable Cassandra (using PostgreSQL)
   cassandra:
     enabled: false

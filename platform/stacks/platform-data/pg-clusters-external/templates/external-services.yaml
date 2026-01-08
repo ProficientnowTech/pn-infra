@@ -1,0 +1,250 @@
+{{- range .Values.pgClusters }}
+{{- if .externalAccess }}
+{{- if .externalAccess.enabled }}
+{{- $pooler := .pooler | default dict }}
+{{- $poolerEnabled := $pooler.enabled | default true }}
+---
+# ==============================================================================
+# External LoadBalancer Services for {{ .name }}
+# ==============================================================================
+# Three separate IPs for external access (no sharing):
+#   - Write IP ({{ $.Values.externalAccess.writeIP }}): Master via pgbouncer
+#   - Read IP  ({{ $.Values.externalAccess.readIP }}): Replicas via pgbouncer
+#   - Admin IP ({{ $.Values.externalAccess.adminIP }}): Direct PostgreSQL connection
+# Service ports (all on 5432 since each has dedicated IP):
+#   - Write: {{ $.Values.externalAccess.writeIP }}:5432
+#   - Read:  {{ $.Values.externalAccess.readIP }}:5432
+#   - Admin: {{ $.Values.externalAccess.adminIP }}:5432
+# ==============================================================================
+
+{{- if .externalAccess.write }}
+{{- if .externalAccess.write.enabled }}
+---
+# Write Service - Master with Connection Pooler (Transaction Mode)
+# Use this for: Application writes, transactional operations
+# Connection: {{ .externalAccess.write.hostname | default (printf "%s-write.pnats.cloud" .name) }}:{{ .externalAccess.write.port | default 5432 }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}-external-write
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: database-external-write
+    postgres-cluster: {{ .name }}
+    connection-type: write-pooled
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .externalAccess.syncWave | default "1" | quote }}
+
+    # external-dns configuration
+    external-dns.alpha.kubernetes.io/hostname: {{ .externalAccess.write.hostname | default (printf "%s-write.pnats.cloud" .name) }}
+    external-dns.alpha.kubernetes.io/ttl: "300"
+
+    # MetalLB configuration - Dedicated Write IP
+    metallb.io/address-pool: public-pool
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.writeIP }}
+
+    # Description
+    service.kubernetes.io/description: "PostgreSQL {{ .name }} - Write endpoint (pooled) on port {{ .externalAccess.write.port | default 5432 }}"
+
+    {{- if .externalAccess.write.annotations }}
+    {{- toYaml .externalAccess.write.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  type: LoadBalancer
+
+  # Security: Restrict access to specific source IPs
+  {{- if .externalAccess.write.allowedSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range .externalAccess.write.allowedSourceRanges }}
+  - {{ . }}
+  {{- end }}
+  {{- else if .externalAccess.allowedSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range .externalAccess.allowedSourceRanges }}
+  - {{ . }}
+  {{- end }}
+  {{- end }}
+
+  externalTrafficPolicy: {{ .externalAccess.write.externalTrafficPolicy | default "Local" }}
+  sessionAffinity: {{ .externalAccess.write.sessionAffinity | default "ClientIP" }}
+  {{- if eq (.externalAccess.write.sessionAffinity | default "ClientIP") "ClientIP" }}
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .externalAccess.write.sessionAffinityTimeout | default 10800 }}
+  {{- end }}
+
+  selector:
+    {{- if $poolerEnabled }}
+    application: db-connection-pooler
+    connection-pooler: {{ .name }}-pooler
+    {{- else }}
+    application: spilo
+    {{- end }}
+    cluster-name: {{ .name }}
+    spilo-role: master
+
+  ports:
+  - name: postgresql
+    port: {{ .externalAccess.write.port | default 5432 }}
+    targetPort: {{ $poolerEnabled | ternary 5432 5432 }}
+    protocol: TCP
+{{- end }}
+{{- end }}
+
+{{- if .externalAccess.read }}
+{{- if .externalAccess.read.enabled }}
+---
+# Read Service - Replicas with Connection Pooler (Transaction Mode)
+# Use this for: Application reads, analytics, reporting
+# Connection: {{ .externalAccess.read.hostname | default (printf "%s-read.pnats.cloud" .name) }}:{{ .externalAccess.read.port | default 5433 }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}-external-read
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: database-external-read
+    postgres-cluster: {{ .name }}
+    connection-type: read-pooled
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .externalAccess.syncWave | default "1" | quote }}
+
+    # external-dns configuration
+    external-dns.alpha.kubernetes.io/hostname: {{ .externalAccess.read.hostname | default (printf "%s-read.pnats.cloud" .name) }}
+    external-dns.alpha.kubernetes.io/ttl: "300"
+
+    # MetalLB configuration - Dedicated Read IP
+    metallb.io/address-pool: public-pool
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.readIP }}
+
+    # Description
+    service.kubernetes.io/description: "PostgreSQL {{ .name }} - Read endpoint (pooled) on port {{ .externalAccess.read.port | default 5433 }}"
+
+    {{- if .externalAccess.read.annotations }}
+    {{- toYaml .externalAccess.read.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  type: LoadBalancer
+
+  # Security: Restrict access to specific source IPs
+  {{- if .externalAccess.read.allowedSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range .externalAccess.read.allowedSourceRanges }}
+  - {{ . }}
+  {{- end }}
+  {{- else if .externalAccess.allowedSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range .externalAccess.allowedSourceRanges }}
+  - {{ . }}
+  {{- end }}
+  {{- end }}
+
+  externalTrafficPolicy: {{ .externalAccess.read.externalTrafficPolicy | default "Local" }}
+  sessionAffinity: {{ .externalAccess.read.sessionAffinity | default "None" }}
+
+  selector:
+    {{- if $poolerEnabled }}
+    application: db-connection-pooler
+    connection-pooler: {{ .name }}-pooler-repl
+    {{- else }}
+    application: spilo
+    {{- end }}
+    cluster-name: {{ .name }}
+    spilo-role: replica
+
+  ports:
+  - name: postgresql
+    port: {{ .externalAccess.read.port | default 5433 }}
+    targetPort: {{ $poolerEnabled | ternary 5432 5432 }}
+    protocol: TCP
+{{- end }}
+{{- end }}
+
+{{- if .externalAccess.admin }}
+{{- if .externalAccess.admin.enabled }}
+---
+# Admin Service - Master Direct Connection (No Pooler)
+# Use this for: Migrations, schema changes, pg_dump/restore, VACUUM, etc.
+# Connection: {{ .externalAccess.admin.hostname | default (printf "%s-admin.pnats.cloud" .name) }}:{{ .externalAccess.admin.port | default 5434 }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}-external-admin
+  namespace: {{ .namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: database-external-admin
+    postgres-cluster: {{ .name }}
+    connection-type: admin-direct
+    {{- if .labels }}
+    {{- toYaml .labels | nindent 4 }}
+    {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .externalAccess.syncWave | default "1" | quote }}
+
+    # external-dns configuration
+    external-dns.alpha.kubernetes.io/hostname: {{ .externalAccess.admin.hostname | default (printf "%s-admin.pnats.cloud" .name) }}
+    external-dns.alpha.kubernetes.io/ttl: "300"
+
+    # MetalLB configuration - Dedicated Admin IP (no sharing)
+    metallb.io/address-pool: public-pool
+    metallb.io/loadBalancerIPs: {{ $.Values.externalAccess.adminIP }}
+
+    # Description
+    service.kubernetes.io/description: "PostgreSQL {{ .name }} - Admin endpoint (direct, no pooling) on port {{ .externalAccess.admin.port | default 5434 }}"
+
+    {{- if .externalAccess.admin.annotations }}
+    {{- toYaml .externalAccess.admin.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  type: LoadBalancer
+
+  # Security: STRICTLY restrict admin access
+  {{- if .externalAccess.admin.allowedSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range .externalAccess.admin.allowedSourceRanges }}
+  - {{ . }}
+  {{- end }}
+  {{- else if .externalAccess.allowedSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range .externalAccess.allowedSourceRanges }}
+  - {{ . }}
+  {{- end }}
+  {{- else }}
+  # Default: Block all external access if not explicitly allowed
+  loadBalancerSourceRanges:
+  - 0.0.0.0/32  # Block all by default - must configure allowedSourceRanges
+  {{- end }}
+
+  externalTrafficPolicy: {{ .externalAccess.admin.externalTrafficPolicy | default "Cluster" }}
+  sessionAffinity: {{ .externalAccess.admin.sessionAffinity | default "ClientIP" }}
+  {{- if eq (.externalAccess.admin.sessionAffinity | default "ClientIP") "ClientIP" }}
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: {{ .externalAccess.admin.sessionAffinityTimeout | default 10800 }}
+  {{- end }}
+
+  selector:
+    application: spilo
+    cluster-name: {{ .name }}
+    spilo-role: master
+
+  ports:
+  - name: postgresql
+    port: {{ .externalAccess.admin.port | default 5434 }}
+    targetPort: 5432  # Direct PostgreSQL port, bypassing pooler
+    protocol: TCP
+{{- end }}
+{{- end }}
+
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,65 @@
+{{- if .Values.tls }}
+{{- if .Values.tls.createIssuer }}
+---
+# Self-Signed Root CA for PostgreSQL Internal Certificates
+# This creates a self-signed CA that can issue certificates for PostgreSQL clusters
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.tls.issuerName | default "platform-postgres-ca" }}
+  labels:
+    app.kubernetes.io/name: postgres-cluster-issuer
+    app.kubernetes.io/component: certificate-authority
+    app.kubernetes.io/managed-by: helm
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.tls.issuerSyncWave | default "-5" | quote }}
+spec:
+  {{- if eq (.Values.tls.issuerType | default "selfSigned") "selfSigned" }}
+  # Self-signed issuer for internal PostgreSQL certificates
+  # This is suitable for cluster-internal mTLS encryption
+  selfSigned: {}
+
+  {{- else if eq .Values.tls.issuerType "ca" }}
+  # CA issuer using existing CA certificate
+  ca:
+    secretName: {{ .Values.tls.caSecretName | required "tls.caSecretName is required when using CA issuer" }}
+
+  {{- else if eq .Values.tls.issuerType "acme" }}
+  # ACME issuer (e.g., Let's Encrypt) for public certificates
+  # Only use this if PostgreSQL will be exposed externally
+  acme:
+    server: {{ .Values.tls.acme.server | default "https://acme-v02.api.letsencrypt.org/directory" }}
+    email: {{ .Values.tls.acme.email | required "tls.acme.email is required for ACME issuer" }}
+    privateKeySecretRef:
+      name: {{ .Values.tls.acme.privateKeySecret | default "postgres-acme-issuer-key" }}
+    solvers:
+    {{- if .Values.tls.acme.solvers }}
+    {{- toYaml .Values.tls.acme.solvers | nindent 4 }}
+    {{- else }}
+    # Default HTTP01 solver
+    - http01:
+        ingress:
+          class: {{ .Values.tls.acme.ingressClass | default "nginx" }}
+    {{- end }}
+
+  {{- else if eq .Values.tls.issuerType "vault" }}
+  # Vault PKI issuer for enterprise PKI integration
+  vault:
+    server: {{ .Values.tls.vault.server | required "tls.vault.server is required" }}
+    path: {{ .Values.tls.vault.path | default "pki/sign/postgres" }}
+    auth:
+      {{- if .Values.tls.vault.auth }}
+      {{- toYaml .Values.tls.vault.auth | nindent 6 }}
+      {{- else }}
+      # Default to Kubernetes auth
+      kubernetes:
+        role: {{ .Values.tls.vault.role | default "postgres-issuer" }}
+        mountPath: {{ .Values.tls.vault.mountPath | default "/v1/auth/kubernetes" }}
+        secretRef:
+          name: {{ .Values.tls.vault.secretName | default "postgres-issuer-token" }}
+          key: token
+      {{- end }}
+  {{- end }}
+
+{{- end }}
+{{- end }}

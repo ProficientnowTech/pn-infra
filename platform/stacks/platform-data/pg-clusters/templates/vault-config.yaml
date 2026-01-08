@@ -1,0 +1,61 @@
+{{- /*
+  Push PostgreSQL config (endpoint) to Vault
+
+  Apps use ExternalSecret to pull from Vault into their namespace.
+  This keeps Vault as the single source of truth for both secrets AND config.
+
+  Simple architecture: single endpoint, no pooler separation.
+  Patroni handles failover, apps handle their own connection pooling.
+*/ -}}
+{{- range .Values.pgClusters }}
+{{- if .publishConfig }}
+{{- if .publishConfig.enabled }}
+---
+# Secret: Contains config values to be pushed to Vault
+# (Using Secret instead of ConfigMap because PushSecret only works with Secrets)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .name }}-config
+  namespace: {{ .namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  labels:
+    app.kubernetes.io/name: {{ .name }}
+    app.kubernetes.io/component: database-config
+type: Opaque
+stringData:
+  # Single endpoint - Patroni service routes to current primary
+  host: {{ .name }}.{{ .namespace }}.svc
+  port: "5432"
+---
+# PushSecret: Sync config to Vault
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: {{ .name }}-config-to-vault
+  namespace: {{ .namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  refreshInterval: {{ .publishConfig.refreshInterval | default "1h" }}
+  secretStoreRefs:
+  - name: {{ .publishConfig.secretStoreRef | default "vault-backend" }}
+    kind: ClusterSecretStore
+  selector:
+    secret:
+      name: {{ .name }}-config
+  data:
+  - match:
+      secretKey: host
+      remoteRef:
+        remoteKey: {{ .publishConfig.vaultPath | default (printf "platform-config/postgres/%s" .name) }}
+        property: host
+  - match:
+      secretKey: port
+      remoteRef:
+        remoteKey: {{ .publishConfig.vaultPath | default (printf "platform-config/postgres/%s" .name) }}
+        property: port
+{{- end }}
+{{- end }}
+{{- end }}

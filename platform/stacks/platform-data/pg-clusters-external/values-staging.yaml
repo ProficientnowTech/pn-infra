@@ -1,0 +1,186 @@
+# Staging Environment PostgreSQL Clusters
+# Production-like configuration with moderate resources
+
+pgClusters:
+  # Temporal database for workflow engine
+  - name: temporal-db
+    namespace: temporal
+    teamId: temporal
+
+    # HA with 2 replicas for staging
+    numberOfInstances: 2
+
+    # Storage
+    size: 50Gi
+    storageClass: plt-blk-hdd-repl
+
+    # PostgreSQL version
+    pgVersion: "16"
+
+    # Load Balancer
+    lb:
+      master:
+        enabled: true
+      replica:
+        enabled: true
+
+    # Connection Pooler
+    pooler:
+      enabled: true
+      instances: 2
+      mode: transaction
+      replica:
+        enabled: true
+      lb:
+        master:
+          enabled: true
+        replica:
+          enabled: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
+    # Moderate resources for staging
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+    # Application users
+    users:
+      temporal:
+        - login
+        - createdb
+
+    # Enable password rotation
+    usersWithSecretRotation:
+      - temporal
+
+    # Databases
+    databases:
+      temporal: temporal
+      temporal_visibility: temporal
+
+    # Patroni - async replication
+    patroni:
+      synchronousMode: false
+      synchronousModeStrict: false
+
+    # Monitoring
+    monitoring:
+      exporterImage: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+
+    # PDB - maintain 1 pod during updates
+    pdb:
+      minAvailable: 1
+
+    # Additional labels
+    labels:
+      environment: staging
+      backup-policy: daily
+
+  # Platform shared services database
+  - name: platform-db
+    namespace: platform
+    teamId: platform
+
+    # HA with 2 replicas
+    numberOfInstances: 2
+
+    # Storage
+    size: 30Gi
+    storageClass: plt-blk-hdd-repl
+
+    # PostgreSQL version
+    pgVersion: "16"
+
+    # Load Balancer
+    lb:
+      master:
+        enabled: true
+      replica:
+        enabled: true
+
+    # Connection Pooler
+    pooler:
+      enabled: true
+      instances: 2
+      mode: transaction
+      replica:
+        enabled: true
+      lb:
+        master:
+          enabled: true
+        replica:
+          enabled: true
+
+    # Moderate resources
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+    # Application users
+    users:
+      backstage:
+        - login
+        - createdb
+      argocd:
+        - login
+        - createdb
+      harbor:
+        - login
+        - createdb
+
+    # Enable password rotation
+    usersWithSecretRotation:
+      - backstage
+      - argocd
+
+    # Databases
+    databases:
+      backstage: backstage
+      argocd: argocd
+      harbor: harbor
+
+    # Patroni
+    patroni:
+      synchronousMode: false
+      synchronousModeStrict: false
+
+    # Monitoring
+    monitoring:
+      exporterImage: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 200m
+          memory: 128Mi
+
+    # PDB
+    pdb:
+      minAvailable: 1
+
+    # Labels
+    labels:
+      environment: staging
+      backup-policy: daily

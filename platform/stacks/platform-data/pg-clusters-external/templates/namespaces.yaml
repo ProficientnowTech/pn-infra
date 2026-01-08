@@ -1,0 +1,20 @@
+{{- if (.Values.createNamespaces | default true) }}
+{{- $namespaces := dict }}
+{{- range .Values.pgClusters }}
+{{- $ns := (.namespace | default "") }}
+{{- if $ns }}
+{{- $_ := set $namespaces $ns true }}
+{{- end }}
+{{- end }}
+{{- range $ns, $_ := $namespaces }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+  labels:
+    platform.pnats.cloud/managed-by: platform-data-pg-clusters
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $.Values.namespaceSyncWave | default "-30" | quote }}
+{{- end }}
+{{- end }}

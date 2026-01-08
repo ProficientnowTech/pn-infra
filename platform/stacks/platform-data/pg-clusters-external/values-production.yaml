@@ -1,0 +1,212 @@
+# Production Environment PostgreSQL Clusters
+# Consolidated single HA cluster with all databases
+
+# Kubernetes cluster DNS domain (Kubelet `--cluster-domain`).
+# This cluster uses a non-default domain (not `cluster.local`).
+clusterDomain: prod-ap-south-2a.local
+
+# Global TLS Configuration
+tls:
+  # Create an internal ClusterIssuer for PostgreSQL TLS.
+  # ACME (Let's Encrypt) cannot issue certs for internal service DNS names like
+  # `*.svc.cluster.local`, which are included in the SANs for each cluster.
+  createIssuer: true
+  issuerName: platform-postgres-ca
+  issuerType: selfSigned
+
+# Global External Access Configuration
+# Three separate IPs: one per service type
+externalAccess:
+  writeIP: 103.110.174.19   # Write (master via pgbouncer)
+  readIP: 103.110.174.20    # Read (replicas via pgbouncer)
+  adminIP: 103.110.174.22   # Admin (direct PostgreSQL, no pooler)
+
+pgClusters:
+  # Consolidated platform database cluster
+  # Contains all databases: temporal, backstage, argocd, harbor, app_production, app_analytics
+  - name: platform-postgres
+    namespace: platform-data
+    teamId: platform
+
+    # Full HA with 3 replicas
+    numberOfInstances: 3
+
+    # Combined storage (100 + 50 + 200 = 350Gi)
+    size: 350Gi
+    storageClass: plt-blk-hdd-repl
+
+    # PostgreSQL version
+    pgVersion: "16"
+
+    # Internal LB disabled (using external-services.yaml)
+    lb:
+      master:
+        enabled: false
+      replica:
+        enabled: false
+      allowedSourceRanges:
+        - 10.0.0.0/8
+
+    # Connection Pooler - consolidated settings for combined load
+    pooler:
+      enabled: true
+      instances: 5  # Increased for combined load
+      mode: transaction
+      replica:
+        enabled: true
+      lb:
+        master:
+          enabled: false
+        replica:
+          enabled: false
+      resources:
+        requests:
+          cpu: 300m
+          memory: 512Mi
+        limits:
+          cpu: 1500m
+          memory: 1Gi
+
+    # Combined resources (highest of all previous clusters)
+    resources:
+      requests:
+        cpu: 2000m
+        memory: 4Gi
+      limits:
+        cpu: 8000m
+        memory: 16Gi
+
+    # All users consolidated from 3 clusters
+    users:
+      # Temporal users
+      temporal:
+        - login
+        - createdb
+      # Platform users
+      backstage:
+        - login
+        - createdb
+      argocd:
+        - login
+        - createdb
+      harbor:
+        - login
+        - createdb
+      # Application users
+      app_service:
+        - login
+        - createdb
+      analytics_service:
+        - login
+      migration_user:
+        - login
+        - createdb
+
+    # Password rotation for app users
+    usersWithSecretRotation:
+      - temporal
+      - backstage
+      - argocd
+      - harbor
+      - app_service
+      - analytics_service
+
+    # All databases consolidated
+    databases:
+      # Temporal databases
+      temporal: temporal
+      temporal_visibility: temporal
+      # Platform databases
+      backstage: backstage
+      argocd: argocd
+      harbor: harbor
+      # Application databases
+      app_production: app_service
+      app_analytics: analytics_service
+
+    # Patroni - synchronous for critical data
+    patroni:
+      synchronousMode: true
+      synchronousModeStrict: false  # Allow async if sync replicas unavailable
+      synchronousNodeCount: 1  # At least one sync replica
+      # Logical replication slot for CDC
+      slots:
+        analytics_cdc:
+          type: logical
+          database: app_production
+          plugin: pgoutput
+
+    # Monitoring
+    monitoring:
+      exporterImage: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 500m
+          memory: 256Mi
+
+    # PDB - maintain 2 pods during updates
+    pdb:
+      minAvailable: 2
+
+    # TLS encryption
+    tls:
+      enabled: true
+      duration: 2160h  # 90 days
+      renewBefore: 720h  # 30 days before expiry
+      additionalDNSNames:
+        - platform-postgres-write.pnats.cloud
+        - platform-postgres-read.pnats.cloud
+        - platform-postgres-admin.pnats.cloud
+
+    # External Access - single shared IP, different ports
+    externalAccess:
+      enabled: true
+      syncWave: "1"
+
+      # SECURITY: Allow all for now - MUST restrict in production!
+      allowedSourceRanges:
+        - 0.0.0.0/0  # TODO: Restrict to office/VPN IPs before production deployment!
+
+      # Write endpoint - For application writes (uses pooler in transaction mode)
+      # Connection: platform-postgres-write.pnats.cloud:5432
+      write:
+        enabled: true
+        port: 5432
+        hostname: platform-postgres-write.pnats.cloud
+
+      # Read endpoint - For application reads (uses pooler in transaction mode)
+      # Connection: platform-postgres-read.pnats.cloud:5433
+      read:
+        enabled: true
+        port: 5433
+        hostname: platform-postgres-read.pnats.cloud
+
+      # Admin endpoint - For migrations and maintenance (direct connection, no pooler)
+      # Connection: platform-postgres-admin.pnats.cloud:5434
+      admin:
+        enabled: true
+        port: 5434
+        hostname: platform-postgres-admin.pnats.cloud
+        # SECURITY: Allow all for now - MUST restrict in production!
+        allowedSourceRanges:
+          - 0.0.0.0/0  # TODO: Restrict to office/VPN IPs before production deployment!
+
+    # Maintenance windows - weekends only
+    maintenanceWindows:
+      - "Sat:02:00-06:00"
+      - "Sun:02:00-06:00"
+
+    # Labels
+    labels:
+      environment: production
+      backup-policy: daily
+      critical: "true"
+
+    # Pod annotations for backup and monitoring
+    podAnnotations:
+      backup.velero.io/backup-volumes: pgdata
+      prometheus.io/scrape: "true"
+      prometheus.io/port: "9187"

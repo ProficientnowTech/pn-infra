@@ -54,11 +54,10 @@ spec:
   {{- end }}
 
   # Enable Connection Pooling
-  # Note: Using ternary to properly handle explicit false values
-  enableConnectionPooler: {{ if hasKey $pooler "enabled" }}{{ $pooler.enabled }}{{ else }}true{{ end }}
-  enableReplicaConnectionPooler: {{ if hasKey $poolerReplica "enabled" }}{{ $poolerReplica.enabled }}{{ else }}true{{ end }}
-  enableMasterPoolerLoadBalancer: {{ if hasKey $poolerLbMaster "enabled" }}{{ $poolerLbMaster.enabled }}{{ else }}false{{ end }}
-  enableReplicaPoolerLoadBalancer: {{ if hasKey $poolerLbReplica "enabled" }}{{ $poolerLbReplica.enabled }}{{ else }}false{{ end }}
+  enableConnectionPooler: {{ $pooler.enabled | default true }}
+  enableReplicaConnectionPooler: {{ $poolerReplica.enabled | default true }}
+  enableMasterPoolerLoadBalancer: {{ $poolerLbMaster.enabled | default false }}
+  enableReplicaPoolerLoadBalancer: {{ $poolerLbReplica.enabled | default false }}
 
   # Storage configuration
   volume:
@@ -163,12 +162,7 @@ spec:
     {{- end }}
     {{- end }}
 
-  # Connection pooler configuration (only rendered when pooler is enabled)
-  {{- $poolerEnabled := true }}
-  {{- if hasKey $pooler "enabled" }}
-  {{- $poolerEnabled = $pooler.enabled }}
-  {{- end }}
-  {{- if $poolerEnabled }}
+  # Connection pooler configuration
   connectionPooler:
     numberOfInstances: {{ $pooler.instances | default 2 }}
     mode: {{ $pooler.mode | default "transaction" }}
@@ -181,7 +175,6 @@ spec:
       limits:
         cpu: {{ (($pooler.resources | default dict).limits | default dict).cpu | default "500m" }}
         memory: {{ (($pooler.resources | default dict).limits | default dict).memory | default "256Mi" }}
-  {{- end }}
 
   # Patroni configuration for HA (hardcoded for consistency)
   patroni:

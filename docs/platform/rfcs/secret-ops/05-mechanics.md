@@ -43,6 +43,9 @@ To avoid ambiguity, the following terms are used consistently.
 | Materialized Secret    | Kubernetes Secret derived from runtime authority |
 | Orchestration Workflow | Declarative multi-step automation                |
 | Event Trigger          | Time- or signal-based workflow trigger           |
+| PushSecret *(v1.1)*    | Syncs K8s Secret to runtime authority            |
+| Internal Secret *(v1.1)* | Operator-generated secret for distribution     |
+| Internal Configuration *(v1.1)* | Service endpoint data for distribution   |
 
 ---
 
@@ -204,6 +207,20 @@ sequenceDiagram
 - All writes originate from:
   - orchestrated workflows
   - runtime secret engines
+  - PushSecret synchronization from operator-generated secrets *(v1.1)*
+
+---
+
+### Internal Distribution *(v1.1)*
+
+For secrets generated within the cluster by operators or controllers that require
+cross-namespace distribution, the steady-state lifecycle includes an additional
+publication phase. These **internal secrets** traverse Vault via the PushSecret
+mechanism before being consumed via ExternalSecret.
+
+See [Section 5a](./05a-internal-distribution.md) for the complete internal
+distribution framework, including decision criteria, path conventions, and
+component responsibilities.
 
 ---
 
@@ -300,7 +317,7 @@ It completes the mechanical foundation of the system.
 
 | Previous | Index | Next |
 |----------|-------|------|
-| [← 4. Components](./04-components.md) | [Table of Contents](./00-index.md#table-of-contents) | [6. Rotation →](./06-rotation.md) |
+| [← 4. Components](./04-components.md) | [Table of Contents](./00-index.md#table-of-contents) | [5a. Internal Distribution →](./05a-internal-distribution.md) |
 
 ---
 

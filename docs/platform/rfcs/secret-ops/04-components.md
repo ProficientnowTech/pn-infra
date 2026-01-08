@@ -16,7 +16,7 @@ defines **clear responsibility boundaries** between them.
 
 ## 4.1 Component Taxonomy
 
-The system is composed of **seven primary components**, each with a single,
+The system is composed of **eight primary components**, each with a single,
 well-defined responsibility.
 
 They are grouped into **control-plane components** and **data-plane components**.
@@ -33,6 +33,7 @@ They are grouped into **control-plane components** and **data-plane components**
 
 6. Runtime Secret Authority
 7. Secret Materialization Layer
+8. Secret Publication Layer *(v1.1)*
 
 Workloads consume outputs of the data plane but are **NOT part of the secret
 system itself**.
@@ -215,6 +216,28 @@ No two components MAY share responsibility for the same lifecycle decision.
 
 ---
 
+### 4.3.8 Secret Publication Layer *(v1.1)*
+
+**Responsibilities**
+
+- Watch source secrets in producer namespaces
+- Push selected secret data to runtime authority (Vault)
+- Maintain synchronization between source and runtime authority
+- Bridge operator-generated secrets to the centralized authority
+
+**Explicitly Not Responsible For**
+
+- Secret generation (operator responsibility)
+- Secret ownership (operator responsibility)
+- Rotation logic (operator responsibility)
+- Consumer-side materialization (materialization layer responsibility)
+
+This component enables the **internal distribution framework** defined in
+[Section 5a](./05a-internal-distribution.md), allowing operator-generated
+secrets to be distributed across namespaces via Vault.
+
+---
+
 ## 4.4 Component Interaction Model
 
 All interactions follow a **directed, non-cyclic graph**.
@@ -255,18 +278,19 @@ No component SHOULD ever:
 
 Each phase activates a specific subset of components.
 
-| Phase   | Active Components                        |
-| ------- | ---------------------------------------- |
-| Phase 0 | Git Repository                           |
-| Phase 1 | Git Repository, GitOps Controller        |
-| Phase 2 | + Bootstrap Decryption                   |
-| Phase 3 | + Runtime Secret Authority, Orchestrator |
-| Phase 4 | + Materialization Layer, Event Triggers  |
+| Phase   | Active Components                                           |
+| ------- | ----------------------------------------------------------- |
+| Phase 0 | Git Repository                                              |
+| Phase 1 | Git Repository, GitOps Controller                           |
+| Phase 2 | + Bootstrap Decryption                                      |
+| Phase 3 | + Runtime Secret Authority, Orchestrator                    |
+| Phase 4 | + Materialization Layer, Publication Layer, Event Triggers  |
 
 This mapping ensures:
 
 - minimal surface area during bootstrap
 - maximum automation in steady state
+- internal distribution capabilities in steady state *(v1.1)*
 
 ---
 

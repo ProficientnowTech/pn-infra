@@ -50,12 +50,19 @@ Copyright (c) 2026 Platform Engineering. All rights reserved.
 | -------------------- | -------------------------------------------------- |
 | RFC Number           | RFC-SECOPS-0001                                    |
 | Status               | Draft                                              |
-| Version              | 1.0                                                |
+| Version              | 1.1                                                |
 | Created              | 2026-01-07                                         |
-| Last Updated         | 2026-01-07                                         |
+| Last Updated         | 2026-01-08                                         |
 | Authors              | Shaik Noorullah Shareef (Platform Engineering)     |
 | Reviewers            | Security, Infrastructure, SRE (TBD)                |
 | Application Domain   | Security, Secrets Management, SecretOps            |
+
+### Changelog
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.1 | 2026-01-08 | Added Section 5a (Internal Distribution), Invariants 7-8, Publication Layer |
+| 1.0 | 2026-01-07 | Initial release |
 
 ---
 
@@ -132,6 +139,16 @@ when, and only when, they appear in all capitals, as shown here.
    - 5.7 Failure Modes and Recovery
    - 5.8 Security and Trust Guarantees
 
+5a. [Internal Distribution Mechanics](./05a-internal-distribution.md) *(v1.1)*
+   - 5a.1 Scope and Applicability
+   - 5a.2 Internal Secret Classification
+   - 5a.3 Distribution Framework
+   - 5a.4 Decision Framework
+   - 5a.5 Vault Path Conventions
+   - 5a.6 Component Roles
+   - 5a.7 Prerequisites and Dependencies
+   - 5a.8 Integration Points
+
 ### Part 3: Operations
 
 6. [Rotation Framework](./06-rotation.md)
@@ -193,6 +210,7 @@ when, and only when, they appear in all capitals, as shown here.
 | [3. Architecture](./03-architecture.md) | Phase model and trust boundaries | Engineers, Architects |
 | [4. Components](./04-components.md) | System building blocks | Engineers |
 | [5. Mechanics](./05-mechanics.md) | Bootstrap and handover details | Engineers |
+| [5a. Internal Distribution](./05a-internal-distribution.md) | Cross-namespace secret/config distribution | Engineers |
 | [6. Rotation](./06-rotation.md) | Automated rotation framework | Engineers, SRE |
 | [7. Security](./07-security.md) | Threat model and controls | Security, Compliance |
 | [8. Rationale](./08-rationale.md) | Rejected alternatives | Architects |
@@ -210,6 +228,9 @@ Focus on [Requirements](./02-requirements.md) → [Mechanics](./05-mechanics.md)
 
 **Understanding Design Decisions?**
 Read [Requirements](./02-requirements.md) → [Rationale](./08-rationale.md) → [Evolution](./09-evolution.md)
+
+**Implementing Cross-Namespace Secret Distribution?** *(v1.1)*
+Start with [Internal Distribution](./05a-internal-distribution.md) → [Components](./04-components.md) → [Mechanics](./05-mechanics.md)
 
 ---
 

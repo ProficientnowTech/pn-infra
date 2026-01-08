@@ -76,6 +76,9 @@ referenced in this architecture.
 **[ESO-DOCS]** External Secrets, "External Secrets Operator Documentation".
 <https://external-secrets.io/>
 
+**[ESO-PUSHSECRET]** External Secrets, "PushSecret Documentation". *(v1.1)*
+<https://external-secrets.io/latest/api/pushsecret/>
+
 **[ESO-ARGOCD]** Codefresh, "Securing GitOps with External Secrets Operator &
 AWS Secrets Manager".
 <https://codefresh.io/blog/aws-external-secret-operator-argocd/>

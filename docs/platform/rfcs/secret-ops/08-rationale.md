@@ -293,7 +293,104 @@ The chosen architecture succeeds because it:
 
 ---
 
-## 8.10 Summary
+## 8.10 Why Vault as Intermediary for Cross-Namespace Distribution *(v1.1)*
+
+### Description
+
+When operators or controllers generate secrets within the cluster that require
+distribution to consumers in other namespaces, there are several approaches to
+accomplish this.
+
+---
+
+### Rejected Alternatives
+
+#### Direct Copy / Mirror Controllers
+
+Controllers like reflector or kubed that directly copy Secrets between namespaces.
+
+**Why It Was Rejected**
+
+1. **No Audit Trail**
+   - Secret copies happen without centralized logging
+   - Cannot trace who accessed what or when
+
+2. **Ambiguous Authority**
+   - Multiple copies of the same secret exist
+   - Source vs. copy distinction becomes unclear over time
+
+3. **Rotation Coordination Complexity**
+   - When source rotates, copies must be synchronized
+   - No guarantee of atomic propagation
+
+---
+
+#### External Secrets with Kubernetes Backend
+
+Using ESO's Kubernetes provider to pull Secrets from other namespaces.
+
+**Why It Was Rejected**
+
+1. **Violates Invariant 5**
+   - Kubernetes becomes the authority (the referenced Secret)
+   - Contradicts "Kubernetes Is a Consumer, Not an Authority"
+
+2. **No Centralized Policy**
+   - Access control relies on RBAC for cross-namespace Secret reads
+   - No unified enforcement point
+
+---
+
+#### Manual Namespace-Scoped Secrets
+
+Creating identical Secrets manually in each consumer namespace.
+
+**Why It Was Rejected**
+
+1. **Doesn't Scale**
+2. **Rotation Requires Multiple Updates**
+3. **Configuration Drift Risk**
+
+---
+
+### Why Vault Intermediary Was Chosen
+
+The PushSecret → Vault → ExternalSecret pattern was selected because it:
+
+1. **Maintains Single Authority**
+   - Vault is the authoritative distribution point
+   - Source Secret and materialized Secrets are clearly distinguished
+
+2. **Provides Audit Trail**
+   - All reads and writes logged through Vault
+   - Centralized access visibility
+
+3. **Enables Versioning**
+   - KV v2 engine provides version history
+   - Rollback capability exists
+
+4. **Centralizes Policy**
+   - Vault policies enforce access at a single point
+   - Policy changes apply uniformly
+
+5. **Supports Automatic Rotation Propagation**
+   - Operator rotates source → PushSecret syncs → ExternalSecrets update
+   - No manual coordination required
+
+---
+
+### Conclusion
+
+Using Vault as an intermediary for internal secret distribution maintains the
+architectural invariants while enabling scalable cross-namespace distribution.
+The additional complexity is justified by the audit, policy, and lifecycle
+benefits.
+
+See [Section 5a](./05a-internal-distribution.md) for the complete framework.
+
+---
+
+## 8.11 Summary
 
 The final architecture is not the simplest possible solution.
 It is the **simplest solution that satisfies all invariants simultaneously**.

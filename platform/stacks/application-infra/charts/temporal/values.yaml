@@ -78,6 +78,11 @@ temporal:
       tag: "1.24.2"
       pullPolicy: IfNotPresent
 
+    # Internal frontend for cluster-internal communication (schema jobs, etc.)
+    # This ensures schema jobs use internal service instead of external ingress
+    internalFrontend:
+      enabled: true
+
     # IMMUTABLE: Do not change after initial deployment
     config:
       numHistoryShards: 512
@@ -169,13 +174,6 @@ temporal:
         interval: 30s
       prometheus:
         timerType: histogram
-  # Internal frontend for cluster-internal communication (schema jobs, etc.)
-  # This ensures schema jobs use internal service instead of external ingress
-  internalFrontend:
-    enabled: true
-    service:
-      type: ClusterIP
-      port: 7236
   # Individual service replicas for HA
   frontend:
     replicaCount: 3

@@ -3,7 +3,7 @@
 ---
 # Crossplane-managed Vault Policy for External Secrets Operator
 # This replaces the PostSync Job with a declarative GitOps approach
-apiVersion: vault.vault.m.upbound.io/v1alpha1
+apiVersion: vault.vault.upbound.io/v1alpha1
 kind: Policy
 metadata:
   name: external-secrets-policy
@@ -12,7 +12,6 @@ metadata:
     crossplane.io/external-name: external-secrets-policy
 spec:
   providerConfigRef:
-    kind: ProviderConfig
     name: vault-admin
   forProvider:
     name: external-secrets-policy

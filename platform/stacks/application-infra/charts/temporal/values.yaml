@@ -120,10 +120,7 @@ temporal:
               enabled: true
               enableHostVerification: false
       namespaces:
-        # Disabled: Chart uses external ingress address for namespace creation
-        # which fails from within cluster. Namespaces created manually via admintools.
-        # TODO: Fix upstream chart to use internal service address
-        create: false
+        create: true
         namespace:
         - name: "default"
           retention: "72h" # 3 days in hours
@@ -172,6 +169,13 @@ temporal:
         interval: 30s
       prometheus:
         timerType: histogram
+  # Internal frontend for cluster-internal communication (schema jobs, etc.)
+  # This ensures schema jobs use internal service instead of external ingress
+  internalFrontend:
+    enabled: true
+    service:
+      type: ClusterIP
+      port: 7236
   # Individual service replicas for HA
   frontend:
     replicaCount: 3

@@ -43,6 +43,12 @@ spec:
             'path "secret/metadata/applications/*" {' \
             '  capabilities = ["create", "update", "read", "list"]' \
             '}' \
+            'path "secret/data/platform-data/*" {' \
+            '  capabilities = ["create", "update", "read", "list"]' \
+            '}' \
+            'path "secret/metadata/platform-data/*" {' \
+            '  capabilities = ["create", "update", "read", "list"]' \
+            '}' \
             | vault policy write external-secrets-policy -
         env:
         - name: VAULT_TOKEN

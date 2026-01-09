@@ -91,13 +91,13 @@ harbor:
   portal:
     image:
       repository: docker.io/goharbor/harbor-portal
-      tag: v2.14.0
+      tag: v2.14.1
     replicas: 2
 
   core:
     image:
       repository: docker.io/goharbor/harbor-core
-      tag: v2.14.0
+      tag: v2.14.1
     replicas: 2
     # Registry password from SealedSecret
     existingSecret: "harbor-core-secrets"
@@ -109,7 +109,7 @@ harbor:
   jobservice:
     image:
       repository: docker.io/goharbor/harbor-jobservice
-      tag: v2.14.0
+      tag: v2.14.1
     replicas: 1
     # Jobservice secret from SealedSecret
     existingSecret: "harbor-core-secrets"
@@ -119,11 +119,11 @@ harbor:
     registry:
       image:
         repository: docker.io/goharbor/registry-photon
-        tag: v2.14.0
+        tag: v2.14.1
     controller:
       image:
         repository: docker.io/goharbor/harbor-registryctl
-        tag: v2.14.0
+        tag: v2.14.1
     replicas: 1
     # Registry HTTP secret from SealedSecret
     existingSecret: "harbor-core-secrets"
@@ -138,7 +138,7 @@ harbor:
     internal:
       image:
         repository: docker.io/goharbor/harbor-db
-        tag: v2.14.0
+        tag: v2.14.1
       # Database password from SealedSecret
       existingSecret: "harbor-core-secrets"
       existingSecretPasswordKey: "database-password"

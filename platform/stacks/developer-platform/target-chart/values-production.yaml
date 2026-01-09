@@ -1,6 +1,17 @@
 # Production Environment
 # Platform Developer Platform applications with sync wave ordering
 applications:
+# Tekton Operator must deploy first - provides CRDs for TektonConfig/TektonDashboard
+- name: tekton-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+  destinationNamespaceOverwrite: tekton-operator
+  repoURL: https://storage.googleapis.com/tekton-releases
+  targetRevision: latest
+  path: operator/latest
+  syncOptions:
+  - CreateNamespace=true
+
 - name: backstage
   annotations:
     argocd.argoproj.io/sync-wave: '0'

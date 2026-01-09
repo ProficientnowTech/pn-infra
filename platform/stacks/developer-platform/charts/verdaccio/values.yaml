@@ -19,6 +19,8 @@ verdaccio:
 
   persistence:
     enabled: true
-    storageClass: "plt-blk-hdd-repl"
+    # Using app-blk-hdd-repl to match existing PVC (PVC storage class is immutable)
+    # Migration to plt-blk-hdd-repl requires PVC deletion and data migration
+    storageClass: "app-blk-hdd-repl"
     accessMode: ReadWriteOnce
     size: 8Gi

@@ -201,12 +201,18 @@ vault:
 
                 # external-secrets operator policy and role
                 # Allow ESO to both read secrets (ExternalSecret) and write secrets (PushSecret)
-                # but scope writes to our GitOps prefix under the KV v2 mount.
+                # Scope to applications/ prefix and platform-data/ prefix for operator-managed secrets
                 printf '%s\n' \
                   'path "secret/data/applications/*" {' \
                   '  capabilities = ["create", "update", "read", "list"]' \
                   '}' \
                   'path "secret/metadata/applications/*" {' \
+                  '  capabilities = ["create", "update", "read", "list"]' \
+                  '}' \
+                  'path "secret/data/platform-data/*" {' \
+                  '  capabilities = ["create", "update", "read", "list"]' \
+                  '}' \
+                  'path "secret/metadata/platform-data/*" {' \
                   '  capabilities = ["create", "update", "read", "list"]' \
                   '}' \
                   | vault policy write external-secrets-policy -

@@ -2,15 +2,23 @@
 # Platform Developer Platform applications with sync wave ordering
 applications:
 # Tekton Operator must deploy first - provides CRDs for TektonConfig/TektonDashboard
+# Uses official Helm chart from tektoncd/operator GitHub repo
 - name: tekton-operator
   annotations:
     argocd.argoproj.io/sync-wave: "-5"
   destinationNamespaceOverwrite: tekton-operator
-  repoURL: https://storage.googleapis.com/tekton-releases
-  targetRevision: latest
-  path: operator/latest
+  sources:
+  - repoURL: https://github.com/tektoncd/operator.git
+    targetRevision: v0.76.0
+    path: charts/tekton-operator
+    helm:
+      releaseName: tekton-operator
+      parameters:
+      - name: installCRDs
+        value: "true"
   syncOptions:
   - CreateNamespace=true
+  - ServerSideApply=true
 
 - name: backstage
   annotations:
@@ -39,7 +47,7 @@ applications:
 - name: clusterapi
   annotations:
     argocd.argoproj.io/sync-wave: "30"
-  destinationNamespaceOverride: cluster-api
+  destinationNamespaceOverwrite: cluster-api
   syncOptions:
   - ServerSideApply=true
   - CreateNamespace=true

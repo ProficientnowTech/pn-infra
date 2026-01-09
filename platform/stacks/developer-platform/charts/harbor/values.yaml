@@ -1,5 +1,84 @@
-# values.yaml - Harbor Production Configuration with SealedSecret
+# values.yaml - Harbor Production Configuration with ExternalSecrets (Vault)
 # Values must be nested under 'harbor:' key since harbor is a dependency chart
+
+# ==============================================================================
+# Secrets Configuration (Vault-Owned via ExternalSecret)
+# ==============================================================================
+# Prerequisites: Create secrets in Vault before deploying Harbor
+# See: docs/platform/vault-secret-prerequisites.md
+#
+# Vault paths:
+#   - applications/developer-platform/harbor/core
+#   - applications/developer-platform/harbor/s3
+# ==============================================================================
+secrets:
+  core:
+    externalSecret:
+      enabled: true
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault-backend
+        kind: ClusterSecretStore
+      target:
+        name: harbor-core-secrets
+        creationPolicy: Owner
+      data:
+      - secretKey: REGISTRY_HTPASSWD
+        remoteRef:
+          key: applications/developer-platform/harbor/core
+          property: REGISTRY_HTPASSWD
+      - secretKey: REGISTRY_PASSWD
+        remoteRef:
+          key: applications/developer-platform/harbor/core
+          property: REGISTRY_PASSWD
+      - secretKey: admin-password
+        remoteRef:
+          key: applications/developer-platform/harbor/core
+          property: admin-password
+      - secretKey: database-password
+        remoteRef:
+          key: applications/developer-platform/harbor/core
+          property: database-password
+      - secretKey: jobservice-secret
+        remoteRef:
+          key: applications/developer-platform/harbor/core
+          property: jobservice-secret
+      - secretKey: registry-http-secret
+        remoteRef:
+          key: applications/developer-platform/harbor/core
+          property: registry-http-secret
+      - secretKey: secret
+        remoteRef:
+          key: applications/developer-platform/harbor/core
+          property: secret
+      - secretKey: secretKey
+        remoteRef:
+          key: applications/developer-platform/harbor/core
+          property: secretKey
+
+  s3:
+    externalSecret:
+      enabled: true
+      refreshInterval: 1h
+      secretStoreRef:
+        name: vault-backend
+        kind: ClusterSecretStore
+      target:
+        name: harbor-s3-credentials
+        creationPolicy: Owner
+      data:
+      - secretKey: REGISTRY_STORAGE_S3_ACCESSKEY
+        remoteRef:
+          key: applications/developer-platform/harbor/s3
+          property: REGISTRY_STORAGE_S3_ACCESSKEY
+      - secretKey: REGISTRY_STORAGE_S3_SECRETKEY
+        remoteRef:
+          key: applications/developer-platform/harbor/s3
+          property: REGISTRY_STORAGE_S3_SECRETKEY
+
+# ==============================================================================
+# Harbor Chart Configuration
+# ==============================================================================
 harbor:
   expose:
     type: ingress
@@ -58,14 +137,14 @@ harbor:
         regionendpoint: https://s3.pnats.cloud
         encrypt: false
         secure: true
-        # Reference to SealedSecret for S3 credentials
+        # Reference to ExternalSecret for S3 credentials (from Vault)
         existingSecret: "harbor-s3-credentials"
         existingSecretAccessKey: "REGISTRY_STORAGE_S3_ACCESSKEY"
         existingSecretSecretKey: "REGISTRY_STORAGE_S3_SECRETKEY"
         v4auth: true
         forcepathstyle: true
 
-  # Admin password from SealedSecret
+  # Admin password from ExternalSecret (Vault)
   existingSecretAdminPassword: "harbor-core-secrets"
   existingSecretAdminPasswordKey: "admin-password"
 
@@ -83,7 +162,7 @@ harbor:
   # General settings
   imagePullPolicy: IfNotPresent
 
-  # Encryption key from SealedSecret
+  # Encryption key from ExternalSecret (Vault)
   existingSecretSecretKey: "harbor-core-secrets"
   existingSecretSecretKeyKey: "secretKey"
 
@@ -99,7 +178,7 @@ harbor:
       repository: docker.io/goharbor/harbor-core
       tag: v2.14.1
     replicas: 2
-    # Registry password from SealedSecret
+    # Registry password from ExternalSecret (Vault)
     existingSecret: "harbor-core-secrets"
     existingSecretKey: "secret"
     extraEnvVars:
@@ -111,7 +190,7 @@ harbor:
       repository: docker.io/goharbor/harbor-jobservice
       tag: v2.14.1
     replicas: 1
-    # Jobservice secret from SealedSecret
+    # Jobservice secret from ExternalSecret (Vault)
     existingSecret: "harbor-core-secrets"
     existingSecretKey: "jobservice-secret"
 
@@ -125,7 +204,7 @@ harbor:
         repository: docker.io/goharbor/harbor-registryctl
         tag: v2.14.1
     replicas: 1
-    # Registry HTTP secret from SealedSecret
+    # Registry HTTP secret from ExternalSecret (Vault)
     existingSecret: "harbor-core-secrets"
     existingSecretKey: "registry-http-secret"
     credentials:
@@ -139,6 +218,6 @@ harbor:
       image:
         repository: docker.io/goharbor/harbor-db
         tag: v2.14.1
-      # Database password from SealedSecret
+      # Database password from ExternalSecret (Vault)
       existingSecret: "harbor-core-secrets"
       existingSecretPasswordKey: "database-password"

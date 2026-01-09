@@ -39,6 +39,8 @@ metadata:
     argocd.argoproj.io/sync-wave: "5"
 spec:
   refreshInterval: {{ .publishConfig.refreshInterval | default "1h" }}
+  deletionPolicy: None
+  updatePolicy: Replace
   secretStoreRefs:
   - name: {{ .publishConfig.secretStoreRef | default "vault-backend" }}
     kind: ClusterSecretStore
@@ -46,12 +48,14 @@ spec:
     secret:
       name: {{ .name }}-config
   data:
-  - match:
+  - conversionStrategy: None
+    match:
       secretKey: host
       remoteRef:
         remoteKey: {{ .publishConfig.vaultPath | default (printf "platform-config/postgres/%s" .name) }}
         property: host
-  - match:
+  - conversionStrategy: None
+    match:
       secretKey: port
       remoteRef:
         remoteKey: {{ .publishConfig.vaultPath | default (printf "platform-config/postgres/%s" .name) }}

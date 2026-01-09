@@ -62,8 +62,28 @@ spec:
       targetRevision: {{ .targetRevision | default "main" }}
       {{- if .path }}
       path: {{ .path }}
-      {{- else if .ref }}
+      {{- end }}
+      {{- if .ref }}
       ref: {{ .ref }}
+      {{- end }}
+      {{- if .helm }}
+      helm:
+        {{- if .helm.releaseName }}
+        releaseName: {{ .helm.releaseName }}
+        {{- end }}
+        {{- if .helm.valueFiles }}
+        valueFiles:
+          {{- range .helm.valueFiles }}
+          - {{ . }}
+          {{- end }}
+        {{- end }}
+        {{- if .helm.parameters }}
+        parameters:
+          {{- range .helm.parameters }}
+          - name: {{ .name }}
+            value: {{ .value | quote }}
+          {{- end }}
+        {{- end }}
       {{- end }}
       {{- end }}
     {{- end }}

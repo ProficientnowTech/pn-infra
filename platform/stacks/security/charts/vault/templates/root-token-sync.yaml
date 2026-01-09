@@ -36,11 +36,10 @@ metadata:
   name: {{ printf "%s-root-token-sync" (include "pn-vault.fullname" .) }}
   namespace: {{ .Release.Namespace }}
   annotations:
-    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook: PostSync
     # Ensure failed/previous hook Jobs don't block subsequent syncs.
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded,HookFailed
-    # Force recreation when script changes
-    config-hash: "json-format-v2"
+    argocd.argoproj.io/sync-wave: "65"
 spec:
   backoffLimit: 3
   template:

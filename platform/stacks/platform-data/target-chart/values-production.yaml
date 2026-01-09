@@ -13,3 +13,8 @@ applications:
   - ServerSideApply=true
   - CreateNamespace=true
   - RespectIgnoreDifferences=true
+  ignoreDifferences:
+  - group: external-secrets.io
+    kind: PushSecret
+    jsonPointers:
+    - /status

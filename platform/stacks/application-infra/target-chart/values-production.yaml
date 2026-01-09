@@ -9,7 +9,4 @@ applications:
     path: platform/stacks/application-infra/charts/temporal
   - repoURL: https://github.com/ProficientnowTech/pn-infra.git
     targetRevision: v2
-    path: platform/stacks/application-infra/charts/temporal/secrets
-  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
-    targetRevision: v2
     path: platform/stacks/application-infra/charts/temporal/dashboards

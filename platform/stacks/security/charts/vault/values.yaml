@@ -201,7 +201,7 @@ vault:
 
                 # external-secrets operator policy and role
                 # Allow ESO to both read secrets (ExternalSecret) and write secrets (PushSecret)
-                # Scope to applications/ prefix and platform-data/ prefix for operator-managed secrets
+                # Scope to applications/, platform-data/, and platform-config/ prefixes for operator-managed secrets
                 printf '%s\n' \
                   'path "secret/data/applications/*" {' \
                   '  capabilities = ["create", "update", "read", "list"]' \
@@ -213,6 +213,12 @@ vault:
                   '  capabilities = ["create", "update", "read", "list"]' \
                   '}' \
                   'path "secret/metadata/platform-data/*" {' \
+                  '  capabilities = ["create", "update", "read", "list"]' \
+                  '}' \
+                  'path "secret/data/platform-config/*" {' \
+                  '  capabilities = ["create", "update", "read", "list"]' \
+                  '}' \
+                  'path "secret/metadata/platform-config/*" {' \
                   '  capabilities = ["create", "update", "read", "list"]' \
                   '}' \
                   | vault policy write external-secrets-policy -

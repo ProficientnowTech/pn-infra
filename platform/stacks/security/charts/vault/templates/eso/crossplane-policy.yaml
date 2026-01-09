@@ -1,0 +1,45 @@
+{{- $cfg := .Values.eso }}
+{{- if and $cfg $cfg.enabled }}
+---
+# Crossplane-managed Vault Policy for External Secrets Operator
+# This replaces the PostSync Job with a declarative GitOps approach
+apiVersion: vault.vault.upbound.io/v1alpha1
+kind: Policy
+metadata:
+  name: external-secrets-policy
+  annotations:
+    argocd.argoproj.io/sync-wave: "65"
+    crossplane.io/external-name: external-secrets-policy
+spec:
+  providerConfigRef:
+    name: vault-admin
+  forProvider:
+    name: external-secrets-policy
+    policy: |
+      # External Secrets Operator Policy
+      # Allows ESO to read secrets (ExternalSecret) and write secrets (PushSecret)
+
+      # Application secrets
+      path "secret/data/applications/*" {
+        capabilities = ["create", "update", "read", "list"]
+      }
+      path "secret/metadata/applications/*" {
+        capabilities = ["create", "update", "read", "list"]
+      }
+
+      # Platform data secrets (PostgreSQL credentials, etc.)
+      path "secret/data/platform-data/*" {
+        capabilities = ["create", "update", "read", "list"]
+      }
+      path "secret/metadata/platform-data/*" {
+        capabilities = ["create", "update", "read", "list"]
+      }
+
+      # Platform config secrets
+      path "secret/data/platform-config/*" {
+        capabilities = ["create", "update", "read", "list"]
+      }
+      path "secret/metadata/platform-config/*" {
+        capabilities = ["create", "update", "read", "list"]
+      }
+{{- end }}

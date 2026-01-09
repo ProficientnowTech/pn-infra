@@ -76,8 +76,10 @@ spec:
             exit 1
           fi
           PLAINTEXT=$(echo "$ROOT_TOKEN" | base64 -d)
+          # Crossplane Vault provider expects credentials in JSON format: {"token":"hvs.xxx"}
+          JSON_CREDS="{\"token\":\"$PLAINTEXT\"}"
           kubectl -n {{ $cfg.targetNamespace }} create secret generic {{ $cfg.targetSecret }} \
-            --from-literal={{ $cfg.targetSecretKey | default "token" }}="$PLAINTEXT" \
+            --from-literal={{ $cfg.targetSecretKey | default "token" }}="$JSON_CREDS" \
             --dry-run=client -o yaml | kubectl apply -f -
         env:
         - name: KUBECTL_NAMESPACE

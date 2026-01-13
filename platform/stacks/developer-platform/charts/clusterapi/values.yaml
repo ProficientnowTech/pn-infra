@@ -1,38 +1,24 @@
 ---
 # Cluster API Operator Configuration for PN Platform
 # Values nested under 'cluster-api-operator:' key since it's a dependency chart
+# Provider format: "provider-name:version" (string, not map)
+# Multiple providers: "docker:v1.9.4;aws:v2.7.1"
 
 cluster-api-operator:
-  # CAPI Provider configuration
-  # Provider name is the key, not 'enabled'
-  core:
-    cluster-api:
-      namespace: capi-system
-      version: v1.8.7
-
-  bootstrap:
-    kubeadm:
-      namespace: capi-kubeadm-bootstrap-system
-      version: v1.8.7
-
-  controlPlane:
-    kubeadm:
-      namespace: capi-kubeadm-control-plane-system
-      version: v1.8.7
-
-  infrastructure:
-    kubevirt:
-      namespace: capk-system
-      version: v0.2.0
+  # CAPI Provider configuration (string format: "provider:version")
+  core: cluster-api:v1.8.7
+  bootstrap: kubeadm:v1.8.7
+  controlPlane: kubeadm:v1.8.7
+  infrastructure: kubevirt:v0.2.0
 
   # Feature gates configuration
   manager:
     featureGates:
       core:
-        ClusterTopology: true
-        ClusterResourceSet: true
+        ClusterTopology: "true"
+        ClusterResourceSet: "true"
       kubeadm:
-        ClusterTopology: true
+        ClusterTopology: "true"
 
   # Operator deployment settings
   replicaCount: 1

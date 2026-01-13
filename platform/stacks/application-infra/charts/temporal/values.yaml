@@ -292,60 +292,8 @@ temporal:
   # Use cluster Prometheus
   prometheus:
     enabled: false
-  # Grafana dashboards only (using cluster Grafana instance)
+  # Grafana - disabled, using cluster Grafana instance in monitoring namespace
+  # Dashboard ConfigMaps are created separately in templates/dashboards/ with
+  # label grafana_dashboard: "1" so the main Grafana sidecar picks them up
   grafana:
-    enabled: true
-    replicas: 0 # Don't deploy Grafana pods, just create dashboard ConfigMaps
-    testFramework:
-      enabled: false
-    rbac:
-      create: false
-      pspEnabled: false
-      namespaced: true
-    dashboardProviders:
-      dashboardproviders.yaml:
-        apiVersion: 1
-        providers:
-        - name: "temporal"
-          orgId: 1
-          folder: "Temporal"
-          type: file
-          disableDeletion: true
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/temporal
-    datasources:
-      datasources.yaml:
-        apiVersion: 1
-        datasources:
-        - name: TemporalMetrics
-          type: prometheus
-          url: http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090
-          access: proxy
-          isDefault: false
-    dashboards:
-      default:
-        server-general-github:
-          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/server/server-general.json
-          datasource: TemporalMetrics
-        sdk-general-github:
-          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/sdk/sdk-general.json
-          datasource: TemporalMetrics
-        misc-advanced-visibility-specific-github:
-          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/advanced-visibility-specific.json
-          datasource: TemporalMetrics
-        misc-clustermonitoring-kubernetes-github:
-          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/clustermonitoring-kubernetes.json
-          datasource: TemporalMetrics
-        misc-frontend-service-specific-github:
-          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/frontend-service-specific.json
-          datasource: TemporalMetrics
-        misc-history-service-specific-github:
-          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/history-service-specific.json
-          datasource: TemporalMetrics
-        misc-matching-service-specific-github:
-          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/matching-service-specific.json
-          datasource: TemporalMetrics
-        misc-worker-service-specific-github:
-          url: https://raw.githubusercontent.com/temporalio/dashboards/helm/misc/worker-service-specific.json
-          datasource: TemporalMetrics
+    enabled: false

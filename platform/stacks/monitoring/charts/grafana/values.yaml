@@ -46,11 +46,13 @@ grafana:
       apiVersion: 1
       datasources:
       - name: Prometheus
+        uid: prometheus
         type: prometheus
         url: http://prometheus-kube-prometheus-prometheus.monitoring:9090
         access: proxy
         isDefault: true
       - name: Loki
+        uid: loki
         type: loki
         url: http://loki.monitoring.svc:3100
         access: proxy
@@ -61,6 +63,7 @@ grafana:
             name: TraceID
             url: "$${__value.raw}"
       - name: Tempo
+        uid: tempo
         type: tempo
         url: http://tempo.monitoring.svc:3200
         access: proxy

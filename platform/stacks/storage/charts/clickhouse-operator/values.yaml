@@ -120,13 +120,11 @@ altinity-clickhouse-operator:
   serviceMonitor:
     enabled: false
 
-  # Grafana dashboards
+  # Grafana dashboards - disabled in favor of custom patched dashboards
+  # The upstream dashboards use ${DS_PROMETHEUS} which doesn't work with Grafana sidecar provisioning
+  # Our custom dashboards in templates/grafana-dashboards.yaml use the correct datasource UID
   dashboards:
-    enabled: true
-    additionalLabels:
-      grafana_dashboard: "1"
-    annotations:
-      grafana_folder: clickhouse-operator
+    enabled: false
 
   # HA Configuration - spread across nodes for resilience
   # Note: The operator itself is a single replica but can be scheduled

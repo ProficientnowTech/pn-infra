@@ -1,0 +1,25 @@
+{{- /*
+  Grafana Dashboards for ClickHouse Operator
+
+  These dashboards are patched versions of the upstream altinity-clickhouse-operator
+  dashboards with ${DS_PROMETHEUS} replaced with the actual datasource UID "prometheus".
+
+  The upstream dashboards use legacy Grafana templated datasource variables that
+  don't work with Grafana's sidecar ConfigMap provisioning.
+*/ -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-grafana-dashboards
+  namespace: {{ .Release.Namespace }}
+  labels:
+    grafana_dashboard: "1"
+    {{- include "altinity-clickhouse-operator.labels" . | nindent 4 }}
+  annotations:
+    grafana_folder: clickhouse-operator
+data:
+  {{- $files := .Files }}
+  {{- range $path, $_ := .Files.Glob "files/dashboards/*.json" }}
+  {{ base $path }}: |-
+{{ $files.Get $path | indent 4 }}
+  {{- end }}

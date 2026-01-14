@@ -1,6 +1,6 @@
-# Tekton Dashboard Ingress-only configuration
-# Note: The dashboard deployment itself is managed by the Tekton Operator via TektonConfig CR
-# This chart only provides the Ingress resource for external access
+# Tekton Dashboard configuration
+# Note: We vendor the upstream release manifest so we can override the dashboard
+# image registry (gcr.io pulls can fail in some environments).
 
 # Ingress configuration
 ingress:

@@ -422,7 +422,10 @@ spec:
       port: 9097
       targetPort: 9097
   selector:
-    app: tekton-dashboard
+    app.kubernetes.io/component: dashboard
+    app.kubernetes.io/instance: default
+    app.kubernetes.io/name: dashboard
+    app.kubernetes.io/part-of: tekton-dashboard
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -441,7 +444,6 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: tekton-dashboard
       app.kubernetes.io/component: dashboard
       app.kubernetes.io/instance: default
       app.kubernetes.io/name: dashboard
@@ -459,6 +461,7 @@ spec:
       containers:
         - args:
             - --port=9097
+            - --logout-url=
             - --pipelines-namespace=tekton-pipelines
             - --triggers-namespace=tekton-pipelines
             - --read-only=false

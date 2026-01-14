@@ -29,6 +29,12 @@ kafka:
     auto.create.topics.enable: true
     log.retention.hours: 168
 
+    # KRaft controller quorum tuning.
+    # Defaults can be too aggressive on busy/slow environments and can prevent
+    # controllers from electing a leader, which in turn makes brokers crash-loop.
+    controller.quorum.request.timeout.ms: 10000
+    controller.quorum.election.timeout.ms: 10000
+
 # Strimzi 0.46+ removed ZooKeeper-based Kafka clusters and requires KRaft mode
 # with KafkaNodePool resources for brokers/controllers.
 nodePools:

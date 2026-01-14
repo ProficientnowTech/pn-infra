@@ -1,0 +1,50 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: {{ include "pn-kafka-cluster.name" . }}
+  namespace: {{ .Values.namespace | quote }}
+  labels:
+    {{- include "pn-kafka-cluster.labels" . | nindent 4 }}
+spec:
+  kafka:
+    replicas: {{ .Values.kafka.replicas }}
+    {{- if .Values.kafka.version }}
+    version: {{ .Values.kafka.version | quote }}
+    {{- end }}
+    listeners:
+      {{- toYaml .Values.kafka.listeners | nindent 6 }}
+    config:
+      {{- toYaml .Values.kafka.config | nindent 6 }}
+    resources:
+      {{- toYaml .Values.kafka.resources | nindent 6 }}
+    storage:
+      type: persistent-claim
+      size: {{ .Values.kafka.storage.size | quote }}
+      class: {{ .Values.kafka.storage.storageClass | quote }}
+      deleteClaim: {{ .Values.kafka.storage.deleteClaim }}
+    template:
+      podDisruptionBudget:
+        maxUnavailable: {{ .Values.kafka.podDisruptionBudget.maxUnavailable }}
+
+  zookeeper:
+    replicas: {{ .Values.zookeeper.replicas }}
+    resources:
+      {{- toYaml .Values.zookeeper.resources | nindent 6 }}
+    storage:
+      type: persistent-claim
+      size: {{ .Values.zookeeper.storage.size | quote }}
+      class: {{ .Values.zookeeper.storage.storageClass | quote }}
+      deleteClaim: {{ .Values.zookeeper.storage.deleteClaim }}
+    template:
+      podDisruptionBudget:
+        maxUnavailable: {{ .Values.zookeeper.podDisruptionBudget.maxUnavailable }}
+
+  {{- if .Values.entityOperator.enabled }}
+  entityOperator:
+    topicOperator:
+      resources:
+        {{- toYaml .Values.entityOperator.topicOperator.resources | nindent 8 }}
+    userOperator:
+      resources:
+        {{- toYaml .Values.entityOperator.userOperator.resources | nindent 8 }}
+  {{- end }}

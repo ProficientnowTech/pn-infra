@@ -1,0 +1,85 @@
+# Namespace where the Kafka cluster CR is created.
+# IMPORTANT: Strimzi in this repo is currently configured to watch only its own
+# namespace (via `STRIMZI_NAMESPACE=metadata.namespace`), so this MUST match the
+# operator namespace unless you reconfigure the operator.
+namespace: strimzi-kafka-operator
+
+name: pn-kafka
+
+kafka:
+  # Kafka broker version; Strimzi defaults to "latest supported" when omitted.
+  version: ""
+  replicas: 3
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+  storage:
+    size: 50Gi
+    storageClass: app-blk-hdd-repl
+    deleteClaim: false
+
+  listeners:
+    - name: plain
+      port: 9092
+      type: internal
+      tls: false
+
+  config:
+    # Safe defaults for a 3-broker cluster (can tolerate 1 broker down).
+    offsets.topic.replication.factor: 3
+    transaction.state.log.replication.factor: 3
+    transaction.state.log.min.isr: 2
+    default.replication.factor: 3
+    min.insync.replicas: 2
+
+    # Developer-friendly defaults.
+    num.partitions: 6
+    auto.create.topics.enable: true
+    log.retention.hours: 168
+
+  podDisruptionBudget:
+    maxUnavailable: 1
+
+zookeeper:
+  replicas: 3
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 1Gi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  storage:
+    size: 10Gi
+    storageClass: app-blk-hdd-repl
+    deleteClaim: false
+
+  podDisruptionBudget:
+    maxUnavailable: 1
+
+entityOperator:
+  enabled: true
+  topicOperator:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  userOperator:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi

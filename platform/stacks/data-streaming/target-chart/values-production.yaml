@@ -24,3 +24,20 @@ applications:
     - /metadata/managedFields
     - /spec/conversion
     - /spec/versions
+
+- name: kafka-cluster
+  project: data-streaming
+  sources:
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/data-streaming/charts/kafka-cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: '10'
+  destinationNamespaceOverwrite: strimzi-kafka-operator
+  syncOptions:
+  - ServerSideApply=true
+  ignoreDifferences:
+  - group: kafka.strimzi.io
+    kind: Kafka
+    jsonPointers:
+    - /status

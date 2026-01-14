@@ -301,7 +301,3 @@ redisClusters:
     environment: production
     criticality: medium
     backup-policy: none # Cache doesn't need backup
-
-  # Pod annotations
-  podAnnotations:
-    backup.velero.io/backup-volumes-excludes: data # Don't backup cache

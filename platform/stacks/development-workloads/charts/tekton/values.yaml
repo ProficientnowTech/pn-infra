@@ -3,6 +3,12 @@ global:
   namespace: tekton
   project: development-workloads
 
+tektonConfig:
+  # Disabled by default because `tekton-operator` Helm release already creates
+  # `TektonConfig/config` as a Helm hook. Enabling this here would cause ArgoCD
+  # shared-resource conflicts between the `tekton` and `tekton-operator` apps.
+  enabled: false
+
 ingress:
   enabled: true
   annotations:

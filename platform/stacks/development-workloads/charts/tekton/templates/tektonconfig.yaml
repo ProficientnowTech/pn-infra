@@ -1,3 +1,4 @@
+{{- if .Values.tektonConfig.enabled }}
 apiVersion: operator.tekton.dev/v1alpha1
 kind: TektonConfig
 metadata:
@@ -20,3 +21,4 @@ spec:
     schedule: "0 8 * * *"
   result:
     disabled: false
+{{- end }}

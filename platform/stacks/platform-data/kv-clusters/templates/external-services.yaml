@@ -32,7 +32,9 @@ metadata:
 
     # MetalLB configuration - SHARED IP for all Redis clusters
     metallb.universe.tf/address-pool: public-pool
-    metallb.universe.tf/loadBalancerIPs: {{ $.Values.externalAccess.sharedIP }}
+    # NOTE: Do not set both `metallb.io/loadBalancerIPs` (or legacy `metallb.universe.tf/loadBalancerIPs`)
+    # and `spec.loadBalancerIP` on the same Service. MetalLB will reject it with:
+    # "service can not have both metallb.io/loadBalancerIPs and svc.Spec.LoadBalancerIP".
 
     # Prometheus metrics scraping
     prometheus.io/scrape: "true"

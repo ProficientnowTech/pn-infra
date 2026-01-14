@@ -27,6 +27,14 @@ applications:
   - CreateNamespace=true
   - ServerSideApply=true
 
+- name: tekton-dashboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
+  destinationNamespaceOverwrite: tekton-pipelines
+  syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+
 - name: backstage
   annotations:
     argocd.argoproj.io/sync-wave: '0'

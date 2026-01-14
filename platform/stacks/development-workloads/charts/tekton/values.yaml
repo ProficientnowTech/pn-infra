@@ -9,6 +9,13 @@ tektonConfig:
   # shared-resource conflicts between the `tekton` and `tekton-operator` apps.
   enabled: false
 
+tektonDashboardCR:
+  # Disabled by default because the Tekton Operator deploys the dashboard using
+  # upstream release manifests that reference `gcr.io/...`, which can fail to
+  # pull (403). We deploy the dashboard via `platform/stacks/developer-platform/charts/tekton-dashboard`
+  # using a working image registry instead.
+  enabled: false
+
 ingress:
   enabled: true
   annotations:

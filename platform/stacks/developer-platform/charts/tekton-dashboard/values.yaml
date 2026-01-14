@@ -12,3 +12,6 @@ ingress:
     external-dns.alpha.kubernetes.io/ttl: "60"
   tls:
     enabled: true
+
+dashboard:
+  image: docker.io/hyperledgerk8s/tekton-dashboard:v0.31.0

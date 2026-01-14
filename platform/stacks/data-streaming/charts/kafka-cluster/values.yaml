@@ -16,6 +16,38 @@ kafka:
       type: internal
       tls: false
 
+externalAccess:
+  # Expose Kafka to developers outside the cluster.
+  #
+  # NOTE: Kafka clients connect to a *bootstrap* address, but then they receive
+  # broker addresses from metadata. So while developers configure only one
+  # bootstrap endpoint, the brokers still must be reachable too.
+  loadBalancer:
+    enabled: true
+    port: 9094
+    tls: false
+    metallb:
+      addressPool: public-pool
+    dns:
+      # These are used only for ExternalDNS annotations. If external-dns is not
+      # managing your zone, you can leave them empty and use the allocated IPs.
+      bootstrapHostname: kafka.pnats.cloud
+      brokerHostnamePrefix: kafka-broker
+      brokerHostnameSuffix: pnats.cloud
+    allowedSourceRanges: []
+
+  # Strimzi supports an `ingress` listener type (TLS passthrough), but it
+  # requires an ingress controller configured for TCP/TLS passthrough and DNS
+  # hostnames for bootstrap + each broker. Keep it disabled unless you know your
+  # ingress controller supports it.
+  ingress:
+    enabled: false
+    port: 443
+    className: nginx
+    bootstrapHostname: kafka-ingress.pnats.cloud
+    brokerHostnamePrefix: kafka-broker
+    brokerHostnameSuffix: pnats.cloud
+
   config:
     # Safe defaults for a 3-broker cluster (can tolerate 1 broker down).
     offsets.topic.replication.factor: 3

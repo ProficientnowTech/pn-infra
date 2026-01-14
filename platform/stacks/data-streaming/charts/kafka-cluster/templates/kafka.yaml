@@ -16,6 +16,67 @@ spec:
     {{- end }}
     listeners:
       {{- toYaml .Values.kafka.listeners | nindent 6 }}
+
+      {{- if .Values.externalAccess.loadBalancer.enabled }}
+      - name: external
+        port: {{ .Values.externalAccess.loadBalancer.port }}
+        type: loadbalancer
+        tls: {{ .Values.externalAccess.loadBalancer.tls }}
+        configuration:
+          {{- if .Values.externalAccess.loadBalancer.allowedSourceRanges }}
+          loadBalancerSourceRanges:
+            {{- toYaml .Values.externalAccess.loadBalancer.allowedSourceRanges | nindent 12 }}
+          {{- end }}
+          bootstrap:
+            annotations:
+              metallb.universe.tf/address-pool: {{ .Values.externalAccess.loadBalancer.metallb.addressPool | quote }}
+              {{- if .Values.externalAccess.loadBalancer.dns.bootstrapHostname }}
+              external-dns.alpha.kubernetes.io/hostname: {{ .Values.externalAccess.loadBalancer.dns.bootstrapHostname | quote }}
+              external-dns.alpha.kubernetes.io/ttl: "60"
+              {{- end }}
+          brokers:
+            {{- $cluster := include "pn-kafka-cluster.name" . -}}
+            {{- $prefix := .Values.externalAccess.loadBalancer.dns.brokerHostnamePrefix -}}
+            {{- $suffix := .Values.externalAccess.loadBalancer.dns.brokerHostnameSuffix -}}
+            {{- range $i := until (int .Values.nodePools.brokers.replicas) }}
+            - broker: {{ $i }}
+              {{- if and $prefix $suffix }}
+              advertisedHost: {{ printf "%s-%d.%s" $prefix $i $suffix | quote }}
+              {{- end }}
+              annotations:
+                metallb.universe.tf/address-pool: {{ $.Values.externalAccess.loadBalancer.metallb.addressPool | quote }}
+                {{- if and $prefix $suffix }}
+                external-dns.alpha.kubernetes.io/hostname: {{ printf "%s-%d.%s" $prefix $i $suffix | quote }}
+                external-dns.alpha.kubernetes.io/ttl: "60"
+                {{- end }}
+            {{- end }}
+      {{- end }}
+
+      {{- if .Values.externalAccess.ingress.enabled }}
+      - name: ingress
+        port: {{ .Values.externalAccess.ingress.port }}
+        type: ingress
+        tls: true
+        configuration:
+          class: {{ .Values.externalAccess.ingress.className | quote }}
+          bootstrap:
+            host: {{ .Values.externalAccess.ingress.bootstrapHostname | quote }}
+            annotations:
+              nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+              external-dns.alpha.kubernetes.io/hostname: {{ .Values.externalAccess.ingress.bootstrapHostname | quote }}
+              external-dns.alpha.kubernetes.io/ttl: "60"
+          brokers:
+            {{- $prefix2 := .Values.externalAccess.ingress.brokerHostnamePrefix -}}
+            {{- $suffix2 := .Values.externalAccess.ingress.brokerHostnameSuffix -}}
+            {{- range $i := until (int .Values.nodePools.brokers.replicas) }}
+            - broker: {{ $i }}
+              host: {{ printf "%s-%d.%s" $prefix2 $i $suffix2 | quote }}
+              annotations:
+                nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+                external-dns.alpha.kubernetes.io/hostname: {{ printf "%s-%d.%s" $prefix2 $i $suffix2 | quote }}
+                external-dns.alpha.kubernetes.io/ttl: "60"
+            {{- end }}
+      {{- end }}
     config:
       {{- toYaml .Values.kafka.config | nindent 6 }}
     template:

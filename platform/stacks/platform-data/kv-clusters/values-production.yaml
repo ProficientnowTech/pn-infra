@@ -19,151 +19,151 @@ redisClusters:
 # ==============================================================================
 # Platform KV - For platform services (Infisical, etc.)
 # ==============================================================================
-- name: platform-kv
-  namespace: platform
-  description: "Platform services key-value store"
-  syncWave: "0"
+# - name: platform-kv
+#   namespace: platform
+#   description: "Platform services key-value store"
+#   syncWave: "0"
 
-  # Full HA with 3 instances (1 master + 2 replicas)
-  clusterSize: 3
+#   # Full HA with 3 instances (1 master + 2 replicas)
+#   clusterSize: 3
 
-  # Container images
-  image: quay.io/opstree/redis:v7.0.12
-  imagePullPolicy: IfNotPresent
+#   # Container images
+#   image: quay.io/opstree/redis:v7.0.12
+#   imagePullPolicy: IfNotPresent
 
-  # Production resources
-  resources:
-    requests:
-      cpu: 200m
-      memory: 512Mi
-    limits:
-      cpu: 1000m
-      memory: 1Gi
+#   # Production resources
+#   resources:
+#     requests:
+#       cpu: 200m
+#       memory: 512Mi
+#     limits:
+#       cpu: 1000m
+#       memory: 1Gi
 
-  # Persistent storage
-  storage:
-    size: 20Gi
-    storageClass: plt-blk-hdd-repl
-    accessModes:
-    - ReadWriteOnce
+#   # Persistent storage
+#   storage:
+#     size: 20Gi
+#     storageClass: plt-blk-hdd-repl
+#     accessModes:
+#     - ReadWriteOnce
 
-  # Redis configuration
-  config:
-    maxmemory: "896mb" # Leave ~10% for overhead
-    maxmemoryPolicy: "allkeys-lru"
-    appendonly: "yes"
-    appendfsync: "everysec"
-    loglevel: "notice"
-    maxclients: "10000"
+#   # Redis configuration
+#   config:
+#     maxmemory: "896mb" # Leave ~10% for overhead
+#     maxmemoryPolicy: "allkeys-lru"
+#     appendonly: "yes"
+#     appendfsync: "everysec"
+#     loglevel: "notice"
+#     maxclients: "10000"
 
-  # Sentinel for automatic failover
-  sentinel:
-    enabled: true
-    syncWave: "1"
-    clusterSize: 3
-    quorum: 2
-    downAfterMilliseconds: "5000"
-    failoverTimeout: "10000"
-    parallelSyncs: "1"
-    image: quay.io/opstree/redis-sentinel:v7.0.12
-    imagePullPolicy: IfNotPresent
+#   # Sentinel for automatic failover
+#   sentinel:
+#     enabled: true
+#     syncWave: "1"
+#     clusterSize: 3
+#     quorum: 2
+#     downAfterMilliseconds: "5000"
+#     failoverTimeout: "10000"
+#     parallelSyncs: "1"
+#     image: quay.io/opstree/redis-sentinel:v7.0.12
+#     imagePullPolicy: IfNotPresent
 
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 500m
-        memory: 256Mi
+#     resources:
+#       requests:
+#         cpu: 100m
+#         memory: 128Mi
+#       limits:
+#         cpu: 500m
+#         memory: 256Mi
 
-    monitoring:
-      enabled: true
-      exporterImage: quay.io/opstree/redis-exporter:v1.45.0
-      imagePullPolicy: IfNotPresent
+#     monitoring:
+#       enabled: true
+#       exporterImage: quay.io/opstree/redis-exporter:v1.45.0
+#       imagePullPolicy: IfNotPresent
 
-    pdb:
-      enabled: true
-      maxUnavailable: 1
+#     pdb:
+#       enabled: true
+#       maxUnavailable: 1
 
-    podSecurityContext:
-      runAsUser: 1000
-      runAsGroup: 1000
-      fsGroup: 1000
+#     podSecurityContext:
+#       runAsUser: 1000
+#       runAsGroup: 1000
+#       fsGroup: 1000
 
-    livenessProbe:
-      failureThreshold: 3
-      initialDelaySeconds: 1
-      periodSeconds: 10
-      successThreshold: 1
-      timeoutSeconds: 1
+#     livenessProbe:
+#       failureThreshold: 3
+#       initialDelaySeconds: 1
+#       periodSeconds: 10
+#       successThreshold: 1
+#       timeoutSeconds: 1
 
-    readinessProbe:
-      failureThreshold: 3
-      initialDelaySeconds: 1
-      periodSeconds: 10
-      successThreshold: 1
-      timeoutSeconds: 1
+#     readinessProbe:
+#       failureThreshold: 3
+#       initialDelaySeconds: 1
+#       periodSeconds: 10
+#       successThreshold: 1
+#       timeoutSeconds: 1
 
-  # Monitoring
-  monitoring:
-    enabled: true
-    exporterImage: quay.io/opstree/redis-exporter:v1.45.0
-    imagePullPolicy: IfNotPresent
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: 200m
-        memory: 128Mi
+#   # Monitoring
+#   monitoring:
+#     enabled: true
+#     exporterImage: quay.io/opstree/redis-exporter:v1.45.0
+#     imagePullPolicy: IfNotPresent
+#     resources:
+#       requests:
+#         cpu: 50m
+#         memory: 64Mi
+#       limits:
+#         cpu: 200m
+#         memory: 128Mi
 
-  # Health checks
-  readinessProbe:
-    failureThreshold: 5
-    initialDelaySeconds: 15
-    periodSeconds: 15
-    successThreshold: 1
-    timeoutSeconds: 5
+#   # Health checks
+#   readinessProbe:
+#     failureThreshold: 5
+#     initialDelaySeconds: 15
+#     periodSeconds: 15
+#     successThreshold: 1
+#     timeoutSeconds: 5
 
-  livenessProbe:
-    failureThreshold: 5
-    initialDelaySeconds: 15
-    periodSeconds: 15
-    successThreshold: 1
-    timeoutSeconds: 5
+#   livenessProbe:
+#     failureThreshold: 5
+#     initialDelaySeconds: 15
+#     periodSeconds: 15
+#     successThreshold: 1
+#     timeoutSeconds: 5
 
-  # Pod Disruption Budget
-  pdb:
-    enabled: true
-    maxUnavailable: 1
+#   # Pod Disruption Budget
+#   pdb:
+#     enabled: true
+#     maxUnavailable: 1
 
-  # Security context
-  podSecurityContext:
-    runAsUser: 1000
-    runAsGroup: 1000
-    fsGroup: 1000
+#   # Security context
+#   podSecurityContext:
+#     runAsUser: 1000
+#     runAsGroup: 1000
+#     fsGroup: 1000
 
-  # External access with shared IP
-  externalAccess:
-    enabled: true
-    syncWave: "1"
-    port: 6379 # Standard Redis port on shared IP: 103.110.174.22:6379
-    hostname: platform-kv.pnats.cloud
-    # SECURITY: Allow all for now - MUST restrict in production!
-    allowedSourceRanges:
-    - 0.0.0.0/0 # TODO: Restrict to office/VPN IPs before production deployment!
-    sessionAffinity: ClientIP
-    sessionAffinityTimeout: 10800
+#   # External access with shared IP
+#   externalAccess:
+#     enabled: true
+#     syncWave: "1"
+#     port: 6379 # Standard Redis port on shared IP: 103.110.174.22:6379
+#     hostname: platform-kv.pnats.cloud
+#     # SECURITY: Allow all for now - MUST restrict in production!
+#     allowedSourceRanges:
+#     - 0.0.0.0/0 # TODO: Restrict to office/VPN IPs before production deployment!
+#     sessionAffinity: ClientIP
+#     sessionAffinityTimeout: 10800
 
-  # Labels
-  labels:
-    environment: production
-    criticality: high
-    backup-policy: daily
+#   # Labels
+#   labels:
+#     environment: production
+#     criticality: high
+#     backup-policy: daily
 
-  # Pod annotations
-  podAnnotations:
-    backup.velero.io/backup-volumes: data
+#   # Pod annotations
+#   podAnnotations:
+#     backup.velero.io/backup-volumes: data
 
 # ==============================================================================
 # Cache KV - For general application caching

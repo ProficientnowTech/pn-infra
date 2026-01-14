@@ -8,257 +8,257 @@
 # Shared IP for all Redis clusters (port-based routing)
 externalAccess:
   # Shared IP for all Redis external endpoints
-  sharedIP: ""  # TODO: Set staging IP if external access needed
+  sharedIP: "" # TODO: Set staging IP if external access needed
 
   # SECURITY: Restricted to staging network
   allowedSourceRanges:
-    - 10.0.0.0/8  # Internal network only
+  - 10.0.0.0/8 # Internal network only
 
 # Redis Clusters
 redisClusters:
-  # ==============================================================================
-  # Platform KV - For platform services (Infisical, etc.)
-  # ==============================================================================
-  - name: platform-kv
-    namespace: platform
-    description: "Platform services key-value store (staging)"
-    syncWave: "0"
+# ==============================================================================
+# Platform KV - For platform services (Infisical, etc.)
+# ==============================================================================
+- name: platform-kv
+  namespace: platform
+  description: "Platform services key-value store (staging)"
+  syncWave: "0"
 
-    # HA with 2 instances (1 master + 1 replica)
-    clusterSize: 2
+  # HA with 2 instances (1 master + 1 replica)
+  clusterSize: 2
 
-    # Container images
-    image: quay.io/opstree/redis:v7.0.12
-    imagePullPolicy: IfNotPresent
+  # Container images
+  image: quay.io/opstree/redis:v7.0.12
+  imagePullPolicy: IfNotPresent
 
-    # Moderate resources for staging
+  # Moderate resources for staging
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Persistent storage
+  storage:
+    size: 10Gi
+    storageClass: plt-blk-hdd-repl
+    accessModes:
+    - ReadWriteOnce
+
+  # Redis configuration
+  config:
+    maxmemory: "448mb"
+    maxmemoryPolicy: "allkeys-lru"
+    appendonly: "yes"
+    appendfsync: "everysec"
+    loglevel: "notice"
+    maxclients: "5000"
+
+  # Sentinel for automatic failover
+  sentinel:
+    enabled: true
+    syncWave: "1"
+    clusterSize: 3
+    quorum: 2
+    downAfterMilliseconds: "5000"
+    failoverTimeout: "10000"
+    parallelSyncs: "1"
+    image: quay.io/opstree/redis-sentinel:v7.0.12
+
     resources:
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 50m
+        memory: 64Mi
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 200m
+        memory: 128Mi
 
-    # Persistent storage
-    storage:
-      size: 10Gi
-      storageClass: plt-blk-hdd-repl
-      accessModes:
-        - ReadWriteOnce
-
-    # Redis configuration
-    config:
-      maxmemory: "448mb"
-      maxmemoryPolicy: "allkeys-lru"
-      appendonly: "yes"
-      appendfsync: "everysec"
-      loglevel: "notice"
-      maxclients: "5000"
-
-    # Sentinel for automatic failover
-    sentinel:
-      enabled: true
-      syncWave: "1"
-      clusterSize: 3
-      quorum: 2
-      downAfterMilliseconds: "5000"
-      failoverTimeout: "10000"
-      parallelSyncs: "1"
-      image: quay.io/opstree/redis-sentinel:v7.0.12
-
-      resources:
-        requests:
-          cpu: 50m
-          memory: 64Mi
-        limits:
-          cpu: 200m
-          memory: 128Mi
-
-      monitoring:
-        enabled: true
-        exporterImage: quay.io/opstree/redis-exporter:v1.45.0
-
-      pdb:
-        enabled: false
-
-      podSecurityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
-
-      livenessProbe:
-        failureThreshold: 3
-        initialDelaySeconds: 1
-        periodSeconds: 10
-
-      readinessProbe:
-        failureThreshold: 3
-        initialDelaySeconds: 1
-        periodSeconds: 10
-
-    # Monitoring
     monitoring:
       enabled: true
       exporterImage: quay.io/opstree/redis-exporter:v1.45.0
-      resources:
-        requests:
-          cpu: 25m
-          memory: 32Mi
-        limits:
-          cpu: 100m
-          memory: 64Mi
 
-    # Health checks
-    readinessProbe:
-      failureThreshold: 5
-      initialDelaySeconds: 10
-      periodSeconds: 10
-
-    livenessProbe:
-      failureThreshold: 5
-      initialDelaySeconds: 10
-      periodSeconds: 10
-
-    # Pod Disruption Budget
     pdb:
       enabled: false
 
-    # Security context
     podSecurityContext:
       runAsUser: 1000
       runAsGroup: 1000
       fsGroup: 1000
 
-    # External access (optional for staging)
-    externalAccess:
-      enabled: false
+    livenessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 1
+      periodSeconds: 10
 
-    # Labels
-    labels:
-      environment: staging
-      criticality: medium
-      backup-policy: weekly
+    readinessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 1
+      periodSeconds: 10
 
-  # ==============================================================================
-  # Cache KV - For general application caching
-  # ==============================================================================
-  - name: cache-kv
-    namespace: platform
-    description: "General application cache (staging)"
-    syncWave: "0"
-
-    # HA with 2 instances
-    clusterSize: 2
-
-    # Container images
-    image: quay.io/opstree/redis:v7.0.12
-    imagePullPolicy: IfNotPresent
-
-    # Moderate resources
+  # Monitoring
+  monitoring:
+    enabled: true
+    exporterImage: quay.io/opstree/redis-exporter:v1.45.0
     resources:
       requests:
-        cpu: 100m
-        memory: 256Mi
+        cpu: 25m
+        memory: 32Mi
       limits:
-        cpu: 500m
-        memory: 512Mi
+        cpu: 100m
+        memory: 64Mi
 
-    # Persistent storage
-    storage:
-      size: 5Gi
-      storageClass: plt-blk-hdd-repl
-      accessModes:
-        - ReadWriteOnce
+  # Health checks
+  readinessProbe:
+    failureThreshold: 5
+    initialDelaySeconds: 10
+    periodSeconds: 10
 
-    # Redis configuration (cache-optimized)
-    config:
-      maxmemory: "448mb"
-      maxmemoryPolicy: "allkeys-lru"
-      appendonly: "no"
-      loglevel: "notice"
-      maxclients: "5000"
+  livenessProbe:
+    failureThreshold: 5
+    initialDelaySeconds: 10
+    periodSeconds: 10
 
-    # Sentinel for automatic failover
-    sentinel:
-      enabled: true
-      syncWave: "1"
-      clusterSize: 3
-      quorum: 2
-      downAfterMilliseconds: "5000"
-      failoverTimeout: "10000"
-      parallelSyncs: "1"
-      image: quay.io/opstree/redis-sentinel:v7.0.12
+  # Pod Disruption Budget
+  pdb:
+    enabled: false
 
-      resources:
-        requests:
-          cpu: 50m
-          memory: 64Mi
-        limits:
-          cpu: 200m
-          memory: 128Mi
+  # Security context
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
 
-      monitoring:
-        enabled: true
-        exporterImage: quay.io/opstree/redis-exporter:v1.45.0
+  # External access (optional for staging)
+  externalAccess:
+    enabled: false
 
-      pdb:
-        enabled: false
+  # Labels
+  labels:
+    environment: staging
+    criticality: medium
+    backup-policy: weekly
 
-      podSecurityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+# ==============================================================================
+# Cache KV - For general application caching
+# ==============================================================================
+- name: tenants-redis
+  namespace: default
+  description: "General application cache (staging)"
+  syncWave: "0"
 
-      livenessProbe:
-        failureThreshold: 3
-        initialDelaySeconds: 1
-        periodSeconds: 10
+  # HA with 2 instances
+  clusterSize: 2
 
-      readinessProbe:
-        failureThreshold: 3
-        initialDelaySeconds: 1
-        periodSeconds: 10
+  # Container images
+  image: quay.io/opstree/redis:v7.0.12
+  imagePullPolicy: IfNotPresent
 
-    # Monitoring
+  # Moderate resources
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Persistent storage
+  storage:
+    size: 5Gi
+    storageClass: app-blk-hdd-repl
+    accessModes:
+    - ReadWriteOnce
+
+  # Redis configuration (cache-optimized)
+  config:
+    maxmemory: "448mb"
+    maxmemoryPolicy: "allkeys-lru"
+    appendonly: "no"
+    loglevel: "notice"
+    maxclients: "5000"
+
+  # Sentinel for automatic failover
+  sentinel:
+    enabled: true
+    syncWave: "1"
+    clusterSize: 3
+    quorum: 2
+    downAfterMilliseconds: "5000"
+    failoverTimeout: "10000"
+    parallelSyncs: "1"
+    image: quay.io/opstree/redis-sentinel:v7.0.12
+
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 128Mi
+
     monitoring:
       enabled: true
       exporterImage: quay.io/opstree/redis-exporter:v1.45.0
-      resources:
-        requests:
-          cpu: 25m
-          memory: 32Mi
-        limits:
-          cpu: 100m
-          memory: 64Mi
 
-    # Health checks
-    readinessProbe:
-      failureThreshold: 5
-      initialDelaySeconds: 10
-      periodSeconds: 10
-
-    livenessProbe:
-      failureThreshold: 5
-      initialDelaySeconds: 10
-      periodSeconds: 10
-
-    # Pod Disruption Budget
     pdb:
       enabled: false
 
-    # Security context
     podSecurityContext:
       runAsUser: 1000
       runAsGroup: 1000
       fsGroup: 1000
 
-    # External access
-    externalAccess:
-      enabled: false
+    livenessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 1
+      periodSeconds: 10
 
-    # Labels
-    labels:
-      environment: staging
-      criticality: low
-      backup-policy: none
+    readinessProbe:
+      failureThreshold: 3
+      initialDelaySeconds: 1
+      periodSeconds: 10
+
+  # Monitoring
+  monitoring:
+    enabled: true
+    exporterImage: quay.io/opstree/redis-exporter:v1.45.0
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: 100m
+        memory: 64Mi
+
+  # Health checks
+  readinessProbe:
+    failureThreshold: 5
+    initialDelaySeconds: 10
+    periodSeconds: 10
+
+  livenessProbe:
+    failureThreshold: 5
+    initialDelaySeconds: 10
+    periodSeconds: 10
+
+  # Pod Disruption Budget
+  pdb:
+    enabled: false
+
+  # Security context
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  # External access
+  externalAccess:
+    enabled: false
+
+  # Labels
+  labels:
+    environment: staging
+    criticality: low
+    backup-policy: none

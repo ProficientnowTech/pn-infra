@@ -18,3 +18,22 @@ applications:
     kind: PushSecret
     jsonPointers:
     - /status
+- name: kv-clusters
+  project: databases
+  sources:
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/platform-data/kv-clusters
+    helm:
+      valueFiles:
+      - values-production.yaml
+  destinationNamespaceOverwrite: 'platform-kv-clusters'
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+  - RespectIgnoreDifferences=true
+  ignoreDifferences:
+  - group: external-secrets.io
+    kind: PushSecret
+    jsonPointers:
+    - /status

@@ -9,84 +9,84 @@ externalAccess:
   # No external access in development
   sharedIP: ""
   allowedSourceRanges:
-    - 10.0.0.0/8
+  - 10.0.0.0/8
 
 # Redis Clusters
 redisClusters:
-  # ==============================================================================
-  # Platform KV - Minimal for development
-  # ==============================================================================
-  - name: platform-kv
-    namespace: platform
-    description: "Platform services key-value store (development)"
-    syncWave: "0"
+# ==============================================================================
+# Platform KV - Minimal for development
+# ==============================================================================
+- name: platform-kv
+  namespace: platform
+  description: "Platform services key-value store (development)"
+  syncWave: "0"
 
-    # Single instance (no HA for development)
-    clusterSize: 1
+  # Single instance (no HA for development)
+  clusterSize: 1
 
-    # Container images
-    image: quay.io/opstree/redis:v7.0.12
-    imagePullPolicy: IfNotPresent
+  # Container images
+  image: quay.io/opstree/redis:v7.0.12
+  imagePullPolicy: IfNotPresent
 
-    # Minimal resources
-    resources:
-      requests:
-        cpu: 50m
-        memory: 128Mi
-      limits:
-        cpu: 200m
-        memory: 256Mi
+  # Minimal resources
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
 
-    # Persistent storage
-    storage:
-      size: 2Gi
-      storageClass: plt-blk-hdd-repl
-      accessModes:
-        - ReadWriteOnce
+  # Persistent storage
+  storage:
+    size: 2Gi
+    storageClass: plt-blk-hdd-repl
+    accessModes:
+    - ReadWriteOnce
 
-    # Redis configuration
-    config:
-      maxmemory: "224mb"
-      maxmemoryPolicy: "allkeys-lru"
-      appendonly: "no"  # No persistence for dev
-      loglevel: "notice"
-      maxclients: "1000"
+  # Redis configuration
+  config:
+    maxmemory: "224mb"
+    maxmemoryPolicy: "allkeys-lru"
+    appendonly: "no" # No persistence for dev
+    loglevel: "notice"
+    maxclients: "1000"
 
-    # Sentinel disabled for single instance
-    sentinel:
-      enabled: false
+  # Sentinel disabled for single instance
+  sentinel:
+    enabled: false
 
-    # Monitoring
-    monitoring:
-      enabled: false  # Disabled for development
+  # Monitoring
+  monitoring:
+    enabled: false # Disabled for development
 
-    # Health checks
-    readinessProbe:
-      failureThreshold: 3
-      initialDelaySeconds: 5
-      periodSeconds: 5
+  # Health checks
+  readinessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 5
+    periodSeconds: 5
 
-    livenessProbe:
-      failureThreshold: 3
-      initialDelaySeconds: 5
-      periodSeconds: 5
+  livenessProbe:
+    failureThreshold: 3
+    initialDelaySeconds: 5
+    periodSeconds: 5
 
-    # Pod Disruption Budget
-    pdb:
-      enabled: false
+  # Pod Disruption Budget
+  pdb:
+    enabled: false
 
-    # Security context
-    podSecurityContext:
-      runAsUser: 1000
-      runAsGroup: 1000
-      fsGroup: 1000
+  # Security context
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
 
-    # External access
-    externalAccess:
-      enabled: false
+  # External access
+  externalAccess:
+    enabled: false
 
-    # Labels
-    labels:
-      environment: development
-      criticality: low
-      backup-policy: none
+  # Labels
+  labels:
+    environment: development
+    criticality: low
+    backup-policy: none

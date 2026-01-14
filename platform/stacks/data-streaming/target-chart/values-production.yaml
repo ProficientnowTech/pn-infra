@@ -41,3 +41,7 @@ applications:
     kind: Kafka
     jsonPointers:
     - /status
+  - group: kafka.strimzi.io
+    kind: KafkaNodePool
+    jsonPointers:
+    - /status

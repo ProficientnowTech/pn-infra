@@ -9,20 +9,6 @@ name: pn-kafka
 kafka:
   # Kafka broker version; Strimzi defaults to "latest supported" when omitted.
   version: ""
-  replicas: 3
-
-  resources:
-    requests:
-      cpu: 500m
-      memory: 2Gi
-    limits:
-      cpu: 2000m
-      memory: 4Gi
-
-  storage:
-    size: 50Gi
-    storageClass: app-blk-hdd-repl
-    deleteClaim: false
 
   listeners:
     - name: plain
@@ -43,27 +29,36 @@ kafka:
     auto.create.topics.enable: true
     log.retention.hours: 168
 
-  podDisruptionBudget:
-    maxUnavailable: 1
+# Strimzi 0.46+ removed ZooKeeper-based Kafka clusters and requires KRaft mode
+# with KafkaNodePool resources for brokers/controllers.
+nodePools:
+  controllers:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+    storage:
+      size: 10Gi
+      storageClass: app-blk-hdd-repl
+      deleteClaim: false
 
-zookeeper:
-  replicas: 3
-
-  resources:
-    requests:
-      cpu: 200m
-      memory: 1Gi
-    limits:
-      cpu: 1000m
-      memory: 2Gi
-
-  storage:
-    size: 10Gi
-    storageClass: app-blk-hdd-repl
-    deleteClaim: false
-
-  podDisruptionBudget:
-    maxUnavailable: 1
+  brokers:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+    storage:
+      size: 50Gi
+      storageClass: app-blk-hdd-repl
+      deleteClaim: false
 
 entityOperator:
   enabled: true

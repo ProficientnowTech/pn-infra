@@ -3,11 +3,14 @@ kind: Kafka
 metadata:
   name: {{ include "pn-kafka-cluster.name" . }}
   namespace: {{ .Values.namespace | quote }}
+  annotations:
+    # Strimzi 0.46+ uses KRaft + KafkaNodePools (ZooKeeper mode removed).
+    strimzi.io/kraft: enabled
+    strimzi.io/node-pools: enabled
   labels:
     {{- include "pn-kafka-cluster.labels" . | nindent 4 }}
 spec:
   kafka:
-    replicas: {{ .Values.kafka.replicas }}
     {{- if .Values.kafka.version }}
     version: {{ .Values.kafka.version | quote }}
     {{- end }}
@@ -15,29 +18,9 @@ spec:
       {{- toYaml .Values.kafka.listeners | nindent 6 }}
     config:
       {{- toYaml .Values.kafka.config | nindent 6 }}
-    resources:
-      {{- toYaml .Values.kafka.resources | nindent 6 }}
-    storage:
-      type: persistent-claim
-      size: {{ .Values.kafka.storage.size | quote }}
-      class: {{ .Values.kafka.storage.storageClass | quote }}
-      deleteClaim: {{ .Values.kafka.storage.deleteClaim }}
     template:
       podDisruptionBudget:
-        maxUnavailable: {{ .Values.kafka.podDisruptionBudget.maxUnavailable }}
-
-  zookeeper:
-    replicas: {{ .Values.zookeeper.replicas }}
-    resources:
-      {{- toYaml .Values.zookeeper.resources | nindent 6 }}
-    storage:
-      type: persistent-claim
-      size: {{ .Values.zookeeper.storage.size | quote }}
-      class: {{ .Values.zookeeper.storage.storageClass | quote }}
-      deleteClaim: {{ .Values.zookeeper.storage.deleteClaim }}
-    template:
-      podDisruptionBudget:
-        maxUnavailable: {{ .Values.zookeeper.podDisruptionBudget.maxUnavailable }}
+        maxUnavailable: 1
 
   {{- if .Values.entityOperator.enabled }}
   entityOperator:
@@ -48,3 +31,46 @@ spec:
       resources:
         {{- toYaml .Values.entityOperator.userOperator.resources | nindent 8 }}
   {{- end }}
+
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: {{ include "pn-kafka-cluster.name" . }}-controllers
+  namespace: {{ .Values.namespace | quote }}
+  labels:
+    strimzi.io/cluster: {{ include "pn-kafka-cluster.name" . }}
+    {{- include "pn-kafka-cluster.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.nodePools.controllers.replicas }}
+  roles:
+    - controller
+  resources:
+    {{- toYaml .Values.nodePools.controllers.resources | nindent 4 }}
+  storage:
+    type: persistent-claim
+    size: {{ .Values.nodePools.controllers.storage.size | quote }}
+    class: {{ .Values.nodePools.controllers.storage.storageClass | quote }}
+    deleteClaim: {{ .Values.nodePools.controllers.storage.deleteClaim }}
+    kraftMetadata: shared
+
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaNodePool
+metadata:
+  name: {{ include "pn-kafka-cluster.name" . }}-brokers
+  namespace: {{ .Values.namespace | quote }}
+  labels:
+    strimzi.io/cluster: {{ include "pn-kafka-cluster.name" . }}
+    {{- include "pn-kafka-cluster.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.nodePools.brokers.replicas }}
+  roles:
+    - broker
+  resources:
+    {{- toYaml .Values.nodePools.brokers.resources | nindent 4 }}
+  storage:
+    type: persistent-claim
+    size: {{ .Values.nodePools.brokers.storage.size | quote }}
+    class: {{ .Values.nodePools.brokers.storage.storageClass | quote }}
+    deleteClaim: {{ .Values.nodePools.brokers.storage.deleteClaim }}

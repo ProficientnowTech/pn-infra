@@ -16,7 +16,8 @@ virtualCluster:
 
 backend:
   # Strimzi bootstrap service for the internal listener (plain).
-  bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.cluster.local:9092
+  # NOTE: This cluster uses custom DNS domain 'prod-ap-south-2a.local' instead of 'cluster.local'
+  bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.prod-ap-south-2a.local:9092
   nodeIdRanges:
     - name: brokers
       start: 0

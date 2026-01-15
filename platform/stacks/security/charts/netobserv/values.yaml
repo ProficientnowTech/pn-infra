@@ -153,7 +153,8 @@ flowCollector:
     enable: true
 
     # Loki URL (assumes Loki is deployed in monitoring stack)
-    url: "http://loki-gateway.monitoring.svc.cluster.local:80/loki/api/v1/push"
+    # NOTE: This cluster uses custom DNS domain 'prod-ap-south-2a.local' instead of 'cluster.local'
+    url: "http://loki-gateway.monitoring.svc.prod-ap-south-2a.local:80/loki/api/v1/push"
 
     # Tenant ID for multi-tenancy
     tenantID: "netobserv"

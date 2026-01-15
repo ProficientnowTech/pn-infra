@@ -151,6 +151,11 @@ temporal:
           external-dns.alpha.kubernetes.io/ttl: "60"
           nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
           nginx.ingress.kubernetes.io/ssl-redirect: "true"
+          # Required for Temporal long-polling (workers poll for 60+ seconds)
+          nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+          nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
+          nginx.ingress.kubernetes.io/proxy-body-size: "0"
+          nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
         hosts:
         - temporal-sdk.pnats.cloud
         tls:

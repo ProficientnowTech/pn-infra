@@ -78,6 +78,9 @@ applications:
   - repoURL: https://github.com/ProficientnowTech/pn-infra.git
     targetRevision: v2
     path: platform/stacks/data-streaming/charts/kafka-proxy
+    helm:
+      valueFiles:
+      - values-production.yaml
   annotations:
     argocd.argoproj.io/sync-wave: '20'
   destinationNamespaceOverwrite: kroxylicious

@@ -44,6 +44,17 @@ tls:
       kind: ClusterIssuer
       group: cert-manager.io
 
+metallb:
+  enabled: true
+  addressPool: public-pool
+
+externalDNS:
+  enabled: true
+  ttl: 60
+  hostnames:
+    - kafka.pnats.cloud
+    - "*.kafka.pnats.cloud"
+
 audit:
   enabled: true
   saslInspection:

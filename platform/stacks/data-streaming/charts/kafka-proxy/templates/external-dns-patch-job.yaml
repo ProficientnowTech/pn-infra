@@ -1,0 +1,91 @@
+{{- if .Values.externalDNS.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ printf "%s-dns-patcher" .Values.proxy.name | quote }}
+  namespace: {{ .Values.namespace | quote }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ printf "%s-dns-patcher" .Values.proxy.name | quote }}
+  namespace: {{ .Values.namespace | quote }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+rules:
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s-dns-patcher" .Values.proxy.name | quote }}
+  namespace: {{ .Values.namespace | quote }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+subjects:
+  - kind: ServiceAccount
+    name: {{ printf "%s-dns-patcher" .Values.proxy.name | quote }}
+    namespace: {{ .Values.namespace | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ printf "%s-dns-patcher" .Values.proxy.name | quote }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ printf "%s-external-dns" .Values.proxy.name | quote }}
+  namespace: {{ .Values.namespace | quote }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation,HookSucceeded
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ printf "%s-dns-patcher" .Values.proxy.name | quote }}
+      containers:
+        - name: patch
+          image: bitnamilegacy/kubectl:1.31.13
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: NS
+              value: {{ .Values.namespace | quote }}
+            - name: SVC
+              value: {{ printf "%s-sni" .Values.proxy.name | quote }}
+            - name: HOSTS
+              value: {{ join "," .Values.externalDNS.hostnames | quote }}
+            - name: TTL
+              value: {{ .Values.externalDNS.ttl | quote }}
+            - name: METALLB_POOL
+              value: {{ .Values.metallb.addressPool | default "" | quote }}
+            - name: METALLB_ENABLED
+              value: {{ ternary "true" "false" (.Values.metallb.enabled | default false) | quote }}
+          command: ["/bin/sh", "-ec"]
+          args:
+            - |
+              for i in $(seq 1 60); do
+                kubectl -n "$NS" get svc "$SVC" >/dev/null 2>&1 && break
+                sleep 5
+              done
+
+              kubectl -n "$NS" annotate svc "$SVC" \
+                external-dns.alpha.kubernetes.io/hostname="$HOSTS" \
+                external-dns.alpha.kubernetes.io/ttl="$TTL" \
+                --overwrite
+
+              if [ "$METALLB_ENABLED" = "true" ] && [ -n "$METALLB_POOL" ]; then
+                kubectl -n "$NS" annotate svc "$SVC" \
+                  metallb.universe.tf/address-pool="$METALLB_POOL" \
+                  --overwrite
+              fi
+{{- end }}
+

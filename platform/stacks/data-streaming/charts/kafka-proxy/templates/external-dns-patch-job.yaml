@@ -54,7 +54,7 @@ spec:
       serviceAccountName: {{ printf "%s-dns-patcher" .Values.proxy.name | quote }}
       containers:
         - name: patch
-          image: bitnamilegacy/kubectl:1.31.13
+          image: bitnamilegacy/kubectl:1.31.3
           imagePullPolicy: IfNotPresent
           env:
             - name: NS

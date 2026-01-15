@@ -84,6 +84,13 @@ metadata:
   namespace: {{ .Values.namespace | quote }}
 spec:
   secretName: {{ required "tls.secretName is required when tls.certificate.enabled=true" .Values.tls.secretName | quote }}
+  # Kroxylicious/Netty expects a PKCS#8 private key ("BEGIN PRIVATE KEY").
+  # cert-manager defaults to PKCS#1 for RSA ("BEGIN RSA PRIVATE KEY"), which
+  # causes the proxy to fail to start.
+  privateKey:
+    algorithm: RSA
+    encoding: PKCS8
+    size: 2048
   dnsNames:
     - {{ .Values.ingress.loadBalancer.bootstrapAddress | quote }}
     # ACME wildcards are only valid as the left-most label (e.g. "*.kafka.pnats.cloud").

@@ -1,0 +1,36 @@
+replicaCount: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Kafbat UI application config.
+yamlApplicationConfig:
+  kafka:
+    clusters:
+      - name: pn-kafka
+        bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.cluster.local:9092
+  auth:
+    type: disabled
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  host: kafka-ui.pnats.cloud
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    external-dns.alpha.kubernetes.io/hostname: kafka-ui.pnats.cloud
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  tls:
+    enabled: true
+    secretName: kafka-ui-tls
+

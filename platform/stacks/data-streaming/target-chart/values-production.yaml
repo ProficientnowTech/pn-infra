@@ -102,3 +102,18 @@ applications:
   - group: kroxylicious.io
     kind: KafkaProtocolFilter
     jsonPointers: [/status]
+
+- name: kafka-ui
+  project: data-streaming
+  sources:
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/data-streaming/charts/kafka-ui
+    helm:
+      valueFiles:
+      - values-production.yaml
+  annotations:
+    argocd.argoproj.io/sync-wave: '30'
+  destinationNamespaceOverwrite: kafka-ui
+  syncOptions:
+  - ServerSideApply=true

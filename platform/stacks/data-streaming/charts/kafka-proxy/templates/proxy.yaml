@@ -1,0 +1,93 @@
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaProxy
+metadata:
+  name: {{ .Values.proxy.name | quote }}
+  namespace: {{ .Values.namespace | quote }}
+spec:
+  replicas: {{ .Values.proxy.replicas }}
+  infrastructure:
+    proxyContainer:
+      resources:
+        {{- toYaml .Values.proxy.resources | nindent 8 }}
+
+---
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaProxyIngress
+metadata:
+  name: {{ .Values.ingress.name | quote }}
+  namespace: {{ .Values.namespace | quote }}
+spec:
+  proxyRef:
+    name: {{ .Values.proxy.name | quote }}
+  loadBalancer:
+    bootstrapAddress: {{ .Values.ingress.loadBalancer.bootstrapAddress | quote }}
+    advertisedBrokerAddressPattern: {{ .Values.ingress.loadBalancer.advertisedBrokerAddressPattern | quote }}
+
+---
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaService
+metadata:
+  name: {{ .Values.virtualCluster.name | quote }}
+  namespace: {{ .Values.namespace | quote }}
+spec:
+  bootstrapServers: {{ .Values.backend.bootstrapServers | quote }}
+  nodeIdRanges:
+    {{- toYaml .Values.backend.nodeIdRanges | nindent 4 }}
+
+{{- if .Values.audit.enabled }}
+---
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaProtocolFilter
+metadata:
+  name: {{ .Values.audit.saslInspection.filterName | quote }}
+  namespace: {{ .Values.namespace | quote }}
+spec:
+  type: SaslInspection
+  configTemplate:
+    {{- if .Values.audit.saslInspection.enabledMechanisms }}
+    enabledMechanisms:
+      {{- toYaml .Values.audit.saslInspection.enabledMechanisms | nindent 6 }}
+    {{- end }}
+    requireAuthentication: {{ .Values.audit.saslInspection.requireAuthentication }}
+{{- end }}
+
+---
+apiVersion: kroxylicious.io/v1alpha1
+kind: VirtualKafkaCluster
+metadata:
+  name: {{ .Values.virtualCluster.name | quote }}
+  namespace: {{ .Values.namespace | quote }}
+spec:
+  proxyRef:
+    name: {{ .Values.proxy.name | quote }}
+  targetKafkaServiceRef:
+    name: {{ .Values.virtualCluster.name | quote }}
+  ingresses:
+    - ingressRef:
+        name: {{ .Values.ingress.name | quote }}
+      tls:
+        certificateRef:
+          kind: Secret
+          name: {{ .Values.tls.secretName | quote }}
+  {{- if .Values.audit.enabled }}
+  filterRefs:
+    - name: {{ .Values.audit.saslInspection.filterName | quote }}
+  {{- end }}
+
+{{- if .Values.tls.certificate.enabled }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ printf "%s-external" .Values.virtualCluster.name | quote }}
+  namespace: {{ .Values.namespace | quote }}
+spec:
+  secretName: {{ required "tls.secretName is required when tls.certificate.enabled=true" .Values.tls.secretName | quote }}
+  dnsNames:
+    - {{ .Values.ingress.loadBalancer.bootstrapAddress | quote }}
+    - {{ printf "broker-*.%s" (trimPrefix "broker-$(nodeId)." .Values.ingress.loadBalancer.advertisedBrokerAddressPattern) | quote }}
+  issuerRef:
+    name: {{ required "tls.certificate.issuerRef.name is required when tls.certificate.enabled=true" .Values.tls.certificate.issuerRef.name | quote }}
+    kind: {{ .Values.tls.certificate.issuerRef.kind | quote }}
+    group: {{ .Values.tls.certificate.issuerRef.group | quote }}
+{{- end }}

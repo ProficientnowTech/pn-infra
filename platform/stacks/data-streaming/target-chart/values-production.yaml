@@ -25,6 +25,32 @@ applications:
     - /spec/conversion
     - /spec/versions
 
+- name: kroxylicious-operator
+  project: data-streaming
+  sources:
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/data-streaming/charts/kroxylicious-operator
+  annotations:
+    argocd.argoproj.io/sync-wave: '1'
+  destinationNamespaceOverwrite: kroxylicious-operator
+  syncOptions:
+  - ServerSideApply=true
+  - Replace=true
+  ignoreDifferences:
+  - group: apiextensions.k8s.io
+    kind: CustomResourceDefinition
+    jsonPointers:
+    - /status
+    - /metadata/annotations
+    - /metadata/creationTimestamp
+    - /metadata/generation
+    - /metadata/resourceVersion
+    - /metadata/uid
+    - /metadata/managedFields
+    - /spec/conversion
+    - /spec/versions
+
 - name: kafka-cluster
   project: data-streaming
   sources:
@@ -45,3 +71,31 @@ applications:
     kind: KafkaNodePool
     jsonPointers:
     - /status
+
+- name: kafka-proxy
+  project: data-streaming
+  sources:
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/data-streaming/charts/kafka-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: '20'
+  destinationNamespaceOverwrite: kroxylicious
+  syncOptions:
+  - ServerSideApply=true
+  ignoreDifferences:
+  - group: kroxylicious.io
+    kind: KafkaProxy
+    jsonPointers: [/status]
+  - group: kroxylicious.io
+    kind: KafkaProxyIngress
+    jsonPointers: [/status]
+  - group: kroxylicious.io
+    kind: KafkaService
+    jsonPointers: [/status]
+  - group: kroxylicious.io
+    kind: VirtualKafkaCluster
+    jsonPointers: [/status]
+  - group: kroxylicious.io
+    kind: KafkaProtocolFilter
+    jsonPointers: [/status]

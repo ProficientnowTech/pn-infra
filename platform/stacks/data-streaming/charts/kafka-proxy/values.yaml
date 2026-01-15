@@ -1,0 +1,54 @@
+namespace: kroxylicious
+
+proxy:
+  name: pn-kafka-proxy
+  replicas: 2
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+virtualCluster:
+  name: pn-kafka
+
+backend:
+  # Strimzi bootstrap service for the internal listener (plain).
+  bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.cluster.local:9092
+  nodeIdRanges:
+    - name: brokers
+      start: 0
+      end: 9
+
+ingress:
+  name: external-lb
+  loadBalancer:
+    # NOTE: `KafkaProxyIngress.loadBalancer` requires TLS and does not allow a
+    # port suffix in these hostnames.
+    bootstrapAddress: kafka.pnats.cloud
+    advertisedBrokerAddressPattern: broker-$(nodeId).kafka.pnats.cloud
+
+tls:
+  # Secret must contain a certificate that covers:
+  # - kafka.pnats.cloud
+  # - broker-*.kafka.pnats.cloud (wildcard)
+  secretName: kafka-proxy-tls
+
+  # Optional: manage the server certificate with cert-manager.
+  certificate:
+    enabled: false
+    issuerRef:
+      name: ""
+      kind: ClusterIssuer
+      group: cert-manager.io
+
+audit:
+  enabled: true
+  saslInspection:
+    filterName: sasl-inspection
+    # If enabledMechanisms is empty, Kroxylicious defaults to enabling
+    # SCRAM-SHA-256, SCRAM-SHA-512, and OAUTHBEARER.
+    enabledMechanisms: []
+    requireAuthentication: false

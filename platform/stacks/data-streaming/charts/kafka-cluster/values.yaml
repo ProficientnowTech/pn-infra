@@ -42,7 +42,9 @@ externalAccess:
   # broker addresses from metadata. So while developers configure only one
   # bootstrap endpoint, the brokers still must be reachable too.
   loadBalancer:
-    enabled: true
+    # Disabled by default: this repo uses Kroxylicious to provide a single
+    # external endpoint without requiring one LoadBalancer IP per broker.
+    enabled: false
     port: 9094
     tls: true
     metallb:

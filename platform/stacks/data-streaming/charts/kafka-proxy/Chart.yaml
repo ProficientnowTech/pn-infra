@@ -1,0 +1,20 @@
+apiVersion: v2
+name: pn-kafka-proxy
+description: Kroxylicious-based Kafka protocol proxy (single external bootstrap + audit)
+type: application
+version: 0.1.0
+appVersion: "0.18.0"
+
+keywords:
+  - kafka
+  - kroxylicious
+  - proxy
+
+maintainers:
+  - name: Platform Team
+    email: platform-admin@pnats.cloud
+
+annotations:
+  platform.pnats.cloud/category: data-streaming
+  platform.pnats.cloud/component: kafka-proxy
+

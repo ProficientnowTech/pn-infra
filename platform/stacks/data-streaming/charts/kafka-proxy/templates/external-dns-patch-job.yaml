@@ -72,10 +72,18 @@ spec:
           command: ["/bin/sh", "-ec"]
           args:
             - |
-              for i in $(seq 1 60); do
+              # Wait for the Kroxylicious operator to create the Service backing
+              # the external load balancer. This can take a while if we are
+              # waiting on cert-manager to issue the TLS certificate first.
+              for i in $(seq 1 240); do
                 kubectl -n "$NS" get svc "$SVC" >/dev/null 2>&1 && break
                 sleep 5
               done
+
+              if ! kubectl -n "$NS" get svc "$SVC" >/dev/null 2>&1; then
+                echo "Service not found after waiting: ${NS}/${SVC}" >&2
+                exit 1
+              fi
 
               kubectl -n "$NS" annotate svc "$SVC" \
                 external-dns.alpha.kubernetes.io/hostname="$HOSTS" \
@@ -88,4 +96,3 @@ spec:
                   --overwrite
               fi
 {{- end }}
-

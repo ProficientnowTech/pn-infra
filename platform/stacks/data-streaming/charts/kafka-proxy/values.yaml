@@ -38,9 +38,11 @@ tls:
 
   # Optional: manage the server certificate with cert-manager.
   certificate:
-    enabled: false
+    # Enabled by default because the Kroxylicious operator will not deploy the
+    # proxy until the VirtualKafkaCluster TLS secret exists.
+    enabled: true
     issuerRef:
-      name: ""
+      name: letsencrypt-production
       kind: ClusterIssuer
       group: cert-manager.io
 

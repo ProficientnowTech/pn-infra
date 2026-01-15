@@ -86,7 +86,9 @@ spec:
   secretName: {{ required "tls.secretName is required when tls.certificate.enabled=true" .Values.tls.secretName | quote }}
   dnsNames:
     - {{ .Values.ingress.loadBalancer.bootstrapAddress | quote }}
-    - {{ printf "broker-*.%s" (trimPrefix "broker-$(nodeId)." .Values.ingress.loadBalancer.advertisedBrokerAddressPattern) | quote }}
+    # ACME wildcards are only valid as the left-most label (e.g. "*.kafka.pnats.cloud").
+    # This covers all broker hostnames like "broker-0.kafka.pnats.cloud".
+    - {{ printf "*.%s" (trimPrefix "broker-$(nodeId)." .Values.ingress.loadBalancer.advertisedBrokerAddressPattern) | quote }}
   issuerRef:
     name: {{ required "tls.certificate.issuerRef.name is required when tls.certificate.enabled=true" .Values.tls.certificate.issuerRef.name | quote }}
     kind: {{ .Values.tls.certificate.issuerRef.kind | quote }}

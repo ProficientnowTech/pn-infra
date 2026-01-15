@@ -1,8 +1,8 @@
 tls:
+  secretName: kafka-proxy-tls-pkcs8
   certificate:
     enabled: true
     issuerRef:
       name: letsencrypt-production
       kind: ClusterIssuer
       group: cert-manager.io
-

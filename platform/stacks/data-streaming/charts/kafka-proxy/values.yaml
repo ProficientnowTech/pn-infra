@@ -34,7 +34,11 @@ tls:
   # Secret must contain a certificate that covers:
   # - kafka.pnats.cloud
   # - broker-*.kafka.pnats.cloud (wildcard)
-  secretName: kafka-proxy-tls
+  # NOTE: cert-manager previously issued `kafka-proxy-tls` with a PKCS#1 RSA key
+  # ("BEGIN RSA PRIVATE KEY") which Kroxylicious/Netty rejects. Changing the
+  # secret name forces cert-manager to issue a fresh cert+key using our PKCS#8
+  # settings in the Certificate spec.
+  secretName: kafka-proxy-tls-pkcs8
 
   # Optional: manage the server certificate with cert-manager.
   certificate:

@@ -90,6 +90,10 @@ spec:
   privateKey:
     algorithm: RSA
     encoding: PKCS8
+    # Force key regeneration when certificate spec changes; otherwise cert-manager
+    # will reuse the existing key already stored in the Secret (which may be
+    # PKCS#1 and incompatible with Kroxylicious).
+    rotationPolicy: Always
     size: 2048
   dnsNames:
     - {{ .Values.ingress.loadBalancer.bootstrapAddress | quote }}

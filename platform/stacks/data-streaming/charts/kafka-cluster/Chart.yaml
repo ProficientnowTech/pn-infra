@@ -1,6 +1,6 @@
 apiVersion: v2
 name: pn-kafka-cluster
-description: Baseline Strimzi Kafka cluster (ZooKeeper mode) for PN Infrastructure
+description: Baseline Strimzi Kafka cluster (KRaft + KafkaNodePools) for PN Infrastructure
 type: application
 version: 0.1.0
 appVersion: "1.0.0"

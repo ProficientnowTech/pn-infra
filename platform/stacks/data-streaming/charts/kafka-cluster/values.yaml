@@ -16,6 +16,25 @@ kafka:
       type: internal
       tls: false
 
+  config:
+    # Safe defaults for a 3-broker cluster (can tolerate 1 broker down).
+    offsets.topic.replication.factor: 3
+    transaction.state.log.replication.factor: 3
+    transaction.state.log.min.isr: 2
+    default.replication.factor: 3
+    min.insync.replicas: 2
+
+    # Developer-friendly defaults.
+    num.partitions: 6
+    auto.create.topics.enable: true
+    log.retention.hours: 168
+
+    # KRaft controller quorum tuning.
+    # Defaults can be too aggressive on busy/slow environments and can prevent
+    # controllers from electing a leader, which in turn makes brokers crash-loop.
+    controller.quorum.request.timeout.ms: 10000
+    controller.quorum.election.timeout.ms: 10000
+
 externalAccess:
   # Expose Kafka to developers outside the cluster.
   #
@@ -25,9 +44,20 @@ externalAccess:
   loadBalancer:
     enabled: true
     port: 9094
-    tls: false
+    tls: true
     metallb:
       addressPool: public-pool
+    # Optional: use a custom certificate (e.g., issued by cert-manager) so the
+    # broker certificates include your public DNS names and clients can keep
+    # hostname verification enabled.
+    #
+    # If disabled, Strimzi will generate certificates signed by its cluster CA
+    # and clients must trust that CA.
+    brokerCertChainAndKey:
+      enabled: false
+      secretName: ""
+      certificateKey: tls.crt
+      keyKey: tls.key
     dns:
       # These are used only for ExternalDNS annotations. If external-dns is not
       # managing your zone, you can leave them empty and use the allocated IPs.
@@ -47,25 +77,6 @@ externalAccess:
     bootstrapHostname: kafka-ingress.pnats.cloud
     brokerHostnamePrefix: kafka-broker
     brokerHostnameSuffix: pnats.cloud
-
-  config:
-    # Safe defaults for a 3-broker cluster (can tolerate 1 broker down).
-    offsets.topic.replication.factor: 3
-    transaction.state.log.replication.factor: 3
-    transaction.state.log.min.isr: 2
-    default.replication.factor: 3
-    min.insync.replicas: 2
-
-    # Developer-friendly defaults.
-    num.partitions: 6
-    auto.create.topics.enable: true
-    log.retention.hours: 168
-
-    # KRaft controller quorum tuning.
-    # Defaults can be too aggressive on busy/slow environments and can prevent
-    # controllers from electing a leader, which in turn makes brokers crash-loop.
-    controller.quorum.request.timeout.ms: 10000
-    controller.quorum.election.timeout.ms: 10000
 
 # Strimzi 0.46+ removed ZooKeeper-based Kafka clusters and requires KRaft mode
 # with KafkaNodePool resources for brokers/controllers.

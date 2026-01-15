@@ -11,6 +11,7 @@ metadata:
     {{- include "pn-kafka-cluster.labels" . | nindent 4 }}
 spec:
   kafka:
+    {{- $kafkaConfig := default (dict) .Values.kafka.config -}}
     {{- if .Values.kafka.version }}
     version: {{ .Values.kafka.version | quote }}
     {{- end }}
@@ -23,6 +24,12 @@ spec:
         type: loadbalancer
         tls: {{ .Values.externalAccess.loadBalancer.tls }}
         configuration:
+          {{- if .Values.externalAccess.loadBalancer.brokerCertChainAndKey.enabled }}
+          brokerCertChainAndKey:
+            secretName: {{ required "externalAccess.loadBalancer.brokerCertChainAndKey.secretName is required when brokerCertChainAndKey.enabled=true" .Values.externalAccess.loadBalancer.brokerCertChainAndKey.secretName | quote }}
+            certificate: {{ .Values.externalAccess.loadBalancer.brokerCertChainAndKey.certificateKey | quote }}
+            key: {{ .Values.externalAccess.loadBalancer.brokerCertChainAndKey.keyKey | quote }}
+          {{- end }}
           {{- if .Values.externalAccess.loadBalancer.allowedSourceRanges }}
           loadBalancerSourceRanges:
             {{- toYaml .Values.externalAccess.loadBalancer.allowedSourceRanges | nindent 12 }}
@@ -78,7 +85,7 @@ spec:
             {{- end }}
       {{- end }}
     config:
-      {{- toYaml .Values.kafka.config | nindent 6 }}
+      {{- toYaml $kafkaConfig | nindent 6 }}
     template:
       podDisruptionBudget:
         maxUnavailable: 1

@@ -62,6 +62,25 @@ spec:
       {{- else if .ref }}
       ref: {{ .ref }}
       {{- end }}
+      {{- if .helm }}
+      helm:
+        {{- if .helm.releaseName }}
+        releaseName: {{ .helm.releaseName }}
+        {{- end }}
+        {{- if .helm.valueFiles }}
+        valueFiles:
+          {{- range .helm.valueFiles }}
+          - {{ . }}
+          {{- end }}
+        {{- end }}
+        {{- if .helm.parameters }}
+        parameters:
+          {{- range .helm.parameters }}
+          - name: {{ .name }}
+            value: {{ .value | quote }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
       {{- end }}
     {{- end }}
   {{- else }}
@@ -91,6 +110,25 @@ spec:
     {{- end }}
     {{- else }}
     path: {{ .path | default (printf "platform/stacks/data-streaming/charts/%s" .name) }}
+    {{- if .helm }}
+    helm:
+      {{- if .helm.releaseName }}
+      releaseName: {{ .helm.releaseName }}
+      {{- end }}
+      {{- if .helm.valueFiles }}
+      valueFiles:
+        {{- range .helm.valueFiles }}
+        - {{ . }}
+        {{- end }}
+      {{- end }}
+      {{- if .helm.parameters }}
+      parameters:
+        {{- range .helm.parameters }}
+        - name: {{ .name }}
+          value: {{ .value | quote }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
     {{- end }}
   {{- end }}
   destination:

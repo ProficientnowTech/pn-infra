@@ -124,9 +124,19 @@ ingress-nginx:
       proxy-connect-timeout: "300"
       enable-gzip: "true"
       gzip-types: "application/javascript,application/json,application/xml,text/css,text/javascript,text/plain,text/xml"
-      limit-connections: "20"
+      # Increased from 20 - gRPC/Temporal workers need many concurrent connections
+      # Each worker task queue uses a long-polling connection
+      limit-connections: "200"
       limit-rate-after: "1024k"
       limit-rate: "512k"
+      # HTTP/2 settings for gRPC
+      http2-max-concurrent-streams: "256"
+      # Upstream keepalive for persistent gRPC connections
+      upstream-keepalive-connections: "320"
+      upstream-keepalive-timeout: "900"
+      upstream-keepalive-requests: "10000"
+      # gRPC-specific: Enable socket keepalive to detect dead connections
+      upstream-keepalive-time: "1h"
 
   defaultBackend:
     enabled: true

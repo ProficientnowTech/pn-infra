@@ -68,6 +68,7 @@ spec:
       tls:
         certificateRef:
           kind: Secret
+          group: ""
           name: {{ .Values.tls.secretName | quote }}
   {{- if .Values.audit.enabled }}
   filterRefs:

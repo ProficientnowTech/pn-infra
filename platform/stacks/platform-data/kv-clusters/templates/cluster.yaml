@@ -46,6 +46,15 @@ spec:
     {{- toYaml .imagePullSecrets | nindent 4 }}
     {{- end }}
 
+    # Redis authentication secret
+    {{- if .auth }}
+    {{- if .auth.enabled }}
+    redisSecret:
+      name: {{ .name }}-password
+      key: password
+    {{- end }}
+    {{- end }}
+
     # Resource allocation
     resources:
       {{- if .resources }}

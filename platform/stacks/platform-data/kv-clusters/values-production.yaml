@@ -173,6 +173,19 @@ redisClusters:
   description: "General application cache"
   syncWave: "0"
 
+  # Authentication configuration
+  auth:
+    enabled: true
+    passwordLength: 32
+    passwordDigits: 8
+    passwordSymbols: 0
+    # Push password to Vault for centralized secret management
+    pushToVault:
+      enabled: true
+      vaultPath: platform-data/redis/tenants-redis
+      secretStoreRef: vault-backend
+      refreshInterval: 1h
+
   # Full HA with 3 instances
   clusterSize: 3
 

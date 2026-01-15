@@ -48,6 +48,15 @@ spec:
     {{- toYaml .sentinel.imagePullSecrets | nindent 4 }}
     {{- end }}
 
+    # Redis authentication secret (same as Redis cluster)
+    {{- if .auth }}
+    {{- if .auth.enabled }}
+    redisSecret:
+      name: {{ .name }}-password
+      key: password
+    {{- end }}
+    {{- end }}
+
     # Resource allocation for sentinel nodes
     resources:
       {{- if .sentinel.resources }}

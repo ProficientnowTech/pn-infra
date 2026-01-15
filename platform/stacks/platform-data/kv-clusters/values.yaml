@@ -23,6 +23,19 @@ redisClusters: []
   #   namespace: platform
   #   description: "Platform services key-value store"
   #
+  #   # Authentication configuration
+  #   auth:
+  #     enabled: true
+  #     passwordLength: 32      # Length of generated password
+  #     passwordDigits: 8       # Number of digits in password
+  #     passwordSymbols: 0      # Number of symbols in password
+  #     # Push password to Vault for centralized secret management
+  #     pushToVault:
+  #       enabled: true
+  #       vaultPath: platform-data/redis/platform-kv
+  #       secretStoreRef: vault-backend
+  #       refreshInterval: 1h
+  #
   #   # Cluster size (1 master + N replicas)
   #   clusterSize: 3
   #

@@ -13,7 +13,7 @@ yamlApplicationConfig:
   kafka:
     clusters:
       - name: pn-kafka
-        bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.cluster.local:9092
+        bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.prod-ap-south-2a.local:9092
   auth:
     type: disabled
 
@@ -33,4 +33,3 @@ ingress:
   tls:
     enabled: true
     secretName: kafka-ui-tls
-

@@ -1,7 +1,30 @@
 apiVersion: v2
-name: kafka-ui
-description: A Helm chart for kafka-UI
+name: pn-kafka-ui
+description: Kafbat Kafka-UI for PN Infrastructure
 type: application
-version: 1.6.0
-appVersion: v1.4.2
-icon: https://raw.githubusercontent.com/kafbat/kafka-ui/main/documentation/images/logo_new.png
+version: 0.1.0
+appVersion: "v1.4.2"
+
+keywords:
+  - kafka
+  - kafka-ui
+  - kafbat
+  - data-streaming
+
+maintainers:
+  - name: Platform Team
+
+annotations:
+  platform.pnats.cloud/category: data-streaming
+  platform.pnats.cloud/component: kafka-ui
+  platform.pnats.cloud/resource-type: Application
+  platform.pnats.cloud/dependencies: '[kafka-cluster, apicurio-registry, kafka-connect]'
+
+labels:
+  platform.pnats.cloud/component: kafka-ui
+  platform.pnats.cloud/component-category: data-streaming
+
+dependencies:
+  - name: kafka-ui
+    version: 1.6.0
+    repository: https://kafbat.github.io/helm-charts

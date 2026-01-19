@@ -3,7 +3,7 @@ name: pn-apicurio-registry
 description: Apicurio Schema Registry with KafkaSQL storage for PN Infrastructure
 type: application
 version: 0.1.0
-appVersion: "2.6.8"
+appVersion: "2.5.8.Final"
 
 keywords:
   - schema-registry
@@ -21,3 +21,12 @@ annotations:
   platform.pnats.cloud/component: apicurio-registry
   platform.pnats.cloud/resource-type: Application
   platform.pnats.cloud/dependencies: '[kafka-cluster]'
+
+labels:
+  platform.pnats.cloud/component: apicurio-registry
+  platform.pnats.cloud/component-category: data-streaming
+
+dependencies:
+  - name: apicurio-registry
+    version: 3.8.0
+    repository: oci://ghcr.io/eshepelyuk/helm

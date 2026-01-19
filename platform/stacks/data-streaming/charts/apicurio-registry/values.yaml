@@ -1,87 +1,55 @@
 ## Apicurio Registry Configuration
-## Schema registry with KafkaSQL storage backend
+## Values passed to upstream apicurio-registry chart
 
-namespace: apicurio-registry
+apicurio-registry:
+  ## Main registry configuration
+  registry:
+    enabled: true
 
-## Image configuration
-image:
-  repository: docker.io/apicurio/apicurio-registry-kafkasql
-  tag: "2.6.8"
-  pullPolicy: IfNotPresent
+    ## Image configuration
+    ## Note: persistenceSuffix=true auto-appends -kafkasql when kafka is configured
+    image:
+      registry: quay.io
+      repository: apicurio/apicurio-registry
+      tag: "2.5.8.Final"
+      persistenceSuffix: true
 
-## Replica count
-replicas: 1
+    ## KafkaSQL persistence configuration
+    kafka:
+      # Internal Kafka bootstrap servers
+      # NOTE: Use the correct cluster DNS domain
+      bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc:9092
 
-## Kafka connection for KafkaSQL storage
-kafka:
-  # Internal Kafka bootstrap servers
-  # NOTE: Use the correct cluster DNS domain (not cluster.local)
-  bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc:9092
-  # Topics created automatically by Apicurio
-  topicReplicationFactor: 3
-  topicMinIsr: 2
+    ## Resource allocation
+    resources:
+      requests:
+        cpu: 250m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
 
-## Registry configuration
-registry:
-  # Log level (DEBUG, INFO, WARN, ERROR)
-  logLevel: INFO
+    ## Ingress configuration
+    ingress:
+      enabled: false
+      ingressClassName: nginx
+      host: schema-registry.example.com
+      path: "/"
+      tls: false
+      annotations: {}
 
-## Resource allocation
-resources:
-  requests:
-    cpu: 250m
-    memory: 512Mi
-  limits:
-    cpu: 1000m
-    memory: 1Gi
+    ## Extra environment variables
+    extraEnv: []
 
-## Service configuration
-service:
-  type: ClusterIP
-  port: 8080
+    ## Node selector
+    nodeSelector: {}
 
-## Ingress configuration
-ingress:
-  enabled: false
-  ingressClassName: nginx
-  host: schema-registry.example.com
-  annotations: {}
-  tls:
+    ## Pod security context
+    podSecurityContext: {}
+
+    ## Security context
+    securityContext: {}
+
+  ## Kube sync configuration (disabled by default)
+  sync:
     enabled: false
-    secretName: ""
-
-## Health check configuration
-probes:
-  liveness:
-    path: /health/live
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-  readiness:
-    path: /health/ready
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    timeoutSeconds: 5
-    failureThreshold: 3
-
-## Service account
-serviceAccount:
-  create: true
-  name: ""
-  annotations: {}
-
-## Pod annotations
-podAnnotations: {}
-
-## Pod labels
-podLabels: {}
-
-## Node selector
-nodeSelector: {}
-
-## Tolerations
-tolerations: []
-
-## Affinity
-affinity: {}

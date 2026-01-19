@@ -1,41 +1,46 @@
-replicaCount: 1
+## Production values for Kafbat Kafka-UI
 
-resources:
-  requests:
-    cpu: 100m
-    memory: 256Mi
-  limits:
-    cpu: 1000m
-    memory: 1Gi
+kafka-ui:
+  replicaCount: 1
 
-# Kafbat UI application config.
-yamlApplicationConfig:
-  kafka:
-    clusters:
-      - name: pn-kafka
-        bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.prod-ap-south-2a.local:9092
-        # Apicurio Schema Registry integration
-        schemaRegistry: http://pn-apicurio-registry.apicurio-registry.svc.prod-ap-south-2a.local:8080/apis/registry/v2
-        # Kafka Connect integration
-        kafkaConnect:
-          - name: pn-kafka-connect
-            address: http://pn-kafka-connect-connect-api.kafka-connect.svc.prod-ap-south-2a.local:8083
-  auth:
-    type: disabled
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
 
-service:
-  type: ClusterIP
-  port: 80
+  ## Kafbat UI application config
+  yamlApplicationConfig:
+    kafka:
+      clusters:
+        - name: pn-kafka
+          bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.prod-ap-south-2a.local:9092
+          # Apicurio Schema Registry integration
+          schemaRegistry: http://pn-apicurio-registry.apicurio-registry.svc.prod-ap-south-2a.local:8080/apis/registry/v2
+          # Kafka Connect integration
+          kafkaConnect:
+            - name: pn-kafka-connect
+              address: http://pn-kafka-connect-connect-api.kafka-connect.svc.prod-ap-south-2a.local:8083
+    auth:
+      type: disabled
 
-ingress:
-  enabled: true
-  ingressClassName: nginx
-  host: kafka-ui.pnats.cloud
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-production
-    external-dns.alpha.kubernetes.io/hostname: kafka-ui.pnats.cloud
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-  tls:
+  service:
+    type: ClusterIP
+    port: 80
+
+  ingress:
     enabled: true
-    secretName: kafka-ui-tls
+    ingressClassName: nginx
+    host: kafka-ui.pnats.cloud
+    path: "/"
+    pathType: Prefix
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-production
+      external-dns.alpha.kubernetes.io/hostname: kafka-ui.pnats.cloud
+      nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    tls:
+      enabled: true
+      secretName: kafka-ui-tls

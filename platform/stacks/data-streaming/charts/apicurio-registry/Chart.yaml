@@ -1,0 +1,23 @@
+apiVersion: v2
+name: pn-apicurio-registry
+description: Apicurio Schema Registry with KafkaSQL storage for PN Infrastructure
+type: application
+version: 0.1.0
+appVersion: "2.6.8"
+
+keywords:
+  - schema-registry
+  - apicurio
+  - kafka
+  - data-streaming
+  - cloudevents
+  - json-schema
+
+maintainers:
+  - name: Platform Team
+
+annotations:
+  platform.pnats.cloud/category: data-streaming
+  platform.pnats.cloud/component: apicurio-registry
+  platform.pnats.cloud/resource-type: Application
+  platform.pnats.cloud/dependencies: '[kafka-cluster]'

@@ -6,3 +6,33 @@ tls:
       name: letsencrypt-production
       kind: ClusterIssuer
       group: cert-manager.io
+
+# Production Schema Validation Configuration
+schemaValidation:
+  enabled: true
+  filterName: record-validation
+
+  apicurio:
+    registryUrl: http://apicurio-registry.apicurio-registry.svc.prod-ap-south-2a.local:8080/apis/registry/v2
+
+  # Add validated topics here as they are onboarded
+  # Example:
+  # rules:
+  #   - topicNames:
+  #       - user.events
+  #       - order.events
+  #     valueRule:
+  #       schemaValidationConfig:
+  #         apicurioGlobalId: 1001
+  #         apicurioRegistryUrl: http://apicurio-registry.apicurio-registry.svc.prod-ap-south-2a.local:8080/apis/registry/v2
+  #       allowNulls: false
+  #       allowEmpty: false
+  rules: []
+
+  # Default: JSON syntax validation for topics without explicit rules
+  defaultRule:
+    valueRule:
+      syntacticallyCorrectJson:
+        validateObjectKeysUnique: true
+      allowNulls: true
+      allowEmpty: true

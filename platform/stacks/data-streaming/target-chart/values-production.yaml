@@ -72,6 +72,26 @@ applications:
     jsonPointers:
     - /status
 
+- name: apicurio-registry
+  project: data-streaming
+  sources:
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/data-streaming/charts/apicurio-registry
+    helm:
+      valueFiles:
+      - values-production.yaml
+  annotations:
+    argocd.argoproj.io/sync-wave: '15'
+  destinationNamespaceOverwrite: apicurio-registry
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers: [/status]
+
 - name: kafka-proxy
   project: data-streaming
   sources:
@@ -101,6 +121,29 @@ applications:
     jsonPointers: [/status]
   - group: kroxylicious.io
     kind: KafkaProtocolFilter
+    jsonPointers: [/status]
+
+- name: kafka-connect
+  project: data-streaming
+  sources:
+  - repoURL: https://github.com/ProficientnowTech/pn-infra.git
+    targetRevision: v2
+    path: platform/stacks/data-streaming/charts/kafka-connect
+    helm:
+      valueFiles:
+      - values-production.yaml
+  annotations:
+    argocd.argoproj.io/sync-wave: '25'
+  destinationNamespaceOverwrite: kafka-connect
+  syncOptions:
+  - ServerSideApply=true
+  - CreateNamespace=true
+  ignoreDifferences:
+  - group: kafka.strimzi.io
+    kind: KafkaConnect
+    jsonPointers: [/status]
+  - group: kafka.strimzi.io
+    kind: KafkaConnector
     jsonPointers: [/status]
 
 - name: kafka-ui

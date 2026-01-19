@@ -51,6 +51,44 @@ spec:
     requireAuthentication: {{ .Values.audit.saslInspection.requireAuthentication }}
 {{- end }}
 
+{{- if .Values.schemaValidation.enabled }}
+---
+apiVersion: kroxylicious.io/v1alpha1
+kind: KafkaProtocolFilter
+metadata:
+  name: {{ .Values.schemaValidation.filterName | quote }}
+  namespace: {{ .Values.namespace | quote }}
+spec:
+  type: RecordValidation
+  configTemplate:
+    {{- if .Values.schemaValidation.rules }}
+    rules:
+      {{- range .Values.schemaValidation.rules }}
+      - topicNames:
+          {{- toYaml .topicNames | nindent 10 }}
+        {{- if .keyRule }}
+        keyRule:
+          {{- toYaml .keyRule | nindent 10 }}
+        {{- end }}
+        {{- if .valueRule }}
+        valueRule:
+          {{- toYaml .valueRule | nindent 10 }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if .Values.schemaValidation.defaultRule }}
+    defaultRule:
+      {{- if .Values.schemaValidation.defaultRule.keyRule }}
+      keyRule:
+        {{- toYaml .Values.schemaValidation.defaultRule.keyRule | nindent 8 }}
+      {{- end }}
+      {{- if .Values.schemaValidation.defaultRule.valueRule }}
+      valueRule:
+        {{- toYaml .Values.schemaValidation.defaultRule.valueRule | nindent 8 }}
+      {{- end }}
+    {{- end }}
+{{- end }}
+
 ---
 apiVersion: kroxylicious.io/v1alpha1
 kind: VirtualKafkaCluster
@@ -70,9 +108,14 @@ spec:
           kind: Secret
           group: ""
           name: {{ .Values.tls.secretName | quote }}
-  {{- if .Values.audit.enabled }}
+  {{- if or .Values.audit.enabled .Values.schemaValidation.enabled }}
   filterRefs:
+    {{- if .Values.audit.enabled }}
     - name: {{ .Values.audit.saslInspection.filterName | quote }}
+    {{- end }}
+    {{- if .Values.schemaValidation.enabled }}
+    - name: {{ .Values.schemaValidation.filterName | quote }}
+    {{- end }}
   {{- end }}
 
 {{- if .Values.tls.certificate.enabled }}

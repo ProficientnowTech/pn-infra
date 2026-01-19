@@ -1,0 +1,112 @@
+## Kafka Connect Configuration
+## Strimzi KafkaConnect with Debezium and S3 sink connectors
+
+namespace: kafka-connect
+
+## KafkaConnect cluster name
+name: pn-kafka-connect
+
+## Replicas for distributed mode
+replicas: 2
+
+## Kafka connection
+kafka:
+  # Internal Kafka bootstrap servers
+  # NOTE: Use the correct cluster DNS domain
+  bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc:9092
+
+## Connect worker configuration
+config:
+  group.id: pn-kafka-connect
+  offset.storage.topic: pn-connect-offsets
+  config.storage.topic: pn-connect-configs
+  status.storage.topic: pn-connect-status
+  # Replication for internal topics (3-broker cluster)
+  config.storage.replication.factor: 3
+  offset.storage.replication.factor: 3
+  status.storage.replication.factor: 3
+  # Converters - JSON with schemas for CloudEvents compatibility
+  key.converter: org.apache.kafka.connect.json.JsonConverter
+  value.converter: org.apache.kafka.connect.json.JsonConverter
+  key.converter.schemas.enable: "true"
+  value.converter.schemas.enable: "true"
+
+## Build configuration for custom connector image
+build:
+  enabled: true
+  output:
+    # Push to Harbor registry
+    type: docker
+    image: harbor.pnats.cloud/platform/kafka-connect:latest
+    pushSecret: harbor-registry-credentials
+
+  plugins:
+    # Debezium PostgreSQL Connector
+    - name: debezium-postgres-connector
+      artifacts:
+        - type: zip
+          url: https://repo1.maven.org/maven2/io/debezium/debezium-connector-postgres/2.7.3.Final/debezium-connector-postgres-2.7.3.Final-plugin.zip
+
+    # Apache Camel S3 Sink Connector (Ceph-compatible via S3 API)
+    - name: camel-aws-s3-sink
+      artifacts:
+        - type: tgz
+          url: https://repo.maven.apache.org/maven2/org/apache/camel/kafkaconnector/camel-aws-s3-sink-kafka-connector/4.8.0/camel-aws-s3-sink-kafka-connector-4.8.0-package.tar.gz
+
+    # Apicurio Registry converters (for schema support)
+    - name: apicurio-converters
+      artifacts:
+        - type: tgz
+          url: https://repo1.maven.org/maven2/io/apicurio/apicurio-registry-distro-connect-converter/2.6.8.Final/apicurio-registry-distro-connect-converter-2.6.8.Final-converter.tar.gz
+
+## Resource allocation
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+## Connectors to deploy (KafkaConnector CRs)
+connectors:
+  ## Debezium CDC connectors
+  debezium:
+    enabled: false
+    instances: []
+    # Example instance:
+    # - name: orders-cdc
+    #   database:
+    #     hostname: orders-db.databases.svc
+    #     port: 5432
+    #     name: orders
+    #     user: debezium
+    #     passwordSecret:
+    #       name: orders-db-debezium
+    #       key: password
+    #   tables:
+    #     - public.orders
+    #     - public.order_items
+    #   topicPrefix: cdc.orders
+
+  ## S3 sink connectors (Ceph-compatible)
+  s3Sink:
+    enabled: false
+    instances: []
+    # Example instance:
+    # - name: telemetry-s3-sink
+    #   topics:
+    #     - telemetry.events
+    #   s3:
+    #     endpoint: https://app-obj-store.pnats.cloud
+    #     region: ap-south-2
+    #     bucket: telemetry-archive
+    #     credentialsSecret:
+    #       name: ceph-s3-credentials
+    #       accessKeyField: access-key
+    #       secretKeyField: secret-key
+    #   format: json  # json, avro, parquet
+
+## Image pull secrets for built images
+imagePullSecrets:
+  - name: harbor-registry-credentials

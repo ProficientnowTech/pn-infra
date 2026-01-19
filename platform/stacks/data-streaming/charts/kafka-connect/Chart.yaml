@@ -1,0 +1,23 @@
+apiVersion: v2
+name: pn-kafka-connect
+description: Strimzi KafkaConnect with Debezium CDC and S3 sink connectors for PN Infrastructure
+type: application
+version: 0.1.0
+appVersion: "0.48.0"
+
+keywords:
+  - kafka-connect
+  - debezium
+  - cdc
+  - s3-sink
+  - data-streaming
+  - strimzi
+
+maintainers:
+  - name: Platform Team
+
+annotations:
+  platform.pnats.cloud/category: data-streaming
+  platform.pnats.cloud/component: kafka-connect
+  platform.pnats.cloud/resource-type: Application
+  platform.pnats.cloud/dependencies: '[kafka-cluster]'

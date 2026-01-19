@@ -1,0 +1,87 @@
+## Apicurio Registry Configuration
+## Schema registry with KafkaSQL storage backend
+
+namespace: apicurio-registry
+
+## Image configuration
+image:
+  repository: docker.io/apicurio/apicurio-registry-kafkasql
+  tag: "2.6.8"
+  pullPolicy: IfNotPresent
+
+## Replica count
+replicas: 1
+
+## Kafka connection for KafkaSQL storage
+kafka:
+  # Internal Kafka bootstrap servers
+  # NOTE: Use the correct cluster DNS domain (not cluster.local)
+  bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc:9092
+  # Topics created automatically by Apicurio
+  topicReplicationFactor: 3
+  topicMinIsr: 2
+
+## Registry configuration
+registry:
+  # Log level (DEBUG, INFO, WARN, ERROR)
+  logLevel: INFO
+
+## Resource allocation
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+## Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+
+## Ingress configuration
+ingress:
+  enabled: false
+  ingressClassName: nginx
+  host: schema-registry.example.com
+  annotations: {}
+  tls:
+    enabled: false
+    secretName: ""
+
+## Health check configuration
+probes:
+  liveness:
+    path: /health/live
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /health/ready
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+## Service account
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+## Pod annotations
+podAnnotations: {}
+
+## Pod labels
+podLabels: {}
+
+## Node selector
+nodeSelector: {}
+
+## Tolerations
+tolerations: []
+
+## Affinity
+affinity: {}

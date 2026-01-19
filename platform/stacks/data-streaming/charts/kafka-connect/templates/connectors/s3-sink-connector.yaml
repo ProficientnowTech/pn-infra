@@ -1,0 +1,39 @@
+{{- if .Values.connectors.s3Sink.enabled }}
+{{- range .Values.connectors.s3Sink.instances }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: {{ .name | quote }}
+  namespace: {{ $.Values.namespace | quote }}
+  labels:
+    # Links this connector to the KafkaConnect cluster
+    strimzi.io/cluster: {{ include "kafka-connect.fullname" $ | quote }}
+spec:
+  class: org.apache.camel.kafkaconnector.awss3sink.CamelAwss3sinkSinkConnector
+  tasksMax: 1
+  config:
+    # Topics to sink
+    topics: {{ .topics | join "," | quote }}
+
+    # Ceph Object Gateway S3-compatible endpoint
+    camel.kamelet.aws-s3-sink.bucketNameOrArn: {{ .s3.bucket | quote }}
+    camel.kamelet.aws-s3-sink.region: {{ .s3.region | quote }}
+    camel.kamelet.aws-s3-sink.uriEndpointOverride: {{ .s3.endpoint | quote }}
+    camel.kamelet.aws-s3-sink.overrideEndpoint: "true"
+    # Required for Ceph RGW (path-style access)
+    camel.kamelet.aws-s3-sink.forcePathStyle: "true"
+
+    # Credentials from secret
+    camel.kamelet.aws-s3-sink.accessKey: ${file:/opt/kafka/external-configuration/{{ .s3.credentialsSecret.name }}/{{ .s3.credentialsSecret.accessKeyField }}}
+    camel.kamelet.aws-s3-sink.secretKey: ${file:/opt/kafka/external-configuration/{{ .s3.credentialsSecret.name }}/{{ .s3.credentialsSecret.secretKeyField }}}
+
+    # Key naming pattern
+    camel.kamelet.aws-s3-sink.keyName: ${topic}/${partition}/${timestamp}-${offset}.{{ .format | default "json" }}
+
+    # Batching configuration
+    {{- if .batchSize }}
+    camel.kamelet.aws-s3-sink.batchSize: {{ .batchSize | quote }}
+    {{- end }}
+{{- end }}
+{{- end }}

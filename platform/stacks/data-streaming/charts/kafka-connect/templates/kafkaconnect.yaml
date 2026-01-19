@@ -1,0 +1,49 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnect
+metadata:
+  name: {{ include "kafka-connect.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  annotations:
+    # Enable KafkaConnector resources to be managed by this KafkaConnect
+    strimzi.io/use-connector-resources: "true"
+  labels:
+    {{- include "kafka-connect.labels" . | nindent 4 }}
+spec:
+  version: 3.9.0
+  replicas: {{ .Values.replicas }}
+  bootstrapServers: {{ .Values.kafka.bootstrapServers | quote }}
+
+  config:
+    {{- range $key, $value := .Values.config }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+
+  {{- if .Values.build.enabled }}
+  build:
+    output:
+      type: {{ .Values.build.output.type }}
+      image: {{ .Values.build.output.image }}
+      pushSecret: {{ .Values.build.output.pushSecret }}
+    plugins:
+      {{- range .Values.build.plugins }}
+      - name: {{ .name }}
+        artifacts:
+          {{- range .artifacts }}
+          - type: {{ .type }}
+            url: {{ .url }}
+            {{- if .sha512sum }}
+            sha512sum: {{ .sha512sum }}
+            {{- end }}
+          {{- end }}
+      {{- end }}
+  {{- end }}
+
+  resources:
+    {{- toYaml .Values.resources | nindent 4 }}
+
+  template:
+    pod:
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}

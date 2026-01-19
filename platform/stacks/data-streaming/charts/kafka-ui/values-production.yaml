@@ -14,6 +14,12 @@ yamlApplicationConfig:
     clusters:
       - name: pn-kafka
         bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.prod-ap-south-2a.local:9092
+        # Apicurio Schema Registry integration
+        schemaRegistry: http://pn-apicurio-registry.apicurio-registry.svc.prod-ap-south-2a.local:8080/apis/registry/v2
+        # Kafka Connect integration
+        kafkaConnect:
+          - name: pn-kafka-connect
+            address: http://pn-kafka-connect-connect-api.kafka-connect.svc.prod-ap-south-2a.local:8083
   auth:
     type: disabled
 

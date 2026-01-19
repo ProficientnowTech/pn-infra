@@ -70,3 +70,42 @@ audit:
     # SCRAM-SHA-256, SCRAM-SHA-512, and OAUTHBEARER.
     enabledMechanisms: []
     requireAuthentication: false
+
+# Schema Validation Filter Configuration
+# NOTE: RecordValidation filter is in preview status in Kroxylicious 0.18.0
+# Currently only supports JSON Schema validation (not Avro/Protobuf)
+schemaValidation:
+  enabled: false
+  filterName: record-validation
+
+  # Apicurio Registry connection
+  apicurio:
+    # URL for schema resolution (Apicurio Registry v2 API)
+    registryUrl: http://apicurio-registry.apicurio-registry.svc:8080/apis/registry/v2
+
+  # Rules for topic-based validation
+  # NOTE: Uses explicit topic list, NOT wildcard/regex patterns
+  # Each rule targets specific topics by exact name
+  rules: []
+    # Example rule structure:
+    # - topicNames:
+    #     - orders.events
+    #     - payments.events
+    #   valueRule:
+    #     schemaValidationConfig:
+    #       apicurioGlobalId: 1001  # Schema ID in registry
+    #       apicurioRegistryUrl: "http://apicurio-registry.apicurio-registry.svc:8080/apis/registry/v2"
+    #     allowNulls: false
+    #     allowEmpty: false
+    #   keyRule: null  # Optional key validation
+
+  # Default rule for topics not explicitly listed
+  # Applied when a topic doesn't match any explicit rule
+  defaultRule:
+    valueRule:
+      # Default: syntactically correct JSON validation
+      syntacticallyCorrectJson:
+        validateObjectKeysUnique: true
+      allowNulls: true
+      allowEmpty: true
+    keyRule: null

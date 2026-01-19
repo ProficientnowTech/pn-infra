@@ -1,0 +1,59 @@
+## Production values for Kafka Connect
+
+replicas: 3
+
+kafka:
+  # Production Kafka bootstrap with correct DNS domain
+  bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.prod-ap-south-2a.local:9092
+
+resources:
+  requests:
+    cpu: 1000m
+    memory: 2Gi
+  limits:
+    cpu: 4000m
+    memory: 8Gi
+
+build:
+  enabled: true
+  output:
+    type: docker
+    image: harbor.pnats.cloud/platform/kafka-connect:v0.1.0
+    pushSecret: harbor-registry-credentials
+
+# Production connectors would be configured here
+# Uncomment and configure as needed:
+#
+# connectors:
+#   debezium:
+#     enabled: true
+#     instances:
+#       - name: primary-db-cdc
+#         database:
+#           hostname: primary-db.databases.svc.prod-ap-south-2a.local
+#           port: 5432
+#           name: app_db
+#           user: debezium
+#           passwordSecret:
+#             name: debezium-db-credentials
+#             key: password
+#         tables:
+#           - public.users
+#           - public.orders
+#         topicPrefix: cdc.primary
+#
+#   s3Sink:
+#     enabled: true
+#     instances:
+#       - name: events-archive
+#         topics:
+#           - app.events
+#         s3:
+#           endpoint: https://app-obj-store.pnats.cloud
+#           region: ap-south-2
+#           bucket: events-archive
+#           credentialsSecret:
+#             name: ceph-s3-credentials
+#             accessKeyField: access-key
+#             secretKeyField: secret-key
+#         format: json

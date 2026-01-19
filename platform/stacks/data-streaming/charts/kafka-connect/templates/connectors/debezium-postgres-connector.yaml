@@ -1,0 +1,47 @@
+{{- if .Values.connectors.debezium.enabled }}
+{{- range .Values.connectors.debezium.instances }}
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaConnector
+metadata:
+  name: {{ .name | quote }}
+  namespace: {{ $.Values.namespace | quote }}
+  labels:
+    # Links this connector to the KafkaConnect cluster
+    strimzi.io/cluster: {{ include "kafka-connect.fullname" $ | quote }}
+spec:
+  class: io.debezium.connector.postgresql.PostgresConnector
+  tasksMax: 1
+  config:
+    # Database connection
+    database.hostname: {{ .database.hostname | quote }}
+    database.port: {{ .database.port | default 5432 | quote }}
+    database.user: {{ .database.user | quote }}
+    database.password: ${file:/opt/kafka/external-configuration/{{ .database.passwordSecret.name }}/{{ .database.passwordSecret.key }}}
+    database.dbname: {{ .database.name | quote }}
+
+    # Topic configuration
+    database.server.name: {{ .topicPrefix | quote }}
+    topic.prefix: {{ .topicPrefix | quote }}
+
+    # Table selection
+    table.include.list: {{ .tables | join "," | quote }}
+
+    # PostgreSQL replication settings
+    plugin.name: pgoutput
+    slot.name: {{ .name | replace "-" "_" }}_slot
+    publication.name: {{ .name | replace "-" "_" }}_pub
+
+    # CloudEvents-friendly transforms
+    transforms: unwrap
+    transforms.unwrap.type: io.debezium.transforms.ExtractNewRecordState
+    transforms.unwrap.drop.tombstones: "false"
+    transforms.unwrap.delete.handling.mode: rewrite
+
+    # Snapshot configuration
+    snapshot.mode: {{ .snapshotMode | default "initial" | quote }}
+
+    # Heartbeat for connection keep-alive
+    heartbeat.interval.ms: "10000"
+{{- end }}
+{{- end }}

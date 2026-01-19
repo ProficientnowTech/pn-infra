@@ -1,0 +1,30 @@
+## Production values for Apicurio Registry
+
+replicas: 2
+
+kafka:
+  # Production Kafka bootstrap with correct DNS domain
+  bootstrapServers: pn-kafka-kafka-bootstrap.strimzi-kafka-operator.svc.prod-ap-south-2a.local:9092
+  topicReplicationFactor: 3
+  topicMinIsr: 2
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  host: schema-registry.pnats.cloud
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-production
+    external-dns.alpha.kubernetes.io/hostname: schema-registry.pnats.cloud
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  tls:
+    enabled: true
+    secretName: apicurio-registry-tls

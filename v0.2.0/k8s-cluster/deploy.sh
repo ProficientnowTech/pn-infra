@@ -278,7 +278,7 @@ validate_config() {
 
 gather_facts() {
 	log_info "Gathering cluster facts..."
-	run_kubespray "facts.yml" "fact gathering"
+	run_kubespray "playbooks/facts.yml" "fact gathering"
 }
 
 open_shell() {

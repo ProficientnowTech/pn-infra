@@ -142,19 +142,44 @@ rook-ceph-cluster:
       - name: "k8s-master-03"
         devices:
         - name: "/dev/sdb"
-      - name: "k8s-worker-02"
-        devices:
-        - name: "/dev/sdb"
-      - name: "k8s-worker-10"
-        devices:
-        - name: "/dev/sda"
-      - name: "k8s-master-04"
+      - name: "k8s-master-05"
         devices:
         - name: "/dev/sda"
         - name: "/dev/sdb"
         - name: "/dev/sdc"
         - name: "/dev/sdd"
         - name: "/dev/sde"
+      - name: "k8s-worker-01"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-02"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-03"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-04"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-05"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-06"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-07"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-08"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-09"
+        devices:
+        - name: "/dev/sdb"
+      - name: "k8s-worker-10"
+        devices:
+        - name: "/dev/sda"
+        - name: "/dev/sdb"
 
     # Remove OSDs that are not in the list above
     removeOSDsIfOutAndSafeToRemove: false

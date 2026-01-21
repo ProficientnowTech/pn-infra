@@ -9,7 +9,7 @@ Thumbs.db
 *.swo
 
 node_modules
-
+.fact_cache
 # Claude files and agentic files
 .claude
 AGENTS.md

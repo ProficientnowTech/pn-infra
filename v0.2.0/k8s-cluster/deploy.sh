@@ -13,7 +13,7 @@ IMAGE_NAME="${IMAGE_NAME:-ghcr.io/proficientnowtech/kubespray-pncp:latest}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INVENTORY_PATH="${SCRIPT_DIR}/inventory/pn-production"
 HOSTS_FILE="${INVENTORY_PATH}/hosts.yml"
-SSH_KEY_PATH="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
+SSH_KEY_PATH="${SSH_KEY_PATH:-${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -30,6 +30,11 @@ DRY_RUN=""
 FORCE_PULL=""
 EXTRA_ARGS=""
 LIMIT_HOSTS=""
+AUTO_YES=""
+CEPH_FORCE_CLEANUP=""
+CEPH_FORCE_CLEANUP_DRY_RUN=""
+CEPH_FORCE_CLEANUP_MODE="full"
+CEPH_FORCE_CLEANUP_CONFIRMED=""
 
 # Usage function
 usage() {
@@ -52,11 +57,20 @@ OPTIONS:
     -f, --force-pull   Force pull Docker image even if present
     -l, --limit HOSTS  Limit execution to specific hosts (comma-separated)
     -e, --extra ARGS   Pass additional arguments to ansible-playbook
+    -y, --yes          Non-interactive (assume yes)
+    --ceph-force-cleanup           Irreversibly wipe non-OS disks (FULL wipe, DESTRUCTIVE)
+    --ceph-force-cleanup-overwrite Irreversibly overwrite every byte on non-OS disks (SLOW, DESTRUCTIVE)
+    --ceph-force-cleanup-fast      Irreversibly wipe non-OS disks (FAST metadata wipe, DESTRUCTIVE)
+    --ceph-force-cleanup-dry-run   Show what would be wiped (no changes)
     -h, --help         Show this help message
 
 EXAMPLES:
     $0 deploy                           # Deploy cluster
     $0 reset                           # Reset cluster
+    $0 reset --ceph-force-cleanup       # Reset + wipe Ceph disks (non-OS disks only)
+    $0 reset --ceph-force-cleanup-overwrite  # Reset + overwrite every byte (can take a very long time)
+    $0 reset --ceph-force-cleanup-fast  # Reset + fast wipe (signatures/partition tables)
+    $0 reset --ceph-force-cleanup-dry-run  # Preview wipe targets
     $0 upgrade -v                      # Upgrade with verbose output
     $0 scale -l k8s-worker-07          # Add new worker node
     $0 deploy -n                       # Dry run deployment
@@ -229,11 +243,72 @@ deploy_cluster() {
 reset_cluster() {
 	log_warning "This will completely destroy the Kubernetes cluster!"
 	log_warning "All data, pods, and configurations will be lost!"
-	read -p "Are you sure you want to continue? Type 'yes' to confirm: " -r
-	if [[ "$REPLY" != "yes" ]]; then
-		log_info "Reset operation cancelled"
-		exit 0
+
+	if [[ "$AUTO_YES" != "true" ]]; then
+		read -p "Are you sure you want to continue? Type 'yes' to confirm: " -r
+		if [[ "$REPLY" != "yes" ]]; then
+			log_info "Reset operation cancelled"
+			exit 0
+		fi
 	fi
+
+	# Optional Ceph forced disk cleanup (non-OS disks only) prior to reset.
+	if [[ "$CEPH_FORCE_CLEANUP" == "true" || "$CEPH_FORCE_CLEANUP_DRY_RUN" == "true" ]]; then
+		log_warning "Ceph forced disk cleanup enabled."
+		log_warning "THIS ACTION IS DESTRUCTIVE, IRREVERSIBLE, AND CANNOT BE UNDONE."
+		log_warning "This will wipe ALL non-OS disks on the selected hosts."
+		case "$CEPH_FORCE_CLEANUP_MODE" in
+		overwrite)
+			log_warning "Wipe mode: OVERWRITE (writes zeros over every byte; may take hours/days on large HDDs)."
+			;;
+		full)
+			log_warning "Wipe mode: FULL (wipes entire disks; may use device discard when available, otherwise full overwrite; may take a long time)."
+			;;
+		*)
+			log_warning "Wipe mode: FAST (wipes signatures/partition tables; quick but not a full byte-for-byte overwrite)."
+			;;
+		esac
+		if [[ "$DRY_RUN" == "true" ]]; then
+			log_warning "Dry-run mode enabled: Ceph cleanup will run in dry-run (no wiping)."
+		elif [[ "$CEPH_FORCE_CLEANUP_DRY_RUN" != "true" && "$AUTO_YES" != "true" ]]; then
+			read -p "Type 'WIPE-CEPH' to confirm disk wiping: " -r
+			if [[ "$REPLY" != "WIPE-CEPH" ]]; then
+				log_info "Ceph disk cleanup cancelled"
+				exit 0
+			fi
+			CEPH_FORCE_CLEANUP_CONFIRMED="true"
+		fi
+
+		validate_ssh_connectivity
+
+		log_info "Collecting non-OS disk inventory (for review) ..."
+		local inventory_args=(
+			"${SCRIPT_DIR}/tools/collect_non_os_disks.py"
+			"--hosts-file" "${HOSTS_FILE}"
+			"--ssh-key" "${SSH_KEY_PATH}"
+		)
+		[[ -n "$LIMIT_HOSTS" ]] && inventory_args+=("--limit" "$LIMIT_HOSTS")
+		python3 "${inventory_args[@]}"
+		log_success "Non-OS disk inventory written under ${SCRIPT_DIR}/.artifacts/"
+
+		local cleanup_args=(
+			"${SCRIPT_DIR}/tools/ceph_force_disk_cleanup.py"
+			"--hosts-file" "${HOSTS_FILE}"
+			"--ssh-key" "${SSH_KEY_PATH}"
+			"--mode" "${CEPH_FORCE_CLEANUP_MODE}"
+		)
+		[[ -n "$LIMIT_HOSTS" ]] && cleanup_args+=("--limit" "$LIMIT_HOSTS")
+		[[ "$DRY_RUN" == "true" || "$CEPH_FORCE_CLEANUP_DRY_RUN" == "true" ]] && cleanup_args+=("--dry-run")
+		[[ "$AUTO_YES" == "true" || "$CEPH_FORCE_CLEANUP_CONFIRMED" == "true" ]] && cleanup_args+=("--yes")
+		# FULL wipes can take a long time; avoid SSH timeouts and avoid wiping many nodes at once by default.
+		[[ "$CEPH_FORCE_CLEANUP_MODE" == "full" ]] && cleanup_args+=("--timeout" "0" "--parallel" "1")
+		[[ "$CEPH_FORCE_CLEANUP_MODE" == "overwrite" ]] && cleanup_args+=("--timeout" "0" "--parallel" "1")
+
+		log_info "Running Ceph forced disk cleanup..."
+		python3 "${cleanup_args[@]}"
+		log_success "Ceph forced disk cleanup completed"
+	fi
+
 	run_kubespray "reset.yml" "reset"
 }
 
@@ -320,6 +395,29 @@ while [[ $# -gt 0 ]]; do
 	-e | --extra)
 		EXTRA_ARGS="$2"
 		shift 2
+		;;
+	-y | --yes)
+		AUTO_YES="true"
+		shift
+		;;
+	--ceph-force-cleanup)
+		CEPH_FORCE_CLEANUP="true"
+		CEPH_FORCE_CLEANUP_MODE="full"
+		shift
+		;;
+	--ceph-force-cleanup-overwrite)
+		CEPH_FORCE_CLEANUP="true"
+		CEPH_FORCE_CLEANUP_MODE="overwrite"
+		shift
+		;;
+	--ceph-force-cleanup-fast)
+		CEPH_FORCE_CLEANUP="true"
+		CEPH_FORCE_CLEANUP_MODE="fast"
+		shift
+		;;
+	--ceph-force-cleanup-dry-run)
+		CEPH_FORCE_CLEANUP_DRY_RUN="true"
+		shift
 		;;
 	-h | --help)
 		usage

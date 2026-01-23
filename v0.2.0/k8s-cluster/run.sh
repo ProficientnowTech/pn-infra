@@ -86,6 +86,11 @@ OPTIONS:
     -f, --force-pull       Force pull Docker image
     -l, --limit HOSTS      Limit execution to specific hosts
     -e, --extra ARGS       Pass additional arguments
+    -y, --yes              Non-interactive (assume yes)
+    --ceph-force-cleanup           Wipe non-OS disks (DESTRUCTIVE, passed through to deploy.sh)
+    --ceph-force-cleanup-overwrite Overwrite every byte on non-OS disks (SLOW, DESTRUCTIVE, passed through to deploy.sh)
+    --ceph-force-cleanup-fast      Fast wipe non-OS disks (DESTRUCTIVE, passed through to deploy.sh)
+    --ceph-force-cleanup-dry-run   Show what would be wiped (passed through to deploy.sh)
     -h, --help             Show this help
 
 EXAMPLES:

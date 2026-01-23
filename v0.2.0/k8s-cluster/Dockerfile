@@ -46,6 +46,16 @@ ENV ANSIBLE_HOST_KEY_CHECKING=False \
     PYTHONUNBUFFERED=1 \
     KUBESPRAY_HOME=/opt/kubespray
 
+# Bundle PN k8s-cluster tools into the image so they can be used without bind-mounting the repo.
+# Note: `.dockerignore` excludes inventories/credentials, secrets, and tests.
+ENV PN_K8S_CLUSTER_HOME=/opt/pn/k8s-cluster
+COPY tools/ ${PN_K8S_CLUSTER_HOME}/tools/
+RUN set -eux; \
+    chmod +x ${PN_K8S_CLUSTER_HOME}/tools/*.py; \
+    ln -sf ${PN_K8S_CLUSTER_HOME}/tools/collect_non_os_disks.py /usr/local/bin/collect-non-os-disks; \
+    ln -sf ${PN_K8S_CLUSTER_HOME}/tools/ceph_force_disk_cleanup.py /usr/local/bin/ceph-force-disk-cleanup; \
+    ln -sf ${PN_K8S_CLUSTER_HOME}/tools/run_tests.py /usr/local/bin/pn-k8s-tools-tests
+
 WORKDIR /workspace
 
 CMD ["/bin/bash"]

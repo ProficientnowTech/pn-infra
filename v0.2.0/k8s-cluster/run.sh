@@ -91,6 +91,8 @@ OPTIONS:
     --ceph-force-cleanup-overwrite Overwrite every byte on non-OS disks (SLOW, DESTRUCTIVE, passed through to deploy.sh)
     --ceph-force-cleanup-fast      Fast wipe non-OS disks (DESTRUCTIVE, passed through to deploy.sh)
     --ceph-force-cleanup-dry-run   Show what would be wiped (passed through to deploy.sh)
+    --ceph-force-cleanup-parallel N  Parallel SSH workers for cleanup (passed through to deploy.sh)
+    --ceph-force-cleanup-timeout S   SSH timeout per host in seconds (0 disables) (passed through to deploy.sh)
     -h, --help             Show this help
 
 EXAMPLES:
@@ -244,6 +246,7 @@ kubeconfig)
 		;;
 	-f | --force-pull)
 		FORCE_PULL="true"
+		DEPLOY_ARGS+=("$1")
 		shift
 		;;
 	-h | --help)

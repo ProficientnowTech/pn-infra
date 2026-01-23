@@ -35,6 +35,8 @@ CEPH_FORCE_CLEANUP=""
 CEPH_FORCE_CLEANUP_DRY_RUN=""
 CEPH_FORCE_CLEANUP_MODE="full"
 CEPH_FORCE_CLEANUP_CONFIRMED=""
+CEPH_FORCE_CLEANUP_PARALLEL=""
+CEPH_FORCE_CLEANUP_TIMEOUT=""
 
 # Usage function
 usage() {
@@ -62,6 +64,8 @@ OPTIONS:
     --ceph-force-cleanup-overwrite Irreversibly overwrite every byte on non-OS disks (SLOW, DESTRUCTIVE)
     --ceph-force-cleanup-fast      Irreversibly wipe non-OS disks (FAST metadata wipe, DESTRUCTIVE)
     --ceph-force-cleanup-dry-run   Show what would be wiped (no changes)
+    --ceph-force-cleanup-parallel N  Parallel SSH workers for cleanup tooling (default varies by mode)
+    --ceph-force-cleanup-timeout S   SSH timeout per host in seconds (0 disables; default varies by mode)
     -h, --help         Show this help message
 
 EXAMPLES:
@@ -300,9 +304,17 @@ reset_cluster() {
 		[[ -n "$LIMIT_HOSTS" ]] && cleanup_args+=("--limit" "$LIMIT_HOSTS")
 		[[ "$DRY_RUN" == "true" || "$CEPH_FORCE_CLEANUP_DRY_RUN" == "true" ]] && cleanup_args+=("--dry-run")
 		[[ "$AUTO_YES" == "true" || "$CEPH_FORCE_CLEANUP_CONFIRMED" == "true" ]] && cleanup_args+=("--yes")
-		# FULL wipes can take a long time; avoid SSH timeouts and avoid wiping many nodes at once by default.
-		[[ "$CEPH_FORCE_CLEANUP_MODE" == "full" ]] && cleanup_args+=("--timeout" "0" "--parallel" "1")
-		[[ "$CEPH_FORCE_CLEANUP_MODE" == "overwrite" ]] && cleanup_args+=("--timeout" "0" "--parallel" "1")
+		# Defaults: FULL/OVERWRITE wipes can take a long time; avoid SSH timeouts and avoid wiping many nodes at once.
+		if [[ -n "$CEPH_FORCE_CLEANUP_TIMEOUT" ]]; then
+			cleanup_args+=("--timeout" "$CEPH_FORCE_CLEANUP_TIMEOUT")
+		elif [[ "$CEPH_FORCE_CLEANUP_MODE" == "full" || "$CEPH_FORCE_CLEANUP_MODE" == "overwrite" ]]; then
+			cleanup_args+=("--timeout" "0")
+		fi
+		if [[ -n "$CEPH_FORCE_CLEANUP_PARALLEL" ]]; then
+			cleanup_args+=("--parallel" "$CEPH_FORCE_CLEANUP_PARALLEL")
+		elif [[ "$CEPH_FORCE_CLEANUP_MODE" == "full" || "$CEPH_FORCE_CLEANUP_MODE" == "overwrite" ]]; then
+			cleanup_args+=("--parallel" "1")
+		fi
 
 		log_info "Running Ceph forced disk cleanup..."
 		python3 "${cleanup_args[@]}"
@@ -418,6 +430,14 @@ while [[ $# -gt 0 ]]; do
 	--ceph-force-cleanup-dry-run)
 		CEPH_FORCE_CLEANUP_DRY_RUN="true"
 		shift
+		;;
+	--ceph-force-cleanup-parallel)
+		CEPH_FORCE_CLEANUP_PARALLEL="$2"
+		shift 2
+		;;
+	--ceph-force-cleanup-timeout)
+		CEPH_FORCE_CLEANUP_TIMEOUT="$2"
+		shift 2
 		;;
 	-h | --help)
 		usage

@@ -10,7 +10,8 @@ VALIDATE_SCRIPT="${SCRIPT_DIR}/validate.sh"
 DEPLOY_SCRIPT="${SCRIPT_DIR}/deploy.sh"
 KUBECONFIG_LOCAL="${SCRIPT_DIR}/.kube/config"
 KUBECONFIG_HOME="${HOME}/.kube/config"
-SSH_KEY_PATH="${SSH_KEY_PATH:-${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646}"
+SSH_KEY_PATH="${SSH_KEY_PATH:-/home/mohammmed-faizan/.ssh-manager/keys/pn-infra-prod/id_ed25519_pn-infra-prod-ansible_20260123-162958}"
+export SSH_KEY_PATH
 
 # Colors
 RED='\033[0;31m'
@@ -77,7 +78,7 @@ OPERATIONS:
     status          Check deployment status
     shell           Open interactive shell
     kubeconfig      Copy kubeconfig from first master (only)
-    
+
 OPTIONS:
     --skip-validation       Skip validation (EMERGENCY USE ONLY)
     --force-validation      Force fresh validation

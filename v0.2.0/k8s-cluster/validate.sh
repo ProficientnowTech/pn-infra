@@ -39,7 +39,7 @@ log_error() {
 # Check required tools for cluster deployment
 check_tools() {
     log_info "Checking required tools for cluster deployment..."
-    
+
     local tools=("docker" "ssh")
     for tool in "${tools[@]}"; do
         if ! command -v "$tool" &> /dev/null; then
@@ -51,12 +51,12 @@ check_tools() {
 # Check Docker for Kubespray
 check_docker() {
     log_info "Checking Docker for Kubespray..."
-    
+
     if ! docker info >/dev/null 2>&1; then
         log_error "Docker not running or accessible"
         return
     fi
-    
+
     # Check if we can pull the configured Kubespray image
     if ! docker pull "${IMAGE_NAME}" >/dev/null 2>&1; then
         log_warning "Cannot pull Kubespray Docker image (${IMAGE_NAME}) - check network connectivity"
@@ -66,13 +66,13 @@ check_docker() {
 # Check SSH keys for cluster nodes
 check_ssh() {
     log_info "Checking SSH configuration for cluster nodes..."
-    
-    local ssh_key="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
+
+    local ssh_key="${HOME}/.ssh-manager/keys/pn-infra-prod/id_ed25519_pn-infra-prod-ansible_20260123-162958"
     if [[ ! -f "$ssh_key" ]]; then
         log_error "SSH key not found: $ssh_key"
         return
     fi
-    
+
     # Check key permissions
     local key_perms=$(stat -c %a "$ssh_key" 2>/dev/null)
     if [[ "$key_perms" != "600" ]]; then
@@ -83,26 +83,26 @@ check_ssh() {
 # Check Kubespray inventory and configuration
 check_inventory() {
     log_info "Checking Kubespray inventory and configuration..."
-    
+
     # Check inventory file (canonical)
     if [[ ! -f "${HOSTS_FILE}" ]]; then
         log_error "Inventory file not found: ${HOSTS_FILE}"
         return
     fi
-    
+
     # Check essential configuration files
     local config_files=(
         "group_vars/k8s_cluster/k8s-cluster.yml"
         "group_vars/k8s_cluster/addons.yml"
         "group_vars/all/all.yml"
     )
-    
+
     for config_file in "${config_files[@]}"; do
         if [[ ! -f "${INVENTORY_PATH}/${config_file}" ]]; then
             log_error "Essential config file missing: $config_file"
         fi
     done
-    
+
     # Check network plugin configuration
     local k8s_config="${INVENTORY_PATH}/group_vars/k8s_cluster/k8s-cluster.yml"
     if [[ -f "$k8s_config" ]]; then
@@ -136,8 +136,8 @@ PY
 # Test SSH connectivity to cluster nodes
 check_connectivity() {
     log_info "Testing SSH connectivity to cluster nodes..."
-    
-    local ssh_key="${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646"
+
+    local ssh_key="${HOME}/.ssh-manager/keys/pn-infra-prod/id_ed25519_pn-infra-prod-ansible_20260123-162958"
     local test_hosts=()
     local max_parallel=20
 
@@ -156,7 +156,7 @@ for _, meta in hosts.items():
         print(ip)
 PY
     )
-    
+
     if [[ ${#test_hosts[@]} -eq 0 ]]; then
         log_warning "No hosts found in inventory for connectivity testing"
         return
@@ -179,13 +179,13 @@ PY
 # Main validation
 run_validation() {
     log_info "Starting Kubespray cluster deployment validation..."
-    
+
     check_tools
     check_docker
     check_ssh
     check_inventory
     check_connectivity
-    
+
     echo
     if [[ $ERRORS -eq 0 ]]; then
         log_success "Cluster deployment validation passed!"

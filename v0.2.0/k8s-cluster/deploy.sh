@@ -13,7 +13,7 @@ IMAGE_NAME="${IMAGE_NAME:-ghcr.io/proficientnowtech/kubespray-pncp:latest}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INVENTORY_PATH="${SCRIPT_DIR}/inventory/pn-production"
 HOSTS_FILE="${INVENTORY_PATH}/hosts.yml"
-SSH_KEY_PATH="${SSH_KEY_PATH:-${HOME}/.ssh-manager/keys/pn-production-k8s/id_ed25519_pn-production-ansible-role_20250505-163646}"
+SSH_KEY_PATH="${SSH_KEY_PATH:-/home/mohammmed-faizan/.ssh-manager/keys/pn-infra-prod/id_ed25519_pn-infra-prod-ansible_20260123-162958}"
 
 # Colors for output
 RED='\033[0;31m'

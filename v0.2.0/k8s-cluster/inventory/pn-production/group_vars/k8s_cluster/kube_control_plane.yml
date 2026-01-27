@@ -18,7 +18,7 @@ eviction_hard_control_plane:
   pid.available: "5%"
 
 # Control plane kubelet configuration for resource-constrained masters
-kubelet_max_pods_control_plane: 50
+kubelet_max_pods_control_plane: 250
 kubelet_serialize_image_pulls: true
 kubelet_image_gc_high_threshold: 85
 kubelet_image_gc_low_threshold: 80
